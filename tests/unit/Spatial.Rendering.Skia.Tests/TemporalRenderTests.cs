@@ -61,6 +61,54 @@ public sealed class TemporalRenderTests
         CircleStyle,
         [new MapLayerSource("demo.places", store, new FakeCatalogue(4326), Time: time)]);
 
+    /// <summary>
+    /// A designated layer is read by the extent rule in the render pipeline as
+    /// in the query path (ADR-0175): a row whose designated start is before the
+    /// window and whose designated end is after it straddles it, so it is
+    /// rendered where the bag rule would have dropped it.
+    /// </summary>
+    [Fact]
+    public async Task A_designated_layer_renders_a_row_whose_extent_straddles_the_window()
+    {
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("name", AttributeKind.String),
+            new FieldDefinition("begins", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("ends", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("geometry", AttributeKind.Geometry),
+        ]);
+        Feature Event(string name, DateTimeOffset begins, DateTimeOffset ends) => new(
+            new FeatureId(name),
+            schema,
+            [
+                AttributeValue.FromString(name),
+                AttributeValue.FromDateTimeOffset(begins),
+                AttributeValue.FromDateTimeOffset(ends),
+                AttributeValue.FromGeometry(GeometryFactory.CreatePoint(0, 0, CoordinateReference.Epsg(4326))),
+            ]);
+
+        var store = new FakeStore(
+            schema,
+            Event("straddling", new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero)),
+            Event("after", new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2031, 1, 1, 0, 0, 0, TimeSpan.Zero)));
+        var request = new MapRenderRequest(
+            new RasterViewport(new Envelope(-10, -10, 10, 10), 100, 100, "EPSG:4326"),
+            CircleStyle,
+            [new MapLayerSource(
+                "demo.places",
+                store,
+                new FakeCatalogue(4326, timeFields: new TemporalExtentFields("begins", "ends")),
+                Time: Window(new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero)))]);
+        var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());
+
+        var timed = (await renderer.RenderAsync(request)).Content;
+        var onlyStraddling = await RenderAsync(
+            new FakeStore(schema, Event("straddling", new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero), new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero))),
+            null);
+
+        Assert.Equal(onlyStraddling, timed);
+    }
+
     private static async Task<byte[]> RenderAsync(IFeatureStore store, MapTimeExtent? time)
     {
         var renderer = new MapRenderer(new IdentityTransforms(), new FakeOperations());

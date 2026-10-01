@@ -100,7 +100,7 @@ internal sealed class FakeStore(FeatureSchema schema, params Feature[] features)
 }
 
 /// <summary>An in-memory catalogue describing one dataset.</summary>
-internal sealed class FakeCatalogue(int srid, string geometryColumn = "geometry") : IDataCatalogue
+internal sealed class FakeCatalogue(int srid, string geometryColumn = "geometry", TemporalExtentFields? timeFields = null) : IDataCatalogue
 {
     public Task<IReadOnlyList<DatasetSummary>> ListAsync(string? pattern = null, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
@@ -114,7 +114,7 @@ internal sealed class FakeCatalogue(int srid, string geometryColumn = "geometry"
             new FieldDefinition(geometryColumn, AttributeKind.Geometry),
         ]);
         return Task.FromResult(new DatasetDescription(
-            dataset, "public", dataset, geometryColumn, srid, "Point", 1, ["id"], schema));
+            dataset, "public", dataset, geometryColumn, srid, "Point", 1, ["id"], schema) { TimeFields = timeFields });
     }
 
     public Task<string> CreateAsync(string dataset, FeatureBatch sample, int srid, CancellationToken cancellationToken = default) =>

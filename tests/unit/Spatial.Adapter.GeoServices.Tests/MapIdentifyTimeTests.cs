@@ -203,6 +203,46 @@ public sealed class MapIdentifyTimeTests
         Assert.Equal(["a"], Names(body));
     }
 
+    /// <summary>
+    /// A designated layer's identify hits are the extent rule's, like its
+    /// query and render answers (ADR-0175): a row whose designated bounds
+    /// straddle the window has no instant inside it and is still a hit.
+    /// </summary>
+    [Fact]
+    public async Task A_designated_layer_identifies_a_row_whose_extent_straddles_the_window()
+    {
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("name", AttributeKind.String),
+            new FieldDefinition("begins", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("ends", AttributeKind.DateTimeOffset, nullable: true),
+            new FieldDefinition("geometry", AttributeKind.Geometry),
+        ]);
+        Feature Event(string name, long begins, long ends) => new(
+            new FeatureId(name),
+            schema,
+            [
+                AttributeValue.FromString(name),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(begins)),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(ends)),
+                AttributeValue.FromGeometry(GeometryFactory.CreatePoint(13.405, 52.52, Crs4326)),
+            ]);
+
+        var dataset = Cities(schema) with { TimeFields = new TemporalExtentFields("begins", "ends") };
+        var store = new MemoryStore(new Dictionary<string, Feature[]>
+        {
+            ["demo.cities"] = [Event("straddling", Earlier - 1, Instant + 1), Event("after", Instant + 1, Instant + 2)],
+        });
+
+        var designated = await IdentifyBodyAsync(store, Infos(dataset), PointParams(("time", $"{Earlier},{Instant}")));
+        var undesignated = await IdentifyBodyAsync(store, Infos(Cities(schema)), PointParams(("time", $"{Earlier},{Instant}")));
+
+        Assert.Equal(["straddling"], Names(designated));
+        // The same layer with no designation keeps the bag rule, which drops the
+        // straddling row for having no instant inside the window.
+        Assert.Empty(Names(undesignated));
+    }
+
     [Theory]
     [InlineData("esriTimeRelationContains")]
     [InlineData("esriTimeRelationWithin")]

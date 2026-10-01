@@ -85,7 +85,7 @@ internal static class FeatureSpatialMatcher
 
             var uniqueId = EsriUniqueIdScheme.ResolveFor(spec.Query, spec.Dataset, feature);
             var candidate = new MatchCandidate(
-                spec.Query, feature, objectId, spec.QueryGeometry, spec.Services.Relations, uniqueId, wherePushedDown);
+                spec.Query, feature, objectId, spec.QueryGeometry, spec.Services.Relations, uniqueId, wherePushedDown, spec.Dataset.TimeFields);
             if (Matches(candidate, cancellationToken))
             {
                 matches.Add(new MatchedFeature(objectId, feature));
@@ -143,33 +143,36 @@ internal static class FeatureSpatialMatcher
             new EsriFieldOverlay(EsriLayerModel.ObjectIdField, AttributeValue.FromInt64(match.ObjectId)));
 
     private static bool MatchesTimeWindow(MatchCandidate match) =>
-        match.Query.Time is not { } time || MatchesTime(match.Feature, time);
+        match.Query.Time is not { } time || MatchesTime(match.Feature, time, match.TimeFields);
 
     private static bool MatchesSpatial(MatchCandidate match, CancellationToken cancellationToken) =>
         match.QueryGeometry is null
         || SpatialMatch(match.Feature, match.QueryGeometry, match.Query.SpatialRel, match.Relations, cancellationToken);
 
     /// <summary>
-    /// Applies the <c>time</c> extent to the feature's date attributes: the
-    /// feature matches when any date value falls inside the (inclusive)
-    /// bounds, where a <c>null</c> bound is infinite. A feature with no date
-    /// values matches unconditionally — ArcGIS Server ignores <c>time</c> on
-    /// layers without time-aware (date) fields. Shared with the MapServer
-    /// identify path (T-059), which filters dated hits with the same rule.
+    /// Applies the <c>time</c> extent to one feature.
+    ///
+    /// <para>
+    /// A layer carrying a <see cref="TemporalExtentFields"/> designation is
+    /// matched against its feature temporal extent (ADR-0175): the interval
+    /// between the two fields the layer designates, inclusive bounds, a null
+    /// bound infinite — so a row whose extent straddles the window matches
+    /// although no single instant of it falls inside. A layer with no
+    /// designation keeps the rule it has always had: any date value inside the
+    /// (inclusive) bounds, where a <c>null</c> bound is infinite, and a feature
+    /// with no date values matching unconditionally — ArcGIS Server ignores
+    /// <c>time</c> on layers without time-aware (date) fields. Shared with the
+    /// MapServer identify path (T-059), which filters dated hits with the same
+    /// rule.
+    /// </para>
     /// </summary>
-    internal static bool MatchesTime(Feature feature, EsriTimeExtent time)
+    internal static bool MatchesTime(Feature feature, EsriTimeExtent time, TemporalExtentFields? fields = null)
     {
-        var dates = feature.Attributes
-            .Where(attribute => attribute.Kind == AttributeKind.DateTimeOffset)
-            .Select(attribute => attribute.DateTimeOffsetValue)
-            .ToArray();
-        return dates.Length == 0 || dates.Any(date => Within(date, time));
+        var window = TemporalExtent.FromMilliseconds(time.StartMs, time.EndMs);
+        return fields is null
+            ? TemporalExtent.MatchesAnyDate(feature, window)
+            : TemporalExtent.From(feature, fields).Overlaps(window);
     }
-
-    /// <summary>One date value against the inclusive bounds, where a null bound is infinite.</summary>
-    private static bool Within(DateTimeOffset value, EsriTimeExtent time) =>
-        value.ToUnixTimeMilliseconds() >= (time.StartMs ?? long.MinValue)
-        && value.ToUnixTimeMilliseconds() <= (time.EndMs ?? long.MaxValue);
 
     private static bool SpatialMatch(
         Feature feature,
@@ -229,8 +232,9 @@ internal static class FeatureSpatialMatcher
 
     /// <summary>
     /// One per-feature match candidate: the parsed query, the feature and
-    /// its resolved <c>OBJECTID</c>, the pre-transformed query geometry and
-    /// the relation verb the spatial predicates need. Shared by the Feature
+    /// its resolved <c>OBJECTID</c>, the pre-transformed query geometry, the
+    /// relation verb the spatial predicates need and the layer's temporal
+    /// designation. Shared by the Feature
     /// Service match loop, the Image Service catalog query and the
     /// relationship traversal, so all three agree on what "matches" means.
     /// The verbs are reached from the query's own geometry, so a traversal
@@ -244,5 +248,6 @@ internal static class FeatureSpatialMatcher
         IGeometry? QueryGeometry,
         IGeometryRelations Relations,
         string? UniqueId = null,
-        bool WherePushedDown = false);
+        bool WherePushedDown = false,
+        TemporalExtentFields? TimeFields = null);
 }

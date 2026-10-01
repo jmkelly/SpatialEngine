@@ -139,15 +139,15 @@ internal static class FeatureMatchPushdown
     /// The <c>time</c> extent as a predicate over the layer's date fields.
     ///
     /// <para>
-    /// The facade's rule is that a feature matches when <em>any</em> of its
-    /// date values falls inside the inclusive bounds, and that a feature with
-    /// no date value matches unconditionally (ArcGIS Server ignores
-    /// <c>time</c> on a layer with no time-aware field). So the pushed
-    /// predicate keeps every feature the rule can accept: for each date field,
-    /// either the field is null — the feature may be one that matches for
-    /// having no dates at all — or the field is inside the extent. A feature
-    /// with dates outside the extent is the only one dropped, and the rule
-    /// rejects it too.
+    /// A layer with a temporal designation (ADR-0175) is matched by the feature
+    /// extent rule instead — the designated start and end bounds straddling the
+    /// window — so its pushed clause is that rule's overlaps shape over the
+    /// designated pair: the start is not after the window's end, or the end is
+    /// not before its start. Overlaps is the superset of all three relations
+    /// (a feature that covers the window, or is covered by it, intersects it),
+    /// so one clause stays a superset whichever relation the matcher applies,
+    /// and a row whose extent straddles the window — no instant of it inside,
+    /// which the undesignated clause would drop — is still read.
     /// </para>
     /// </summary>
     private static Predicate? Time(DatasetDescription dataset, EsriTimeExtent? time)
@@ -156,6 +156,72 @@ internal static class FeatureMatchPushdown
         {
             return null;
         }
+
+        return dataset.TimeFields is { IsEmpty: false } fields
+            ? DesignatedTime(dataset, fields, extent)
+            : AnyDateTime(dataset, extent);
+    }
+
+    /// <summary>
+    /// The designated pair's overlaps clause. A designation naming a field the
+    /// schema does not have contributes no clause for that bound, which is the
+    /// same infinite bound the extent reads.
+    /// </summary>
+    private static Predicate? DesignatedTime(DatasetDescription dataset, TemporalExtentFields fields, EsriTimeExtent extent)
+    {
+        var terms = new List<Predicate>();
+        if (fields.StartField is { } start && extent.EndMs is { } end && Declared(dataset, start))
+        {
+            terms.Add(AtOrBefore(start, end));
+        }
+
+        if (fields.EndField is { } finish && extent.StartMs is { } from && Declared(dataset, finish))
+        {
+            terms.Add(AtOrAfter(finish, from));
+        }
+
+        return terms.Count switch
+        {
+            0 => null,
+            1 => terms[0],
+            _ => new Predicate.Every(terms),
+        };
+    }
+
+    /// <summary>
+    /// One designated field against one window bound: either the field is
+    /// null — which is the infinite bound the extent reads, and admits every
+    /// row that has no date at all — or it is on the side of the bound the
+    /// overlaps clause needs.
+    /// </summary>
+    private static Predicate.Some Bound(string field, ComparisonOperator comparison, long bound) => new(
+    [
+        new Predicate.IsNull(new FieldRef(field), Negated: false),
+        new Predicate.Compare(new FieldRef(field), comparison, Literal.FromMilliseconds(bound)),
+    ]);
+
+    /// <summary>The designated start is not after the window's end.</summary>
+    private static Predicate.Some AtOrBefore(string field, long boundMs) =>
+        Bound(field, ComparisonOperator.LessOrEqual, boundMs);
+
+    /// <summary>The designated end is not before the window's start.</summary>
+    private static Predicate.Some AtOrAfter(string field, long boundMs) =>
+        Bound(field, ComparisonOperator.GreaterOrEqual, boundMs);
+
+    private static bool Declared(DatasetDescription dataset, string field) => dataset.Schema.IndexOf(field) >= 0;
+
+    /// <summary>
+    /// The undesignated layer's rule: a feature matches when <em>any</em> of
+    /// its date values falls inside the inclusive bounds, and a feature with no
+    /// date value matches unconditionally (ArcGIS Server ignores <c>time</c>
+    /// on a layer with no time-aware field). So the pushed predicate keeps
+    /// every feature the rule can accept: for each date field, either the field
+    /// is null — the feature may be one that matches for having no dates at
+    /// all — or the field is inside the extent. A feature with dates outside
+    /// the extent is the only one dropped, and the rule rejects it too.
+    /// </summary>
+    private static Predicate? AnyDateTime(DatasetDescription dataset, EsriTimeExtent extent)
+    {
 
         var dates = dataset.Schema.Fields
             .Where(field => field.Kind == AttributeKind.DateTimeOffset)

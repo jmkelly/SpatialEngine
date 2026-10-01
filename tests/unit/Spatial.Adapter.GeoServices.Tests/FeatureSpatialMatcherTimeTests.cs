@@ -116,6 +116,70 @@ public sealed class FeatureSpatialMatcherTimeTests
         Assert.False(FeatureSpatialMatcher.MatchesTime(Dated(Inside), new EsriTimeExtent(Later, Earlier)));
     }
 
+    /// <summary>
+    /// A designated layer's rows are matched by the extent rule, not the bag
+    /// rule: a row whose designated start is before the window and whose
+    /// designated end is after it has no instant inside the window, and it
+    /// still matches, because the window falls inside the row's extent
+    /// (ADR-0175).
+    /// </summary>
+    [Fact]
+    public void A_designated_row_that_straddles_the_extent_matches()
+    {
+        var feature = new Feature(
+            new FeatureId("straddling"),
+            TwoDateSchema,
+            [
+                AttributeValue.FromString("straddling"),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(Earlier - 1)),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(Later + 1)),
+            ]);
+
+        Assert.True(FeatureSpatialMatcher.MatchesTime(feature, new EsriTimeExtent(Earlier, Later), Designation));
+    }
+
+    /// <summary>
+    /// The designation is what changes the rule. A layer with none keeps the
+    /// bag rule exactly, on the same row.
+    /// </summary>
+    [Fact]
+    public void A_layer_with_no_designation_keeps_the_any_date_value_rule()
+    {
+        var feature = new Feature(
+            new FeatureId("two-dates"),
+            TwoDateSchema,
+            [
+                AttributeValue.FromString("two-dates"),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(Earlier - 1)),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(Later + 1)),
+            ]);
+
+        Assert.False(FeatureSpatialMatcher.MatchesTime(feature, new EsriTimeExtent(Earlier, Later)));
+        Assert.True(FeatureSpatialMatcher.MatchesTime(feature, new EsriTimeExtent(Earlier, Later), new TemporalExtentFields("observed", "updated")));
+    }
+
+    /// <summary>
+    /// A row whose designated start is after its designated end is an empty
+    /// extent and matches nothing, rather than the interval its bounds are
+    /// swapped into.
+    /// </summary>
+    [Fact]
+    public void A_designated_row_with_reversed_bounds_matches_nothing()
+    {
+        var feature = new Feature(
+            new FeatureId("reversed"),
+            TwoDateSchema,
+            [
+                AttributeValue.FromString("reversed"),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(Later + 1)),
+                AttributeValue.FromDateTimeOffset(DateTimeOffset.FromUnixTimeMilliseconds(Earlier - 1)),
+            ]);
+
+        Assert.False(FeatureSpatialMatcher.MatchesTime(feature, new EsriTimeExtent(Earlier, Later), new TemporalExtentFields("observed", "updated")));
+    }
+
+    private static readonly TemporalExtentFields Designation = new("observed", "updated");
+
     private static Feature Dated(long milliseconds) => new(
         new FeatureId($"dated-{milliseconds}"),
         DatedSchema,
