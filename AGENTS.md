@@ -54,7 +54,11 @@ interop surface.
   reached `CHANGELOG.md` on main through a docs merge (ADR-0146). It also runs
   `tools/doc_surface.py`: the repository root carries no document answering
   "what is happening now", and the changelog is at `docs/CHANGELOG.md`
-  (ADR-0148).
+  (ADR-0148). Every lane also runs `tools/package_agents.py`: each package
+  that owns a hazard — raw SQL, a byte format, font embedding, raster
+  ownership, a datum grid, and the whole TypeScript surface — carries a
+  nested `AGENTS.md` under thirty lines naming its two binding records, its
+  never-list and its test command.
   `CI=true` with no lane named selects `--full`, so a workflow that calls the
   bare script gets the exhaustive gate rather than the fast one (ADR-0118).
   Every lane that runs `dotnet test` also fails a suite that skipped most of

@@ -3,19 +3,20 @@
 The browser workbench: React + TypeScript + MapLibre against the independently
 executable host. It is a **delivered client**, not a second engine: it talks to
 the host only through the generated TypeScript SDK, and the host serves the
-built bundle (ADR-0014; the desktop shell was abandoned in ADR-0039).
+built bundle (ADR-0014; the desktop shell was abandoned in ADR-0039). Route by
+task: `architecture/distilled/host-and-clients.md`.
 
-## Rules
+## Never
 
-- One channel to the host: `src/api.ts` over `@spatial/client`. No fetch of a
-  host path from a component, and no spatial algorithm here — the two geometry
-  files (`src/sgeom.ts`, `src/map-geometry.ts`) are wire adapters, not
-  computation.
-- The wire types are generated. Regenerate rather than hand-edit, and keep the
-  snapshot honest: `eng/e2e-web.sh` rewrites it from a live host.
-- A capability a layer advertises (`hasZ`, `hasM`, `supportsQuantization`) is
-  what the UI may offer; a parameter the host refuses by name is a UI bug, not
-  a server fallback to write.
+- No second channel to the host: `src/api.ts` over `@spatial/client`, and no
+  `fetch` of a host path from a component.
+- No spatial algorithm here. The two geometry files (`src/sgeom.ts`,
+  `src/map-geometry.ts`) are wire adapters, not computation.
+- No hand-edit of the generated wire types; regenerate, and keep the snapshot
+  honest — `eng/e2e-web.sh` rewrites it from a live host.
+- No capability the layer does not advertise: `hasZ`, `hasM` and
+  `supportsQuantization` are what the UI may offer, and a parameter the host
+  refuses by name is a UI bug, not a server fallback to write.
 
 ## Commands
 
