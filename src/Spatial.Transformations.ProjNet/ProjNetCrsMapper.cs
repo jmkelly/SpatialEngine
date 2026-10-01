@@ -9,10 +9,12 @@ namespace Spatial.Transformations.ProjNet;
 /// <see cref="CrsDescription"/> (ADR-0027): the CRS name, family
 /// (geographic / projected / …), axes with units and orientations, datum and
 /// ellipsoid. No core geometry types are involved — descriptions are pure
-/// metadata. The axis order reported is the CRS's declared order; the
-/// engine's geometry convention is always x-first (x = the first axis:
-/// longitude for geographic, easting for projected), which is exactly the
-/// order ProjNet 2.1's math transforms consume and produce.
+/// metadata. The axes reported are those of the coordinate system the engine
+/// built, which is always x-first (x = the first axis: longitude for
+/// geographic, easting for projected) — exactly the order ProjNet 2.1's math
+/// transforms consume and produce, and the order the reader guarantees a
+/// definition asks for (ADR-0170: a projected definition declaring other axes
+/// is not read).
 /// </summary>
 internal static class ProjNetCrsMapper
 {

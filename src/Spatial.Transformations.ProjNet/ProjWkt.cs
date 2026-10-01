@@ -199,7 +199,8 @@ internal static class ProjWkt
         if (!ReadBase(node, name, out var geodetic, out error)
             || geodetic is null
             || !ReadMethod(node, name, out var resolved, out error)
-            || resolved is null)
+            || resolved is null
+            || !CartesianAxesAreEastingThenNorthing(node, name, out error))
         {
             return false;
         }
@@ -212,6 +213,100 @@ internal static class ProjWkt
 
         definition = new ProjectedDefinition(name, geodetic, resolved.Class, parameters);
         return true;
+    }
+
+    /// <summary>
+    /// Whether the projected CRS's own axes are the two the engine serves:
+    /// an easting first and a northing second (SpatialEngine-ufn). The
+    /// builder gives every projected definition those axes and <c>Describe</c>
+    /// reports them, whatever the document declares, so a definition whose
+    /// declared axes are southing and westing — EPSG:5513, EPSG:2065 and the
+    /// Slovak Krovak variants — cannot be read without serving numbers under a
+    /// description that contradicts them. It is refused by name instead, and
+    /// it is refused on any method: the axes are what the engine does not
+    /// serve, not the projection.
+    /// <para>
+    /// A document that states no axes at all is the WKT1 dialect's shorthand
+    /// for easting and northing and reads as it stands; the geodetic base's
+    /// lat/long order is not examined here, because x-is-longitude for every
+    /// geographic CRS is an older decision (ADR-0027 §3) and every EPSG
+    /// document declares latitude first.
+    /// </para>
+    /// </summary>
+    private static bool CartesianAxesAreEastingThenNorthing(WktNode crs, string crsName, out string? error)
+    {
+        error = null;
+        var axes = DeclaredCartesianAxes(crs);
+        if (axes.Count == 0)
+        {
+            return true;
+        }
+
+        if (axes.Count < 2)
+        {
+            return Fail(
+                $"'{crsName}' declares {axes.Count} axis where a projected CRS has two, so the engine cannot tell which is the easting.",
+                out error);
+        }
+
+        if (IsEast(axes[0]) && IsNorth(axes[1]))
+        {
+            return true;
+        }
+
+        return Fail(
+            $"'{crsName}' declares its axes as {Described(axes[0])}, {Described(axes[1])}, which are not easting and northing; the engine serves every projected CRS as x-first easting and northing, so a definition that declares other axes is not read.",
+            out error);
+    }
+
+    /// <summary>
+    /// The projected CRS's own axes, in the order the document gives them:
+    /// both dialects list them on the PROJCS itself, WKT2 beside its CS node
+    /// and with an ORDER, WKT1 after the UNIT and in listing order. The base
+    /// geographic CRS's axes are nested inside it, so they are not among
+    /// them.
+    /// </summary>
+    private static List<WktNode> DeclaredCartesianAxes(WktNode crs) =>
+        [.. Children(crs, "AXIS")
+            .Select((axis, index) => (Axis: axis, Order: OrderOf(axis, index + 1)))
+            .OrderBy(pair => pair.Order)
+            .Select(pair => pair.Axis)];
+
+    /// <summary>
+    /// An axis node's place in its coordinate system: the ORDER the document
+    /// states, or the position it is listed at, which is what WKT1 means.
+    /// </summary>
+    private static int OrderOf(WktNode axis, int listedAt)
+    {
+        var order = Child(axis, "ORDER")?.Numbers;
+        return order is { Count: > 0 } ? (int)order[0] : listedAt;
+    }
+
+    /// <summary>An axis as the document spells it, for an error that names what was refused.</summary>
+    private static string Described(WktNode axis) =>
+        DirectionOf(axis) is { Length: > 0 } direction ? $"{Text(axis, 0)} {direction}" : $"{Text(axis, 0)} (no direction)";
+
+    private static bool IsEast(WktNode axis) => DirectionOf(axis) is "east" or "e";
+
+    private static bool IsNorth(WktNode axis) => DirectionOf(axis) is "north" or "n";
+
+    /// <summary>
+    /// An axis node's direction keyword, normalised the way WKT dialects
+    /// differ: WKT2 quotes it (<c>AXIS["(X)",south]</c>) and WKT1 leaves it
+    /// a bare keyword (<c>AXIS["X",EAST]</c>), so it is read as whichever of
+    /// the two the document wrote.
+    /// </summary>
+    private static string DirectionOf(WktNode axis)
+    {
+        var item = axis.Items.Skip(1).FirstOrDefault();
+        var keyword = item switch
+        {
+            WktText quoted => quoted.Value,
+            WktChild bare => bare.Node.Keyword,
+            _ => null,
+        };
+
+        return keyword is null ? string.Empty : Normalise(keyword);
     }
 
     /// <summary>The geodetic CRS a projected definition projects from, built the same way as a geographic one.</summary>
@@ -624,7 +719,7 @@ internal static class ProjWkt
     /// </item>
     /// <item>
     /// <term>Krovak</term><term>9819</term><term>EPSG:5513, EPSG:2065</term>
-    /// <term>left out: the arithmetic agrees but the axes are the south-oriented ones, and the catalogue serves easting/northing</term>
+    /// <term>left out twice over: the arithmetic agrees, but the axes are the south-oriented ones and the catalogue serves easting/northing, so the definition is refused on its axes whatever method it names (ADR-0170)</term>
     /// </item>
     /// </list>
     /// </summary>

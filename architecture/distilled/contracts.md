@@ -96,8 +96,12 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
 | `Transform` | geometry, optional `source`, required `target` | geometry stamped with target CRS | out-of-area (non-finite) result = actionable error, never poisoned geometry |
 
 - **Axis order: x-first for every CRS** (x = longitude/easting). Describe
-  reports declared axes; the service performs no swaps — axis-order tests pin
-  this. Z/M pass through untouched; empty geometries keep type and layout.
+  reports the axes of the system the engine built, which are those same
+  x-first ones; the service performs no swaps — axis-order tests pin this.
+  A WKT definition whose projected `CS` declares axes other than easting then
+  northing is **refused by name, on any method** (ADR-0170): EPSG:5513,
+  EPSG:2065 and the Slovak Krovak variants are out on their axes, not on
+  their arithmetic, and a transposed pair is refused the same way. Z/M pass through untouched; empty geometries keep type and layout.
 - Omitted `source` defaults to the geometry's own CRS (then required).
 - Built-in EPSG catalogue, **defined in EPSG WKT** and read by the provider's
   own reader (`ProjWkt`), so a definition is data and construction stays on

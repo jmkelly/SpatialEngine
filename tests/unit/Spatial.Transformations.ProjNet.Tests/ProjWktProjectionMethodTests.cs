@@ -147,6 +147,29 @@ public sealed class ProjWktProjectionMethodTests
         """;
 
     /// <summary>
+    /// The same LAEA Europe definition with the axes EPSG:5513 declares —
+    /// (X) south, (Y) west — on a method the engine reads and has measured
+    /// against PROJ. The axis rule is about the axes, not the method, so it
+    /// is sized on a document whose method is not in question: read, this
+    /// would be a CRS whose description says easting and northing and whose
+    /// numbers are southings and westings.
+    /// </summary>
+    private const string LaeaEuropeDeclaredSouthWest = """
+        PROJCRS["ETRS89-extended / LAEA Europe",BASEGEOGCRS["ETRS89",DATUM["European Terrestrial Reference System 1989",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4258]],CONVERSION["Europe Equal Area 2001",METHOD["Lambert Azimuthal Equal Area",ID["EPSG",9820]],PARAMETER["Latitude of natural origin",52,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8801]],PARAMETER["Longitude of natural origin",10,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8802]],PARAMETER["False easting",4321000,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",3210000,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(X)",south,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(Y)",west,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3035]]
+        """;
+
+    /// <summary>
+    /// The same document with the axes transposed — (Y) north first, (X) east
+    /// second — which is the other way a document can declare axes the engine
+    /// does not serve, and the one a swap would fix. It is refused for the
+    /// same reason, because the engine's answer is to refuse rather than to
+    /// swap.
+    /// </summary>
+    private const string LaeaEuropeDeclaredNorthEast = """
+        PROJCRS["ETRS89-extended / LAEA Europe",BASEGEOGCRS["ETRS89",DATUM["European Terrestrial Reference System 1989",ELLIPSOID["GRS 1980",6378137,298.257222101,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],ID["EPSG",4258]],CONVERSION["Europe Equal Area 2001",METHOD["Lambert Azimuthal Equal Area",ID["EPSG",9820]],PARAMETER["Latitude of natural origin",52,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8801]],PARAMETER["Longitude of natural origin",10,ANGLEUNIT["degree",0.0174532925199433],ID["EPSG",8802]],PARAMETER["False easting",4321000,LENGTHUNIT["metre",1],ID["EPSG",8806]],PARAMETER["False northing",3210000,LENGTHUNIT["metre",1],ID["EPSG",8807]]],CS[Cartesian,2],AXIS["(Y)",north,ORDER[1],LENGTHUNIT["metre",1]],AXIS["(X)",east,ORDER[2],LENGTHUNIT["metre",1]],ID["EPSG",3035]]
+        """;
+
+    /// <summary>
     /// The methods the reader resolves, and the ProjNet projection each one
     /// resolves to. A method that is not in this list is a named failure.
     /// </summary>
@@ -450,6 +473,67 @@ public sealed class ProjWktProjectionMethodTests
         // ProjNet returns the same magnitudes, negated and transposed.
         Assert.Equal(-742949.431, x, 3);
         Assert.Equal(-1042796.9662, y, 3);
+    }
+
+    /// <summary>
+    /// The consequence of that axis convention, and the decision it forced
+    /// (SpatialEngine-ufn): the engine's geometry is x-first easting and
+    /// northing for every projected CRS, and the builder and <c>Describe</c>
+    /// say easting and northing whatever the document declares. So a
+    /// definition whose own axes are not easting and northing is refused by
+    /// name, on any method — including one already in the map — rather than
+    /// served as a CRS whose description contradicts its numbers.
+    /// </summary>
+    [Theory]
+    [InlineData(LaeaEuropeDeclaredSouthWest, "south", "west")]
+    [InlineData(LaeaEuropeDeclaredNorthEast, "north", "east")]
+    public void A_projected_definition_declaring_axes_the_engine_does_not_serve_is_refused_by_name(
+        string wkt, string firstAxis, string secondAxis)
+    {
+        Assert.False(ProjWkt.TryParse(wkt, out var definition, out var error));
+        Assert.Null(definition);
+        Assert.NotNull(error);
+        Assert.Contains(firstAxis, error, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(secondAxis, error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// And the same EPSG:5513 document with its method mapped to one the
+    /// engine reads, so that the axes are the only thing left refusing it:
+    /// Krovak stays out for two independent reasons, and the second is the
+    /// one that would survive a widening of the method map.
+    /// </summary>
+    [Fact]
+    public void The_Krovak_axes_refuse_the_definition_whatever_method_it_names()
+    {
+        var wkt = Krovak.Replace(
+            "METHOD[\"Krovak\",ID[\"EPSG\",9819]]",
+            "METHOD[\"Polar Stereographic (variant A)\",ID[\"EPSG\",9810]]",
+            StringComparison.Ordinal);
+
+        Assert.False(ProjWkt.TryParse(wkt, out var definition, out var error));
+        Assert.Null(definition);
+        Assert.NotNull(error);
+        Assert.Contains("Krovak", error, StringComparison.Ordinal);
+        Assert.Contains("south", error, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("west", error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The documents that state no axes at all are the WKT1 dialect's
+    /// shorthand for easting and northing, which is what the engine serves,
+    /// so the rule must not refuse them — the vendored catalogue is full of
+    /// them.
+    /// </summary>
+    [Fact]
+    public void A_projected_definition_that_states_no_axes_is_read_as_easting_and_northing()
+    {
+        const string wkt = """
+            PROJCS["WGS 84 / World Mercator",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]],PROJECTION["Mercator_1SP"],PARAMETER["latitude_of_origin",0],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1],AUTHORITY["EPSG","3395"]]
+            """;
+
+        Assert.True(ProjWkt.TryParse(wkt, out var definition, out var error), error);
+        Assert.Equal("Mercator_1SP", Assert.IsType<ProjectedDefinition>(definition).ProjectionClass);
     }
 
     private static ProjCs.ProjectionParameter Parameter(string name, double value) => new(name, value);

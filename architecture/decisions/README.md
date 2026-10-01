@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**157 records on disk.** `status` is the record's own word;
+**158 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -101,7 +101,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0083](ADR-0083-tile-cache-key-carries-the-data-version.md) | The tile cache key carries the data version | accepted | 2026-09-27 | — |
 | [0084](ADR-0084-advertise-hasz-hasm-from-the-declared-coordinate-layout.md) | Advertise `hasZ`/`hasM` from the coordinate layout the store declares | accepted | 2026-09-28 | — |
 | [0085](ADR-0085-query-distance-centroid-and-ordinate-output.md) | The distance band, the per-feature centroid and the Z/M output selection are served | accepted | 2026-09-28 | — |
-| [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) | The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition | accepted | 2026-09-28 | ADR-0111, ADR-0153 |
+| [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) | The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition | accepted | 2026-09-28 | ADR-0111, ADR-0153, ADR-0170 |
 | [0087](ADR-0087-datum-transformation-graph.md) | Datum transformations are values, and `findTransformations` is a search | accepted | 2026-09-28 | ADR-0111, ADR-0163 |
 | [0088](ADR-0088-to-color-at-interpolate-and-cubic-bezier.md) | `to-color`, `at-interpolate` and `cubic-bezier` in the style dialect | accepted | 2026-09-28 | — |
 | [0089](ADR-0089-adr-numbers-are-reserved-before-the-record-is-written.md) | ADR numbers are reserved before the record is written | accepted | 2026-09-28 | — |
@@ -173,6 +173,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md) | Keep the topology verbs adapter-side; the plan's spatial component is the envelope | accepted | 2026-10-02 | ADR-0074, ADR-0036, ADR-0106, ADR-0110, ADR-0156, ADR-0166 |
 | [0168](ADR-0168-nadcon-grids-are-read-alongside-ntv2.md) | NADCON datum shift grids are read alongside NTv2, and the standard is published with the operation | accepted | 2026-10-08 | ADR-0105 |
 | [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md) | The mixed-dimension `Crosses` row stays the OGC alternation | accepted | 2026-10-02 | ADR-0106, ADR-0166, ADR-0156, ADR-0036 |
+| [0170](ADR-0170-the-projected-axis-convention-does-not-bend.md) | The projected axis convention does not bend | accepted | 2026-10-01 | ADR-0086, ADR-0027 |
 
 ## Reading order
 
@@ -228,6 +229,14 @@ out: the "Amended by" row already says everything about a pair.
 5. [0166](ADR-0166-the-engines-relate-is-the-de9im-matrix-read-as-jts-reads-it.md)
 6. [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md)
 
+### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 5 records, 7,633 words (4% of the corpus)
+
+1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153, 0170)*
+2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
+3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
+4. [0163](ADR-0163-registered-null-operation-is-published.md)
+5. [0170](ADR-0170-the-projected-axis-convention-does-not-bend.md)
+
 ### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 5 records, 8,654 words (5% of the corpus)
 
 1. [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) *(narrowed by 0154)*
@@ -235,13 +244,6 @@ out: the "Amended by" row already says everything about a pair.
 3. [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) *(narrowed by 0160)*
 4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) *(narrowed by 0161)*
 5. [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md)
-
-### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 4 records, 6,125 words (3% of the corpus)
-
-1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153)*
-2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
-3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
-4. [0163](ADR-0163-registered-null-operation-is-published.md)
 
 ### ADR-0038: Read-by-identity is an additive store capability — 3 records, 3,423 words (2% of the corpus)
 
@@ -292,7 +294,7 @@ believed.
 - **0074** is amended by 0097, 0098, 0132, 0158, 0167
 - **0083** is amended by 0129
 - **0084** is amended by 0091, 0125
-- **0086** is amended by 0111, 0153
+- **0086** is amended by 0111, 0153, 0170
 - **0087** is amended by 0111, 0163
 - **0092** is amended by 0147
 - **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133
