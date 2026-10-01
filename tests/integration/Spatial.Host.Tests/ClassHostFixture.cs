@@ -54,6 +54,24 @@ public abstract class ClassHostFixture : IAsyncLifetime
     /// <summary>The class's one host, booted on first use.</summary>
     public HttpClient Client => _client ??= Factory.CreateClient();
 
+    /// <summary>
+    /// The class's one host's service provider, booted on first use. A test
+    /// that asserts on a resolved service rather than over HTTP takes it from
+    /// here, which is the other way a shared host is read; resolving it boots
+    /// the host exactly as <see cref="Client"/> does.
+    /// </summary>
+    public IServiceProvider Services => Factory.Services;
+
+    /// <summary>
+    /// A new <see cref="HttpClient"/> over the class's one host, for a test
+    /// that sets a default request header of its own: the shared
+    /// <see cref="Client"/> keeps whatever bearer the previous test left on
+    /// it, and a class whose tests authenticate differently would then be
+    /// asserting on another test's token. The host behind it is still the
+    /// class's one host, so the boot is paid once.
+    /// </summary>
+    public HttpClient CreateClient() => Factory.CreateClient();
+
     /// <summary>The maps file this class's host persists to.</summary>
     protected string MapsPath => Path.Combine(_directory, "maps.json");
 

@@ -11,17 +11,30 @@ using Spatial.Contracts;
 namespace Spatial.Host.Tests;
 
 /// <summary>Phase-1 local username/password auth over the real host (ADR-0071).</summary>
-public sealed class AuthEndpointTests
+/// <remarks>
+/// One host for the class (ADR-0160, ADR-0161): the four tests here all
+/// authenticate the same configured user and none of them publishes a map, so
+/// there is no dataset identity to hand out. The one test that needs a
+/// different host setting — an already-expired bearer, which it gets by
+/// injecting <c>Spatial:Auth:TokenLifetime</c> — is
+/// <see cref="AuthTokenExpiryTests"/>, because a shared host boots with one
+/// lifetime and cannot honour a second.
+/// </remarks>
+public sealed class AuthEndpointTests : IClassFixture<AuthEndpointTests.AuthHost>
 {
-    private static readonly PasswordHasher<User> Hasher = new();
-    private static readonly string Password = "correct horse battery staple";
-    private static readonly string Hash = Hasher.HashPassword(new User("alice"), Password);
+    internal const string Password = "correct horse battery staple";
+
+    internal static readonly string Hash = new PasswordHasher<LocalUser>()
+        .HashPassword(new LocalUser("alice"), Password);
+
+    private readonly AuthHost _host;
+
+    public AuthEndpointTests(AuthHost host) => _host = host;
 
     [Fact]
     public async Task Login_me_refresh_and_logout_manage_an_opaque_bearer()
     {
-        using var factory = Factory();
-        var client = factory.CreateClient();
+        using var client = _host.CreateClient();
         var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "alice", password = Password });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var body = JsonDocument.Parse(await login.Content.ReadAsStringAsync()).RootElement;
@@ -53,8 +66,8 @@ public sealed class AuthEndpointTests
     [Fact]
     public async Task Bad_credentials_are_auth_failed_without_password_disclosure()
     {
-        using var factory = Factory();
-        var response = await factory.CreateClient().PostAsJsonAsync(
+        using var client = _host.CreateClient();
+        var response = await client.PostAsJsonAsync(
             "/api/auth/login", new { username = "alice", password = "wrong" });
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
@@ -65,8 +78,7 @@ public sealed class AuthEndpointTests
     [Fact]
     public async Task A_configured_bearer_gates_neutral_mutation_but_reads_stay_anonymous()
     {
-        using var factory = Factory();
-        var client = factory.CreateClient();
+        using var client = _host.CreateClient();
         var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "alice", password = Password });
         var token = JsonDocument.Parse(await login.Content.ReadAsStringAsync()).RootElement.GetProperty("token").GetString();
 
@@ -75,54 +87,46 @@ public sealed class AuthEndpointTests
         var denied = await client.PutAsync("/api/maps/x", new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
         Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
 
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var allowed = await client.PutAsync("/api/maps/x", new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
+        var bearer = new HttpRequestMessage(
+            HttpMethod.Put, "/api/maps/x") { Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json") };
+        bearer.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var allowed = await client.SendAsync(bearer);
         Assert.NotEqual(HttpStatusCode.Unauthorized, allowed.StatusCode);
-    }
-
-    [Fact]
-    public async Task An_expired_token_is_rejected()
-    {
-        using var factory = Factory("00:00:00.0000001");
-        var client = factory.CreateClient();
-        var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "alice", password = Password });
-        var token = JsonDocument.Parse(await login.Content.ReadAsStringAsync()).RootElement.GetProperty("token").GetString();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        await Task.Delay(2);
-        var response = await client.GetAsync("/api/auth/me");
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task Cancellation_is_honoured_before_auth_work()
     {
-        using var factory = Factory();
-        var auth = factory.Services.GetRequiredService<IAuthService>();
+        var auth = _host.Services.GetRequiredService<IAuthService>();
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             auth.LoginAsync("alice", Password, cancellation.Token));
     }
 
-    private static AuthFactory Factory(string? lifetime = null)
+    /// <summary>
+    /// One host for the class, with the configured local user and a
+    /// per-class map file (ADR-0160).
+    /// </summary>
+    public sealed class AuthHost : ClassHostFixture
     {
-        var values = new Dictionary<string, string?>
+        public AuthHost()
+            : base("spatial-auth")
         {
-            ["Spatial:Auth:Users:0:Username"] = "alice",
-            ["Spatial:Auth:Users:0:PasswordHash"] = Hash,
-            ["Spatial:Auth:Users:0:Roles:0"] = "admin",
-        };
-        if (lifetime is not null) values["Spatial:Auth:TokenLifetime"] = lifetime;
-        return new AuthFactory(values);
-    }
+        }
 
-    private sealed record User(string Name);
-
-    private sealed class AuthFactory(Dictionary<string, string?> values) : SpatialHostFactory
-    {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        protected override void ConfigureHost(IWebHostBuilder builder)
         {
-            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(values));
+            builder.UseSetting("Spatial:Maps:Path", MapsPath);
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["Spatial:Auth:Users:0:Username"] = "alice",
+                    ["Spatial:Auth:Users:0:PasswordHash"] = Hash,
+                    ["Spatial:Auth:Users:0:Roles:0"] = "admin",
+                }));
         }
     }
+
+    private sealed record LocalUser(string Name);
 }

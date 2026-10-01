@@ -72,6 +72,7 @@ public static class SharedHostPolicy
         "PolarRenderTests",
         "StoreTransactionTests",
         "TileDataVersionTests",
+        "AuthEndpointTests",
     ];
 
     /// <summary>
@@ -94,10 +95,15 @@ public static class SharedHostPolicy
             "already one host for the class (a factory in a field initialiser), and the test is the "
             + "DI composition the attachment store is registered into."),
         ["AuthEndpointTests"] = new(
-            HostVerdict.Split,
-            "four of the five tests share the class's configuration; An_expired_token_is_rejected "
-            + "injects Spatial:Auth:TokenLifetime=00:00:00.0000001, so that one test moves to "
-            + "AuthTokenExpiryTests and the rest convert."),
+            HostVerdict.Convert,
+            "four tests authenticate the same configured user and publish no map, so the class's "
+            + "configuration (Spatial:Auth:Users:0:*, plus a per-class map file) serves all four; the "
+            + "fifth injected Spatial:Auth:TokenLifetime=00:00:00.0000001, which one shared host cannot "
+            + "honour, and became AuthTokenExpiryTests."),
+        ["AuthTokenExpiryTests"] = new(
+            HostVerdict.Leave,
+            "the test is the host's Spatial:Auth:TokenLifetime setting: the bearer has to be minted by a "
+            + "host booted with a lifetime short enough to expire, and one host has one lifetime."),
         ["CliEndToEndTests"] = new(
             HostVerdict.Leave,
             "each test writes its own project and upload files into the class directory and drives "
