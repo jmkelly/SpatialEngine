@@ -229,8 +229,17 @@ a node discriminated by `op` and every member an `op` does not carry refused by
 name (ADR-0158); the text is deprecated, not removed. The plan's spatial
 component stays the `BoundingBox` pre-filter: the DE-9IM `spatialRel` verbs
 remain an
-adapter-side verb (ADR-0036). Predicate *evaluation* is implementation code
-and never enters `Spatial.Core`.
+adapter-side verb (ADR-0036), and the **plan carries no spatial-relation
+term** (ADR-0167). A pushdown face is admissible when it cannot change an
+answer: the box is a superset for every served verb and the adapter still
+decides each row, while a store's own spatial predicate is a different reading
+of the same OGC row — measured to agree on all 1,536 single-part fixture
+checks and to diverge on 16 multi-part ones, all `Crosses` (ADR-0166). A
+topology request's *reductions* therefore stay in the adapter too: a
+`returnCountOnly` over `esriSpatialRelWithin` counts the matches rather than
+the rows in the box, because a store-side count of the box is a different
+question. Predicate *evaluation* is implementation code and
+never enters `Spatial.Core`.
 
 Two rules keep the back ends answering the same rows for the same plan
 (ADR-0097). An attribute clause is pushed down to a store only when the

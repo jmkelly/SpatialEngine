@@ -14,9 +14,9 @@ reflects the state at decision time.
 | --- | --- | --- |
 | Core geometry / feature types, codecs | `core.md` | 0001, 0004, 0009, 0020, 0029, 0032 |
 | Service interfaces, implementations, composition | `runtime.md` | 0033 |
-| Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072, 0074, 0110 |
+| Data stores (PostGIS, SQL Server) | `plugins.md` | 0010, 0028, 0041, 0065, 0072, 0074, 0110, 0167 |
 | Implementation projects and DI lifecycle | `plugins.md` | 0033 |
-| Which services exist + their contracts | `contracts.md` | 0033, 0074, 0083, 0084 |
+| Which services exist + their contracts | `contracts.md` | 0033, 0074, 0083, 0084, 0167 |
 | HTTP API, config, SDKs, frontend, deployment, secrets | `host-and-clients.md` | 0014–0019, 0033 |
 | Esri GeoServices REST (serve/consume) | `host-and-clients.md`, `../references/geoservices-compatibility.md` | 0035, 0037, 0048, 0112 |
 | Ingest, runtime service publishing, Esri admin | `contracts.md`, `host-and-clients.md` | 0041, 0082, 0037, 0038 |
@@ -218,8 +218,9 @@ date and cross-reference)
 | 0164 | Discovery reads a dataset's SRID unconditionally and its geometry type only from a value the server calls valid, because `STGeometryType()` raises error 24144 on an invalid value — so the sample answers nothing for the type rather than failing the whole statement. A dataset whose sampled geometry is a self-intersecting ring is described and read today (its type falls back to the default, the answer an empty table already gives) instead of being undescribable, and one such dataset no longer fails the whole catalogue listing (amends ADR-0157, ADR-0151). |
 | 0165 | **The `De9im` column of the hand-computed fixture table is the pair's exact intersection matrix, so every cell carries its dimension (`F`, `T`, `0`, `1`, `2`) and the oracle compares the column outright** — the `T`-for-non-empty spelling and the tolerance that read it are both withdrawn. Twelve of fifteen rows were written in the `T` spelling and are now stated in digits; the derived matrices did not move, so no verdict changed. A display is free to abbreviate and was never what the column was read as: it is read by a test that has the exact matrix in hand, which makes the abbreviation a place where a dimension could have been wrong and would not have been noticed. |
 | 0166 | **The engine's `Relate` computes the DE-9IM matrix the standard means, and the two ways into it — `Relate(a, b)` and `Relate(a, b, pattern)` — are one computation, so a cell cannot be reported one way by the rendering and another by a pattern.** NetTopologySuite 2.6 is pinned as the reader and is not wrapped. Two readings of its cells are recorded rather than corrected, because both are the reading the served table already rests on: a 0-D operand contributes **no boundary** (a point on a line's endpoint meets it in the line's boundary row, position 4, and is not disjoint), and a vertex-only contact is **dimension 0** in position 5, one cell away from the dimension 1 of an edge-sharing contact. Against the provider's own named predicates the served table diverges on exactly two measured classes, both named and both served as ADR-0106 states; the first — `Crosses` for a line lying wholly inside an area and touching its boundary — is new here. |
+| 0167 | The feature-query plan carries **no** spatial-relation term: its spatial component stays the query geometry's `BoundingBox` pre-filter, and every `esriSpatialRel` topology verb is answered by the adapter over the rows that box admits. A pushdown face for the DE-9IM relations is admissible only when it provably cannot change an answer, and it cannot today — the served table and a store's own spatial predicates are measured to disagree, the served reading is still open on three beads, and the relation's own reductions (`returnCountOnly`, `outStatistics`, paging) are not expressible in the plan without it, so pushing would freeze a reading in every store's SQL to buy a row count that is not the answer (amends ADR-0074 §8). |
 
-154 records on disk. The full index — status, date and every
+155 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->
