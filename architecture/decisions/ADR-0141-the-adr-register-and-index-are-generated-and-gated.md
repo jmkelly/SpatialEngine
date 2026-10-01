@@ -4,7 +4,7 @@ date: 2026-09-30
 deciders: maintainer + agent
 summary: The ADR register, the ADR index and the ADR metadata are generated and gated on every verification lane, so a decision record cannot drift from the routing that points at it
 amends: ADR-0109, ADR-0118
-amended-by: ADR-0145
+amended-by: ADR-0145, ADR-0159
 ---
 
 # ADR-0141: The ADR register, the ADR index and the ADR metadata are generated, and every lane gates them

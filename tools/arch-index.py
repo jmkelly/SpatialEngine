@@ -15,8 +15,13 @@ Three generated artefacts, from one read of `architecture/decisions/*.md`:
     described in its original shape;
 *   **`architecture/decisions/README.md`**, one row per ADR: title, status,
     date, and what it supersedes, is superseded by, amends, is amended by and
-    relates to. The one-line answer to "is this decision still live?" used to
+    relates to — plus a **reading order** per family, derived from the same
+    `amends:` links (ADR-0159): the root first, then by number, with every
+    record that has since been refined marked by the records that narrow it.
+    The one-line answer to "is this decision still live?" used to
     be a grep through prose, and a third of the corpus would not answer it;
+    and a reader who wanted to know how a pushed-down string comparison works
+    had to assemble that order across sixteen files by hand;
 *   **`arch-index.md`**, a ten-line breadcrumb at the repository root so
     routing is pointer-first: AGENTS.md → distilled/README.md →
     decisions/README.md.
@@ -45,7 +50,9 @@ is grandfathered rather than rewritten, which is what makes it adoptable
 
 `--check` is the gate `eng/verify.sh` runs on every lane, and it is what fails
 on a deleted or renamed ADR, a register row that no longer matches its file, a
-record in the retired schema, a record outside the shape rule, and a citation
+record in the retired schema, a record outside the shape rule, a link the
+`summary` declares and the front matter does not carry, a hand-written
+`amended-by:` that contradicts the derived list of refiners, and a citation
 of an ADR that does not exist.
 `--citations` is the same citation read on its own, because it is the cheapest
 check in the repository and the documentation-freshness audit wants it without
@@ -83,6 +90,21 @@ from pathlib import Path
 BURNED_NUMBERS = (
     "0093", "0094", "0095", "0096", "0099", "0102", "0103", "0104",
 )
+
+#: A family smaller than this is not a reading order. Two records, one of which
+#: refines the other, are read in number order and the "Amended by" row already
+#: says which is which; the reading-order section is for the families a reader
+#: cannot assemble from one row (ADR-0159).
+MIN_FAMILY_SIZE = 3
+
+#: The corpus's own convention for declaring a link in the `summary`: a
+#: parenthetical `(amends NNNN, NNNN)`. The summary is the register row
+#: (ADR-0145), so a link it declares is a link the front matter has to carry —
+#: otherwise the register claims a refinement the derived index cannot see, and
+#: no reading order can put the record in its family (ADR-0159). A record that
+#: writes `(amends nothing; follows …)` is declining to amend and matches no
+#: list, so the clause has to open on a number.
+SUMMARY_AMENDS = re.compile(r"\(amends\s+(ADR-\d{4}|\d{4})[^)]*\)")
 
 #: The front matter keys, in the order the index renders them. The first four
 #: are required; the rest are the cross-references that make "which ADRs bind
@@ -289,6 +311,187 @@ def load_corpus(root: Path) -> list[Adr]:
 # --- the generated register -------------------------------------------------
 
 
+# --- the reading order ------------------------------------------------------
+
+
+def amends_links(corpus: list[Adr]) -> dict[str, list[str]]:
+    """Each record's `amends:` targets, as numbers, restricted to records on disk.
+
+    One read of the front matter, shared by the "Amended by" list, the reading
+    order and the reciprocity gate, so the three cannot disagree about what a
+    record refines (ADR-0159).
+    """
+    known = {record.number for record in corpus}
+    links: dict[str, list[str]] = {}
+    for record in corpus:
+        links[record.number] = sorted(
+            number
+            for number in re.findall(r"\d{4}", record.get("amends"))
+            if number in known
+        )
+    return links
+
+
+def refiners_of(corpus: list[Adr]) -> dict[str, list[str]]:
+    """The other end of every `amends:` link: target number -> refining numbers."""
+    refiners: dict[str, list[str]] = {}
+    for number, targets in amends_links(corpus).items():
+        for target in targets:
+            refiners.setdefault(target, []).append(number)
+    return {target: sorted(numbers) for target, numbers in refiners.items()}
+
+
+def reading_order_families(corpus: list[Adr]) -> dict[str, list[str]]:
+    """The families the `amends:` links describe: root -> members, in reading order.
+
+    A family is every record reachable from a root through `amends:`, and a
+    record belongs to the family of the **earliest** record it refines, so the
+    families partition the corpus: one record, one reading order, no record
+    rendered twice under two roots. Within a family the order is the root first
+    and then by number, which is the order the decisions were taken in — a
+    refiner narrows what it reads, so it is read after it (ADR-0159).
+    """
+    links = amends_links(corpus)
+    earliest: dict[str, str] = {}
+
+    def walk(number: str, stack: frozenset[str]) -> str:
+        if number in earliest:
+            return earliest[number]
+        if number in stack:
+            # An `amends:` cycle: the record is its own earliest ancestor rather
+            # than recursing forever over a graph a writer can make by hand.
+            return number
+        candidates = [number]
+        for target in links.get(number, ()):
+            candidates.append(walk(target, stack | {number}))
+        earliest[number] = min(candidates)
+        return earliest[number]
+
+    families: dict[str, list[str]] = {}
+    for record in sorted(corpus, key=lambda record: record.number):
+        root = walk(record.number, frozenset())
+        families.setdefault(root, []).append(record.number)
+    return {
+        root: members
+        for root, members in sorted(families.items())
+        if len(members) >= MIN_FAMILY_SIZE
+    }
+
+
+def undeclared_refinements(root: Path, corpus: list[Adr]) -> list[str]:
+    """Records whose `summary` declares a link their front matter does not carry.
+
+    The `(amends NNNN, NNNN)` clause is the corpus's convention, and the
+    summary is the row an agent routes from (ADR-0145), so a link written only
+    there is a refinement the index, the reading order and the family of the
+    amended record cannot see (ADR-0159).
+    """
+    findings: list[str] = []
+    links = amends_links(corpus)
+    for record in corpus:
+        clause = SUMMARY_AMENDS.search(record.get("summary"))
+        if not clause:
+            continue
+        declared = set(links.get(record.number, ()))
+        declared |= set(re.findall(r"\d{4}", record.get("supersedes")))
+        missing = sorted(set(re.findall(r"\d{4}", clause.group(0))) - declared)
+        if missing:
+            findings.append(
+                f"{record.path.relative_to(root)}: the summary declares "
+                f"(amends {', '.join(missing)}) but the front matter does not; a "
+                "link in the register row the index cannot derive is a link "
+                "nobody can follow — declare it in `amends:`"
+            )
+    return findings
+
+
+def reciprocity_findings(root: Path, corpus: list[Adr]) -> list[str]:
+    """A hand-written `amended-by:` that contradicts the derived list of refiners.
+
+    Reciprocity is not information a record has to carry — the index derives
+    the other end of every `amends:` link — but a record that does carry one
+    may not say something the derivation contradicts, or the two copies of the
+    same fact drift apart and one of them is a field nobody reads (ADR-0159).
+    """
+    findings: list[str] = []
+    derived = refiners_of(corpus)
+    for record in corpus:
+        stated = record.get("amended-by")
+        if not stated:
+            continue
+        say = set(re.findall(r"\d{4}", stated))
+        shows = set(derived.get(record.number, ()))
+        if say != shows:
+            findings.append(
+                f"{record.path.relative_to(root)}: `amended-by: {stated}` "
+                f"contradicts the derived list ({', '.join(sorted(shows)) or 'none'}); "
+                "the index derives this end of every `amends:` link, so the two "
+                "must be the same set — correct the field or drop it"
+            )
+    return findings
+
+
+def _words(record: Adr) -> int:
+    """A record's words, whole file, for the family sizes the index reports."""
+    try:
+        return len(record.path.read_text(encoding="utf-8").split())
+    except (OSError, UnicodeDecodeError):  # pragma: no cover - unreadable file
+        return 0
+
+
+def render_reading_order(corpus: list[Adr]) -> str:
+    """The `## Reading order` section: a family, then which record to open next.
+
+    Derived from the `amends:` links rather than written, for the reason the
+    register and the "Amended by" list are: a lookup that is kept by hand
+    drifts, and ADR-0150 left exactly this out — the family was "a row here
+    rather than a reading order the reader has to assemble across eleven
+    files". This is the order, and it is in the same file (ADR-0159).
+    """
+    families = reading_order_families(corpus)
+    titles = {record.number: record for record in corpus}
+    refiners = refiners_of(corpus)
+    total = sum(_words(record) for record in corpus) or 1
+
+    lines = [
+        "## Reading order",
+        "",
+        "The families the `amends:` links describe, **derived from them** like",
+        "the two sections below. A record that refines another says so once, in",
+        "its own front matter; this is the other end with an order on it — the",
+        "root first, then by number, which is the order the decisions were",
+        "taken in, because a refiner narrows what it reads. A record marked",
+        "*narrowed by* has been refined further down the list, so read it",
+        "before its own refiners and not instead of them. A record belongs to",
+        "the family of the earliest record it refines, so no record is listed",
+        f"twice, and a family of fewer than {MIN_FAMILY_SIZE} records is left",
+        "out: the \"Amended by\" row already says everything about a pair.",
+        "",
+    ]
+    if not families:
+        lines += ["- none", ""]
+        return "\n".join(lines)
+
+    for root, members in sorted(families.items(), key=lambda item: (-len(item[1]), item[0])):
+        words = sum(_words(titles[number]) for number in members)
+        share = round(100 * words / total)
+        lines += [
+            f"### ADR-{root}: {titles[root].title} — {len(members)} records, "
+            f"{words:,} words ({share}% of the corpus)",
+            "",
+        ]
+        for position, number in enumerate(members, start=1):
+            narrowed = refiners.get(number, ())
+            marker = (
+                f" *(narrowed by {', '.join(narrowed)})*" if narrowed else ""
+            )
+            lines.append(
+                f"{position}. [{number}]({titles[number].path.name}){marker}"
+            )
+        lines.append("")
+    return "\n".join(lines)
+
+
 def register_row(record: Adr) -> str:
     """One register row: the number, the one-line decision, its standing."""
     if record.is_superseded:
@@ -367,13 +570,11 @@ def render_index(corpus: list[Adr]) -> str:
     """`architecture/decisions/README.md` in full."""
     burned = ", ".join(BURNED_NUMBERS)
     superseders: dict[str, list[str]] = {}
-    amenders: dict[str, list[str]] = {}
     for record in corpus:
         superseder = record.superseded_by
         if superseder:
             superseders.setdefault(superseder, []).append(record.number)
-        for number in re.findall(r"\d{4}", record.get("amends")):
-            amenders.setdefault(number, []).append(record.number)
+    amenders = refiners_of(corpus)
 
     lines = [
         "# Architecture decision records",
@@ -400,22 +601,24 @@ def render_index(corpus: list[Adr]) -> str:
             f"| [{record.number}]({record.path.name}) | {record.title} "
             f"| {record.get('status')} | {record.get('date')} | {_crosses(record)} |"
         )
+    lines += ["", render_reading_order(corpus)]
     lines += [
         "",
         "## Amended by",
         "",
         "The refiners of each record, **derived from their own `amends:` fields**",
         "rather than maintained by hand. A record that refines another says so",
-        "once, in its own front matter, and this list is the other end of it — so",
-        "a family over one topic is a row here rather than a reading order the",
-        "reader has to assemble across eleven files. A record nobody amends does",
-        "not appear.",
+        "once, in its own front matter, and this list is the other end of it —",
+        "the reading order above is these same links with an order on them. A",
+        "record nobody amends does not appear, and a record that carries a",
+        "hand-written `amended-by:` is checked against this list rather than",
+        "believed.",
         "",
     ]
     if amenders:
         for target in sorted(amenders):
             lines.append(
-                f"- **{target}** is amended by " + ", ".join(sorted(amenders[target]))
+                f"- **{target}** is amended by " + ", ".join(amenders[target])
             )
     else:
         lines.append("- none")
@@ -539,6 +742,8 @@ def corpus_findings(root: Path, corpus: list[Adr]) -> list[str]:
     }
     for number in sorted(duplicates):
         findings.append(f"ADR-{number}: more than one record carries this number")
+    findings.extend(undeclared_refinements(root, corpus))
+    findings.extend(reciprocity_findings(root, corpus))
     return findings
 
 

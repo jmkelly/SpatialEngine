@@ -579,6 +579,194 @@ class ShapeTests(unittest.TestCase):
         )
 
 
+class ReadingOrderTests(unittest.TestCase):
+    """The pushdown family is an order, not eleven files a reader has to sort.
+
+    The reproduction for SpatialEngine-vl1: ADR-0150 made the family a lookup
+    by deriving an **Amended by** list from each record's own `amends:`, and
+    said so itself — "a family over one topic is a row here rather than a
+    reading order the reader has to assemble across eleven files". That is
+    still what a reader has to do. Sixteen records over the store query surface
+    — ADR-0074's plan, the two pushdown rules, and the thirteen refiners —
+    carried no order at all, and half of them did not declare the refinement
+    their own prose states, so the derived list could not have produced one.
+
+    The reading order is generated from the same links, so it cannot drift from
+    them: a family is the records a root reaches through `amends:`, read root
+    first and then by number, with every record that has since been refined
+    marked by the records that narrow it.
+    """
+
+    #: A four-record family, in miniature: a root, a refiner of it, a refiner of
+    #: the refiner, and a second refiner of the root. Assembled from parts for
+    #: the reason the other fixtures are: a literal `ADR-NNNN` in a tracked file
+    #: is a citation the structural guard (`AdrNumberingTests`) reads.
+    def record(self, number: str, title: str, amends: str = "") -> str:
+        return (
+            "---\nstatus: accepted\ndate: 2026-10-01\ndeciders: nobody\n"
+            f"summary: Fixture {title}.\n"
+            + (f"amends: ADR-{amends}\n" if amends else "")
+            + "---\n\n"
+            f"# ADR-{number}: {title}\n\n"
+            "## Context\n\nProse.\n\n## Decision\n\n**The thing.**\n\n"
+            "## Consequences\n\nProse.\n"
+        )
+
+    def fixture(self, root: Path) -> None:
+        decisions = root / "architecture" / "decisions"
+        decisions.mkdir(parents=True, exist_ok=True)
+        for number, title, amends in (
+            ("0201", "the root", ""),
+            ("0202", "the first refiner", "0201"),
+            ("0203", "the second refiner", "0201"),
+            ("0204", "the refiner of the refiner", "0202"),
+        ):
+            (decisions / f"ADR-{number}-{title.replace(' ', '-')}.md").write_text(
+                self.record(number, title, amends), encoding="utf-8"
+            )
+
+    def render(self, root: Path) -> str:
+        return arch_index.render_index(arch_index.load_corpus(root))
+
+    # --- the corpus ---------------------------------------------------------
+
+    def test_the_index_carries_a_reading_order(self):
+        index = (INDEX).read_text(encoding="utf-8")
+        self.assertIn(
+            "## Reading order",
+            index,
+            "architecture/decisions/README.md has no reading order; the bead "
+            "SpatialEngine-vl1's acceptance is that the order is written where "
+            "the index already links from (ADR-0150 left it out deliberately)",
+        )
+
+    def test_the_pushdown_family_reads_from_its_root(self):
+        """The bead's own question: how a pushed-down string comparison works."""
+        corpus = arch_index.load_corpus(REPO_ROOT)
+        families = arch_index.reading_order_families(corpus)
+        root = "0074"
+        self.assertIn(
+            root,
+            families,
+            "the store-pushdown family is not keyed to its root: ADR-0074 is "
+            "the plan every one of those records refines, and it declares no "
+            "refiner, so it cannot be the head of a reading order",
+        )
+        members = families[root]
+        self.assertEqual(members[0], root, "a family does not read from its root")
+        for earlier, later in (("0098", "0121"), ("0121", "0123"), ("0123", "0126"),
+                               ("0126", "0130"), ("0133", "0137"), ("0137", "0157")):
+            self.assertLess(
+                members.index(earlier),
+                members.index(later),
+                f"ADR-{later} reads before ADR-{earlier} in the pushdown family",
+            )
+        self.assertIn("0121", members, "the ordinal-order record is not in the family")
+        self.assertIn("0132", members, "the folded-pattern record is not in the family")
+
+    def test_a_record_that_refines_another_declares_it(self):
+        """The order can only be derived from links the records state themselves."""
+        undeclared = arch_index.undeclared_refinements(
+            REPO_ROOT, arch_index.load_corpus(REPO_ROOT)
+        )
+        self.assertEqual(
+            undeclared,
+            [],
+            "records whose register row declares a refinement the front matter "
+            "does not, so no reading order can include them:\n  "
+            + "\n  ".join(undeclared),
+        )
+
+    # --- the shape of the section ------------------------------------------
+
+    def test_a_family_reads_root_first_then_by_number(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            self.fixture(root)
+            section = self.render(root)
+            positions = [section.index(f"](ADR-{n}-") for n in
+                         ("0201", "0202", "0203", "0204")]
+            self.assertEqual(positions, sorted(positions), section)
+
+    def test_a_narrowed_record_is_marked_with_its_refiners(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            self.fixture(root)
+            section = self.render(root)
+            self.assertIn("narrowed by", section, "nothing says what narrowed what")
+            self.assertRegex(
+                section,
+                r"0202.*narrowed by.*0204",
+                "the first refiner is refined by the refiner of the refiner and "
+                "the reading order does not say so, which is the half of the "
+                "question ADR-0150 left open",
+            )
+
+    def test_a_lone_record_is_not_a_family(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            decisions = root / "architecture" / "decisions"
+            decisions.mkdir(parents=True)
+            (decisions / ("ADR-" + "0201" + "-alone.md")).write_text(
+                self.record("0201", "alone"), encoding="utf-8"
+            )
+            self.assertEqual(arch_index.reading_order_families(
+                arch_index.load_corpus(root)), {})
+
+
+class ReciprocityTests(unittest.TestCase):
+    """`amended-by:` is derived, so a hand-written copy may not disagree.
+
+    ADR-0150 rejected *requiring* the reciprocal field on 27 links. The index
+    derives the other end of every `amends:` link, so reciprocity is not
+    information a record has to carry — but seven records do carry one, and
+    nothing compared it with what the generator derives, so the copy in the
+    record and the copy in the index were free to drift. A field that can say
+    something the index contradicts is accepted and ignored; this gate is the
+    other half of that rule.
+    """
+
+    def test_a_hand_written_amended_by_must_agree_with_the_derived_list(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            path = root / "architecture" / "decisions" / "ADR-0058-map-export-time-dynamic-layers-layer-option-cached-root.md"
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("amended-by:", text, "the fixture record changed shape")
+            path.write_text(
+                text.replace("amended-by: ADR-0100", "amended-by: ADR-0001"),
+                encoding="utf-8",
+            )
+            findings = arch_index.reciprocity_findings(root, arch_index.load_corpus(root))
+            self.assertTrue(
+                any("amended-by" in finding for finding in findings),
+                f"a hand-written `amended-by:` that contradicts the derived "
+                f"list passed: {findings}",
+            )
+
+    def test_the_repository_has_no_contradicted_reciprocity(self):
+        findings = arch_index.reciprocity_findings(REPO_ROOT, arch_index.load_corpus(REPO_ROOT))
+        self.assertEqual(
+            findings, [], "a record's `amended-by:` contradicts the index:\n  "
+            + "\n  ".join(findings),
+        )
+
+    def test_the_gate_reports_reciprocity_after_a_regeneration(self):
+        """Not a staleness failure: the index is current and the record is wrong."""
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            path = root / "architecture" / "decisions" / "ADR-0058-map-export-time-dynamic-layers-layer-option-cached-root.md"
+            path.write_text(
+                path.read_text(encoding="utf-8").replace(
+                    "amended-by: ADR-0100", "amended-by: ADR-0001"
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(run_tool("--write", root=root).returncode, 0)
+            result = run_tool("--check", root=root)
+            self.assertNotEqual(result.returncode, 0, "the gate passed a wrong reciprocity")
+            self.assertIn("amended-by", result.stdout + result.stderr)
+
+
 class VerifyWiringTests(unittest.TestCase):
     def test_every_lane_of_verify_runs_the_doc_gate(self):
         script = (REPO_ROOT / "eng" / "verify.sh").read_text(encoding="utf-8")
