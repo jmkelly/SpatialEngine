@@ -189,7 +189,7 @@ heading that is not above `<Version>`).
 
 - **Hotine Oblique Mercator (variant A) joins the WKT method map: a variant A
   definition's false offsets are applied at the natural origin, as EPSG states
-  them** (ADR-0171, SpatialEngine-r4o). ProjNet's `Hotine_Oblique_Mercator`
+  them** (ADR-0172, SpatialEngine-r4o). ProjNet's `Hotine_Oblique_Mercator`
   applies them at the *projection centre* — Snyder's Alternate B, the EPSG
   variant B reading — which put every variant A definition 2,047 km from where
   PROJ puts it and out of the map as a named failure. The decision was which

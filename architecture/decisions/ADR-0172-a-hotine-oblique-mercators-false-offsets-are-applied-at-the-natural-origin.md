@@ -7,7 +7,7 @@ related: ADR-0027, ADR-0153, ADR-0170
 summary: EPSG's reading wins: a Hotine Oblique Mercator (variant A, method 9812) definition's false easting and northing are applied at the **natural origin**, and the reader resolves variant A to ProjNet's `Oblique_Mercator`, which is the projection that does that — agreeing with PROJ 9.8.1 to 1e-6 m on four grids over two ellipsoids. `Hotine_Oblique_Mercator` is the variant B (Snyder Alternate B) reading, where the centre lands on the offsets, and is 2,047 km away; nothing is derived and no number is moved.
 ---
 
-# ADR-0171: A Hotine variant A's false offsets are applied at the natural origin
+# ADR-0172: A Hotine variant A's false offsets are applied at the natural origin
 
 ## Context
 

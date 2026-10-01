@@ -406,7 +406,7 @@ public sealed class ProjWktProjectionMethodTests
     /// <para>
     /// The reader resolves variant A to <c>Oblique_Mercator</c>, ProjNet's
     /// projection that does apply the offsets at the natural origin
-    /// (ADR-0171), and this pins what that is worth: PROJ 9.8.1 puts the
+    /// (ADR-0172), and this pins what that is worth: PROJ 9.8.1 puts the
     /// centre at (499840.25318077067, 528600.3025232237) on this definition's
     /// parameters, and the engine now puts it there to 1e-9 m.
     /// </para>

@@ -715,7 +715,7 @@ internal static class ProjWkt
     /// </item>
     /// <item>
     /// <term>Hotine Oblique Mercator (variant A)</term><term>9812</term><term>EPSG:3078, EPSG:29874, ESRI:102366, ESRI:102544</term>
-    /// <term>added by r4o: resolves to <c>Oblique_Mercator</c>, ProjNet's projection that applies the false offsets at the natural origin as EPSG states them, agreeing to 1e-6 m on four grids over two ellipsoids (ADR-0171); <c>Hotine_Oblique_Mercator</c> is the variant B (Snyder Alternate B) reading and is 2,047 km away</term>
+    /// <term>added by r4o: resolves to <c>Oblique_Mercator</c>, ProjNet's projection that applies the false offsets at the natural origin as EPSG states them, agreeing to 1e-6 m on four grids over two ellipsoids (ADR-0172); <c>Hotine_Oblique_Mercator</c> is the variant B (Snyder Alternate B) reading and is 2,047 km away</term>
     /// </item>
     /// <item>
     /// <term>Krovak</term><term>9819</term><term>EPSG:5513, EPSG:2065</term>
@@ -794,7 +794,7 @@ internal static class ProjWkt
         // on the Borneo ones (EPSG:29873) — and both are the same number, so
         // both are read; taking only one leaves the Borneo grid unreadable.
         // The two variants differ in where the false offsets are applied and
-        // not in any of these, so the same names serve both (ADR-0171).
+        // not in any of these, so the same names serve both (ADR-0172).
         [Normalise("Azimuth of initial line")] = "azimuth",
         [Normalise("Azimuth at projection centre")] = "azimuth",
         [Normalise("azimuth")] = "azimuth",

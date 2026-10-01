@@ -152,7 +152,7 @@ about its accuracy limits (below).
   derives the pole and the scale factor at that pole from the latitude of
   standard parallel, on the definition's own ellipsoid and by PROJ's own
   expression, so the map now holds nine methods and the two that still
-  diverge are named failures. ADR-0171 read the Hotine variant A one: the
+  diverge are named failures. ADR-0172 read the Hotine variant A one: the
   false offsets are applied at the natural origin, as EPSG states them, and
   ProjNet already had that projection under the name `Oblique_Mercator`, so
   the map now holds ten methods and Krovak's axes are the only divergence
