@@ -313,12 +313,15 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
     /// real data does.
     ///
     /// <para>
-    /// The valid point comes first on purpose: the store discovers a dataset by
-    /// sampling one row's <c>STSrid</c> and <c>STGeometryType()</c>, and a
-    /// table whose <em>sampled</em> geometry is the invalid one cannot be
-    /// described at all. The case that is new — the one this test pins — is the
-    /// table that describes and reads fine, and only the pushed reduction would
-    /// refuse it.
+    /// The valid point comes first because the store discovers a dataset by
+    /// sampling one row's <c>STSrid</c> and <c>STGeometryType()</c>, and it
+    /// used to need a readable row to find: a table whose <em>sampled</em>
+    /// geometry was the invalid one could not be described at all. It does not
+    /// need one any more — the sampled type is read only from a value the
+    /// server calls valid (ADR-0164) — and the ordering is kept because the
+    /// reduction this test measures wants both members in the group. The case
+    /// that is new, and the one this test pins, is the table that describes
+    /// and reads fine, and only the pushed reduction would refuse it.
     /// </para>
     /// </summary>
     [SkippableFact]

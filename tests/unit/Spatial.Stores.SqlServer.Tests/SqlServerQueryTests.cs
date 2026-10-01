@@ -119,9 +119,30 @@ public sealed class SqlServerQueryTests
         ]);
 
         Assert.Contains("(SELECT TOP 1 g.[geom].STSrid FROM [dbo].[places] AS g", sql);
-        Assert.Contains("(SELECT TOP 1 g.[shape].STGeometryType() FROM [dbo].[roads] AS g", sql);
+        Assert.Contains("(SELECT TOP 1 CASE WHEN g.[shape].STIsValid() = 1 THEN g.[shape].STGeometryType() END FROM [dbo].[roads] AS g", sql);
         Assert.Contains("UNION ALL", sql);
         Assert.EndsWith("ORDER BY ordinal", sql);
+    }
+
+    /// <summary>
+    /// <c>STGeometryType()</c> raises a .NET error (24144) on a value the
+    /// server considers invalid, so an unguarded read of the geometry type
+    /// makes a table holding one undescribable — and the whole catalogue
+    /// unlistable, because every dataset is sampled in one statement. The
+    /// sample therefore reads the type only from a value the server calls
+    /// valid, and answers nothing for one it does not (ADR-0164).
+    /// </summary>
+    [Fact]
+    public void The_geometry_sample_reads_the_type_only_from_a_value_the_server_calls_valid()
+    {
+        var single = SqlServerQueries.SampleGeometry(Dataset, "geom");
+
+        Assert.Contains("[geom].STSrid", single);
+        Assert.Contains("CASE WHEN [geom].STIsValid() = 1 THEN [geom].STGeometryType() END", single);
+
+        var all = SqlServerQueries.SampleAllGeometry([new GeometrySample(Dataset, "geom")]);
+
+        Assert.Contains("CASE WHEN g.[geom].STIsValid() = 1 THEN g.[geom].STGeometryType() END", all);
     }
 
     [Fact]

@@ -166,6 +166,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md) | A per-class verdict on the shared host, and the eight classes it converts | accepted | 2026-10-02 | ADR-0160 |
 | [0162](ADR-0162-the-reclaim-race-is-enforced-from-the-damage-not-by-a-hook.md) | The reclaim race is enforced from the damage, not by a hook | accepted | 2026-10-02 | ADR-0152, ADR-0118, ADR-0141 |
 | [0163](ADR-0163-registered-null-operation-is-published.md) | A registered null operation is an operation, and it is published | accepted | 2026-10-08 | ADR-0087, ADR-0111 |
+| [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md) | Discovery reads the geometry type only from a value the server calls valid | accepted | 2026-10-01 | ADR-0157, ADR-0151 |
 
 ## Reading order
 
@@ -180,7 +181,7 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 17 records, 32,016 words (20% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 18 records, 33,818 words (21% of the corpus)
 
 1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158)*
 2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md)
@@ -197,8 +198,9 @@ out: the "Amended by" row already says everything about a pair.
 13. [0133](ADR-0133-the-sql-server-store-pushes-its-reductions.md) *(narrowed by 0136, 0137, 0157)*
 14. [0136](ADR-0136-a-text-order-follows-the-columns-collation.md)
 15. [0137](ADR-0137-a-tsql-percentile-is-a-window-over-the-partition-a-group-is.md) *(narrowed by 0157)*
-16. [0157](ADR-0157-t-sql-has-a-geometry-aggregate-and-the-rectangle-it-answers-is-not-ours.md)
+16. [0157](ADR-0157-t-sql-has-a-geometry-aggregate-and-the-rectangle-it-answers-is-not-ours.md) *(narrowed by 0164)*
 17. [0158](ADR-0158-json-query-plan-on-the-http-query-route.md)
+18. [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md)
 
 ### ADR-0109: the verification lanes, implemented — 7 records, 12,595 words (8% of the corpus)
 
@@ -293,9 +295,11 @@ believed.
 - **0141** is amended by 0145, 0159
 - **0143** is amended by 0146
 - **0150** is amended by 0159
+- **0151** is amended by 0164
 - **0152** is amended by 0162
 - **0154** is amended by 0155
 - **0155** is amended by 0160
+- **0157** is amended by 0164
 - **0160** is amended by 0161
 
 ## Superseded, by superseder
