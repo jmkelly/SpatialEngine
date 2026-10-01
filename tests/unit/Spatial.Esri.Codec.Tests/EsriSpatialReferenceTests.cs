@@ -14,6 +14,13 @@ public sealed class EsriSpatialReferenceTests
     [InlineData(102113, 3857)]
     [InlineData(27700, 27700)]
     [InlineData(2154, 2154)]
+    // New Zealand: 4167 is NZGD2000 (the geocentric CRS EPSG registers the
+    // null operation 1565 against WGS 84 for) and 2193 is its own transverse
+    // Mercator projection (SpatialEngine-392). Both WKIDs are their EPSG
+    // codes, and without them a client cannot reach either through the
+    // surface it actually speaks.
+    [InlineData(4167, 4167)]
+    [InlineData(2193, 2193)]
     public void Known_wkids_resolve_to_epsg(int wkid, int epsg)
     {
         Assert.Equal(CoordinateReference.Epsg(epsg), Decode($$"""{"wkid":{{wkid}}}"""));
@@ -58,6 +65,13 @@ public sealed class EsriSpatialReferenceTests
     public void An_epsg_outside_the_map_cannot_be_encoded()
     {
         Assert.Throws<EsriInteropException>(() => EsriSpatialReference.ToWkid(CoordinateReference.Epsg(99999)));
+    }
+
+    [Fact]
+    public void Wkid_map_encodes_the_new_zealand_pair_back_out()
+    {
+        Assert.Equal(4167, EsriSpatialReference.ToWkid(CoordinateReference.Epsg(4167)));
+        Assert.Equal(2193, EsriSpatialReference.ToWkid(CoordinateReference.Epsg(2193)));
     }
 
     [Fact]

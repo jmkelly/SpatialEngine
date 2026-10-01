@@ -19,6 +19,12 @@ public static class WkidMap
         [4269] = 4269,
         [4277] = 4277,
         [4171] = 4171,
+        // New Zealand: 4167 is NZGD2000, the geocentric CRS EPSG registers
+        // the null operation 1565 against WGS 84 for (ADR-0163), and 2193 is
+        // its own transverse Mercator projection. Esri's WKIDs for both are
+        // their EPSG codes (SpatialEngine-392).
+        [4167] = 4167,
+        [2193] = 2193,
         [3857] = 3857,
         [102100] = 3857,
         [102113] = 3857,
