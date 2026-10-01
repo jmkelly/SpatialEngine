@@ -93,6 +93,7 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
     [SkippableFact]
     public async Task An_ungrouped_reduction_is_one_aggregate_row_and_agrees_with_the_reference()
     {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -121,6 +122,7 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
     [SkippableFact]
     public async Task A_grouped_reduction_is_a_group_by_and_agrees_with_the_reference_in_group_key_order()
     {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -165,6 +167,7 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
     [SkippableFact]
     public async Task A_descending_percentile_ranks_the_field_the_other_way_up()
     {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var specs = new[]
@@ -197,6 +200,7 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
     [SkippableFact]
     public async Task A_restriction_reaches_the_aggregate_and_the_selection_is_its_own()
     {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -229,6 +233,7 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
     [SkippableFact]
     public async Task A_reduction_of_no_rows_is_one_row_of_nulls_ungrouped_and_no_rows_grouped()
     {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -278,6 +283,7 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
     [SkippableFact]
     public async Task An_envelope_is_the_reference_rectangle_and_a_one_point_group_is_not_the_server_s_tolerance()
     {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         var dataset = await SeedAsync(context);
         var counting = new CountingStore(context.Store);
@@ -327,6 +333,7 @@ public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerCo
     [SkippableFact]
     public async Task A_group_holding_an_invalid_geometry_still_reduces()
     {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
         var dataset = $"dbo.invalid_{Guid.NewGuid().ToString("N")[..8]}";
         await context.ExecuteAsync($"CREATE TABLE {dataset} (id bigint NOT NULL PRIMARY KEY, geom geometry NULL)");
