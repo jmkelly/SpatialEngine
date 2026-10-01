@@ -71,6 +71,12 @@ CONFLICT_MARKER_GATE = "python3 tools/conflict_markers.py"
 # follows the conflict-marker check, for the same reason it is not in the
 # tools/**-only tooling suite.
 DOC_SURFACE_GATE = "python3 tools/doc_surface.py"
+# The nested-AGENTS gate: every package that owns a hazard carries a nested
+# `AGENTS.md` under thirty lines naming its two binding records, its
+# never-list and its test command. It is a repo check called directly rather
+# than a `tools/test_*.py` the tooling suite discovers, because a nested
+# `AGENTS.md` is a `src/**` change -- the same hole ADR-0148 closes.
+PACKAGE_AGENTS_GATE = "python3 tools/package_agents.py"
 
 
 def beads_gate_gate(base="main"):
@@ -771,6 +777,7 @@ class ScriptLaneTests(unittest.TestCase):
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
+            PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
             "dotnet build .verify-scoped.slnx",
@@ -826,6 +833,7 @@ class ScriptLaneTests(unittest.TestCase):
             "tools/seed/fetch.py",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
+            PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
             "dotnet build .verify-scoped.slnx",
@@ -841,6 +849,7 @@ class ScriptLaneTests(unittest.TestCase):
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
+            PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
             f"dotnet format {MAPS} --verify-no-changes",
@@ -857,6 +866,7 @@ class ScriptLaneTests(unittest.TestCase):
             "python3 tools/trailing_whitespace.py",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
+            PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
             "dotnet format SpatialEngine.slnx --verify-no-changes",
@@ -889,6 +899,7 @@ class ScriptLaneTests(unittest.TestCase):
             "python3 tools/trailing_whitespace.py",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
+            PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
             "dotnet format SpatialEngine.slnx --verify-no-changes",
@@ -906,6 +917,7 @@ class ScriptLaneTests(unittest.TestCase):
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
+            PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
             f"dotnet format {MAPS} --verify-no-changes",
@@ -923,6 +935,7 @@ class ScriptLaneTests(unittest.TestCase):
             "python3 tools/trailing_whitespace.py",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
+            PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate("origin/does-not-exist"),
             "dotnet build SpatialEngine.slnx",
@@ -937,6 +950,7 @@ class ScriptLaneTests(unittest.TestCase):
             "python3 tools/trailing_whitespace.py",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
+            PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate("origin/does-not-exist"),
             "dotnet format SpatialEngine.slnx --verify-no-changes",

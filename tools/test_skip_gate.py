@@ -26,7 +26,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+# The packages whose nested `AGENTS.md` the lane's repository check reads, so
+# this fixture seeds one per package for the same reason it seeds the checks
+# themselves: a lane that fails for a package the fixture never modelled would
+# be measuring the gates rather than the skip gate.
+from tools.package_agents import PACKAGES as _PACKAGES  # noqa: E402  (path is set by the runner)
+
 REPO = Path(__file__).resolve().parent.parent
+PACKAGES = _PACKAGES
 SKIP_GATE = REPO / "tools" / "skip_gate.py"
 VERIFY = REPO / "eng" / "verify.sh"
 
@@ -334,7 +341,7 @@ class LaneExitCodeTests(unittest.TestCase):
                      "tools/skip_gate.py", "tools/trailing_whitespace.py",
                      "tools/conflict_markers.py", "tools/doc_surface.py",
                      "tools/arch-index.py", "tools/doc-freshness.py",
-                     "tools/beads_gate.py"):
+                     "tools/beads_gate.py", "tools/package_agents.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")
@@ -369,6 +376,25 @@ class LaneExitCodeTests(unittest.TestCase):
         (self.root / "architecture/decisions").mkdir(parents=True)
         (self.root / "architecture/decisions/ADR-0001-a-fixture-decision.md").write_text(
             FIXTURE_ADR, encoding="utf-8")
+        # A second record, because the nested-AGENTS check wants two binding
+        # numbers per package and one corpus record cannot answer that.
+        (self.root / "architecture/decisions/ADR-0002-a-second-fixture-decision.md").write_text(
+            FIXTURE_ADR.replace("ADR-0001", "ADR-0002")
+            .replace("A fixture decision", "A second fixture decision"),
+            encoding="utf-8")
+        # The nested-AGENTS check reads the whole repository, so the fixture
+        # carries one conforming file per hazardous package rather than failing
+        # the lane for a package it never meant to model. Two records, a
+        # never-list, a test command and a route pointer each: the shape the
+        # check enforces, at the fixture's own scale.
+        for package in PACKAGES:
+            directory = self.root / package
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "AGENTS.md").write_text(
+                "# Fixture package\n\nBound by ADR-0001 and ADR-0002.\n"
+                "Route: `architecture/distilled/README.md`.\n\n## Never\n\n"
+                "- A thing this fixture does not do.\n\n## Commands\n\n"
+                "- `dotnet test` — the fixture's suite.\n", encoding="utf-8")
         (self.root / "architecture/distilled").mkdir(parents=True)
         (self.root / "architecture/distilled/README.md").write_text(
             FIXTURE_DIGEST, encoding="utf-8")

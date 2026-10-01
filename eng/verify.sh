@@ -419,6 +419,23 @@ doc_surface_step() {
   step python3 tools/doc_surface.py
 }
 
+# --- the nested-AGENTS gate, on every lane ---------------------------------
+# The nested `AGENTS.md` covered three of the fifty projects and the three
+# were the pure boundaries; every package that owns a hazard had none, and
+# `AGENTS.md` resolves nearest-file-wins, so the missing files are the ones an
+# agent reads when it edits raw SQL, a byte format or a datum grid. Eleven
+# files, each of which would go stale the week after it was written, is what
+# makes this a check rather than prose: presence, two binding records, a
+# never-list, a test command and a thirty-line budget, per package.
+#
+# A repo check, like the ones above it and for the same reason: a nested
+# `AGENTS.md` is a `src/**` change, which is the change set the tooling suite
+# does not see (the ADR-0148 argument). Milliseconds, no .NET SDK.
+package_agents_step() {
+  echo "== nested AGENTS.md: one short file per hazardous package =="
+  step python3 tools/package_agents.py
+}
+
 # --- the doc gate, on every lane -------------------------------------------
 # The ADR register and the ADR index are generated from the records themselves
 # (ADR-0141), so "is the documentation current" is a comparison rather than a
@@ -500,6 +517,7 @@ if [[ "$LANE" == "format" ]]; then
   whitespace_step
   conflict_marker_step
   doc_surface_step
+  package_agents_step
   doc_gate
   beads_gate_step
   if [[ "$EXHAUSTIVE" == "1" ]]; then
@@ -519,6 +537,7 @@ if [[ "$LANE" == "full" ]]; then
   whitespace_step all
   conflict_marker_step
   doc_surface_step
+  package_agents_step
   doc_gate
   beads_gate_step
 
@@ -547,6 +566,7 @@ echo "== fast build gate (base $BASE) =="
 whitespace_step
 conflict_marker_step
 doc_surface_step
+package_agents_step
 doc_gate
 beads_gate_step
 
