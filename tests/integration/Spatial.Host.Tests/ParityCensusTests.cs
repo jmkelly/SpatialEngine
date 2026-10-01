@@ -15,7 +15,13 @@ namespace Spatial.Host.Tests;
 /// envelope (<c>-125,25,-66,50</c>, WKID 4326) — return real data instead of
 /// errors, so the localhost panels can stand beside the public Esri ones.
 /// </summary>
-public sealed class ParityCensusTests : IDisposable
+/// <remarks>
+/// One host for the class, one dataset and one map name per test (ADR-0160,
+/// ADR-0161). The census fixture is ingested into the shared memory store, so
+/// the dataset id — not the map name — is what keeps one test's ingest out of
+/// another's.
+/// </remarks>
+public sealed class ParityCensusTests : IClassFixture<ParityCensusTests.ParityHost>
 {
     private const string Token = "test-admin-token";
     private const string Root = "/arcgis/rest/services";
@@ -29,9 +35,9 @@ public sealed class ParityCensusTests : IDisposable
 
     private static readonly string[] FeatureAndMapServices = ["feature", "map"];
 
-    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-parity-").FullName;
+    private readonly ParityHost _host;
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
+    public ParityCensusTests(ParityHost host) => _host = host;
 
     private static string RepoRoot()
     {
@@ -45,9 +51,6 @@ public sealed class ParityCensusTests : IDisposable
         return directory.FullName;
     }
 
-    private ParityFactory Factory() =>
-        new ParityFactory(Path.Combine(_directory, "maps.json"));
-
     private static HttpRequestMessage Authorized(HttpMethod method, string path, HttpContent? content = null)
     {
         var request = new HttpRequestMessage(method, path) { Content = content };
@@ -58,42 +61,46 @@ public sealed class ParityCensusTests : IDisposable
     private static async Task<JsonElement> BodyAsync(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
 
-    /// <summary>Ingests the census fixture and publishes it as one map exposing both servers.</summary>
-    private static async Task<HttpClient> CensusServiceAsync(SpatialHostFactory factory)
+    /// <summary>
+    /// Ingests the census fixture under a dataset id this test owns and
+    /// publishes it as a map this test owns, exposing both servers.
+    /// </summary>
+    private async Task<(HttpClient Client, string Service)> CensusServiceAsync()
     {
-        var client = factory.CreateClient();
+        var client = _host.Client;
+        var dataset = _host.NextDatasetName("census.states");
+        var service = _host.NextMapName("census");
         var geojson = await File.ReadAllTextAsync(
             Path.Combine(RepoRoot(), "tests", "fixtures", "census", "census-states.geojson"));
 
         var ingest = await client.SendAsync(Authorized(
             HttpMethod.Post,
-            "/api/ingest?store=memory&dataset=census.states&srid=4326&format=geojson",
+            $"/api/ingest?store=memory&dataset={dataset}&srid=4326&format=geojson",
             new StringContent(geojson, Encoding.UTF8, "application/json")));
         Assert.Equal(HttpStatusCode.OK, ingest.StatusCode);
         Assert.Equal(2, (await BodyAsync(ingest)).GetProperty("features").GetInt64());
 
         var map = JsonSerializer.Serialize(new
         {
-            name = "census",
+            name = service,
             store = "memory",
             services = FeatureAndMapServices,
-            layers = new[] { new { dataset = "census.states", layerId = 0, name = "States", style = FillStyle } },
+            layers = new[] { new { dataset, layerId = 0, name = "States", style = FillStyle } },
         });
         var publish = await client.SendAsync(Authorized(
-            HttpMethod.Put, "/api/maps/census", new StringContent(map, Encoding.UTF8, "application/json")));
+            HttpMethod.Put, $"/api/maps/{service}", new StringContent(map, Encoding.UTF8, "application/json")));
         Assert.Equal(HttpStatusCode.OK, publish.StatusCode);
-        return client;
+        return (client, service);
     }
 
     [Fact]
     public async Task The_parity_map_export_renders_census_bytes()
     {
-        using var factory = Factory();
-        var client = await CensusServiceAsync(factory);
+        var (client, service) = await CensusServiceAsync();
 
         // The exact MapServer/export shape parity.ts builds (f=image bytes).
         var export = await client.GetAsync(
-            $"{Root}/census/MapServer/export?bbox={Bbox}&bboxSR={Sr}&imageSR={Sr}&size=800,600&format=png&f=image");
+            $"{Root}/{service}/MapServer/export?bbox={Bbox}&bboxSR={Sr}&imageSR={Sr}&size=800,600&format=png&f=image");
 
         Assert.Equal(HttpStatusCode.OK, export.StatusCode);
         Assert.Equal("image/png", export.Content.Headers.ContentType?.MediaType);
@@ -103,14 +110,13 @@ public sealed class ParityCensusTests : IDisposable
     [Fact]
     public async Task The_parity_feature_count_covers_both_states()
     {
-        using var factory = Factory();
-        var client = await CensusServiceAsync(factory);
+        var (client, service) = await CensusServiceAsync();
 
         // The exact count-only shape parity.ts builds for the bbox envelope.
         var query = $"where={Uri.EscapeDataString("1=1")}&returnCountOnly=true"
             + $"&geometry={Uri.EscapeDataString(Bbox)}&geometryType=esriGeometryEnvelope"
             + $"&spatialRel=esriSpatialRelIntersects&inSR={Sr}&f=json";
-        var count = await BodyAsync(await client.GetAsync($"{Root}/census/FeatureServer/0/query?{query}"));
+        var count = await BodyAsync(await client.GetAsync($"{Root}/{service}/FeatureServer/0/query?{query}"));
 
         Assert.Equal(2, count.GetProperty("count").GetInt32());
     }
@@ -118,14 +124,13 @@ public sealed class ParityCensusTests : IDisposable
     [Fact]
     public async Task The_parity_feature_sample_returns_the_state_attributes()
     {
-        using var factory = Factory();
-        var client = await CensusServiceAsync(factory);
+        var (client, service) = await CensusServiceAsync();
 
         // The exact sample shape parity.ts builds: no geometry, capped page.
         var query = $"where={Uri.EscapeDataString("1=1")}&outFields=*&returnGeometry=false&resultRecordCount=20"
             + $"&geometry={Uri.EscapeDataString(Bbox)}&geometryType=esriGeometryEnvelope"
             + $"&spatialRel=esriSpatialRelIntersects&inSR={Sr}&f=json";
-        var sample = await BodyAsync(await client.GetAsync($"{Root}/census/FeatureServer/0/query?{query}"));
+        var sample = await BodyAsync(await client.GetAsync($"{Root}/{service}/FeatureServer/0/query?{query}"));
 
         var names = sample.GetProperty("features").EnumerateArray()
             .Select(feature => feature.GetProperty("attributes").GetProperty("NAME").GetString() ?? string.Empty)
@@ -134,12 +139,21 @@ public sealed class ParityCensusTests : IDisposable
         Assert.Equal(["California", "Texas"], names);
     }
 
-    private sealed class ParityFactory(string mapsPath) : SpatialHostFactory
+    /// <summary>
+    /// One host for the class, with an admin token and a per-class map file
+    /// (ADR-0160). The dataset and the map name are the test's.
+    /// </summary>
+    public sealed class ParityHost : ClassHostFixture
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        public ParityHost()
+            : base("spatial-parity")
+        {
+        }
+
+        protected override void ConfigureHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Maps:Path", mapsPath);
+            builder.UseSetting("Spatial:Maps:Path", MapsPath);
         }
     }
 }

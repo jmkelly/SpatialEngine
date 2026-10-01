@@ -13,17 +13,18 @@ namespace Spatial.Host.Tests;
 /// with the per-layer styles persisted on it, so a style authored headlessly
 /// (PUT) takes effect without a client-side style document.
 /// </summary>
-public sealed class MapRenderTests : IDisposable
+/// <remarks>
+/// One host for the class, one map name per test (ADR-0160, ADR-0161).
+/// </remarks>
+public sealed class MapRenderTests : IClassFixture<MapRenderTests.RenderHost>
 {
     private static readonly string[] MapServices = ["map"];
 
     private const string Token = "test-admin-token";
 
-    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-render-").FullName;
+    private readonly RenderHost _host;
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
-
-    private RenderFactory Factory() => new RenderFactory(Path.Combine(_directory, "maps.json"));
+    public MapRenderTests(RenderHost host) => _host = host;
 
     private static async Task PutMapAsync(HttpClient client, string name, string? style)
     {
@@ -52,14 +53,14 @@ public sealed class MapRenderTests : IDisposable
     [Fact]
     public async Task Renders_a_map_with_its_persisted_style()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var client = _host.Client;
+        var styled = _host.NextMapName("styled");
         await PutMapAsync(
             client,
-            "styled",
+            styled,
             """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":30,"circle-opacity":1.0}}]""");
 
-        var response = await RenderAsync(client, "styled");
+        var response = await RenderAsync(client, styled);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -71,11 +72,11 @@ public sealed class MapRenderTests : IDisposable
     [Fact]
     public async Task Renders_a_layer_without_a_persisted_style_using_defaults()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PutMapAsync(client, "plain", style: null);
+        var client = _host.Client;
+        var plain = _host.NextMapName("plain");
+        await PutMapAsync(client, plain, style: null);
 
-        var response = await RenderAsync(client, "plain");
+        var response = await RenderAsync(client, plain);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -84,40 +85,49 @@ public sealed class MapRenderTests : IDisposable
     [Fact]
     public async Task The_persisted_style_changes_the_rendered_image()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PutMapAsync(client, "plain", style: null);
+        var client = _host.Client;
+        var plain = _host.NextMapName("plain");
+        var loud = _host.NextMapName("loud");
+        await PutMapAsync(client, plain, style: null);
         await PutMapAsync(
             client,
-            "loud",
+            loud,
             """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":40,"circle-opacity":1.0}},{"type":"background","paint":{"background-color":"#000000"}}]""");
 
-        var plain = await (await RenderAsync(client, "plain")).Content.ReadAsByteArrayAsync();
-        var loud = await (await RenderAsync(client, "loud")).Content.ReadAsByteArrayAsync();
+        var plainBytes = await (await RenderAsync(client, plain)).Content.ReadAsByteArrayAsync();
+        var loudBytes = await (await RenderAsync(client, loud)).Content.ReadAsByteArrayAsync();
 
-        Assert.False(plain.SequenceEqual(loud), "the persisted style must reach the renderer");
+        Assert.False(plainBytes.SequenceEqual(loudBytes), "the persisted style must reach the renderer");
     }
 
     [Fact]
     public async Task An_unknown_map_is_not_found()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var absent = _host.NextMapName("absent");
+        var client = _host.Client;
 
-        var response = await RenderAsync(client, "absent");
+        var response = await RenderAsync(client, absent);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
         Assert.Equal("not.found", body.GetProperty("code").GetString());
     }
 
-    /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class RenderFactory(string mapsPath) : SpatialHostFactory
+    /// <summary>
+    /// One host for the class, with an admin token and a per-class map file
+    /// (ADR-0160). The map name is the test's.
+    /// </summary>
+    public sealed class RenderHost : ClassHostFixture
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        public RenderHost()
+            : base("spatial-map-render")
+        {
+        }
+
+        protected override void ConfigureHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Maps:Path", mapsPath);
+            builder.UseSetting("Spatial:Maps:Path", MapsPath);
         }
     }
 }

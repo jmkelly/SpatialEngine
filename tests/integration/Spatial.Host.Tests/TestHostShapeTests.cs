@@ -57,6 +57,56 @@ public sealed class TestHostShapeTests
     }
 
     [Fact]
+    public void Every_class_that_boots_its_own_host_has_an_audited_verdict()
+    {
+        var unaudited = SharedHostPolicy.ClassesBootingTheirOwnHost()
+            .Where(type => SharedHostPolicy.VerdictFor(type) is null)
+            .Select(type => type.Name)
+            .ToList();
+
+        Assert.True(
+            unaudited.Count == 0,
+            "these classes boot a host per test and ADR-0161 has no verdict for them, so nobody has "
+            + "asked whether the host could be the class's: " + string.Join(", ", unaudited));
+    }
+
+    [Fact]
+    public void A_convert_verdict_is_the_conversion_register_and_nothing_else()
+    {
+        var converted = SharedHostPolicy.Audited
+            .Where(entry => entry.Value.Verdict == SharedHostPolicy.HostVerdict.Convert)
+            .Select(entry => entry.Key)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(converted, SharedHostPolicy.Converted.OrderBy(name => name, StringComparer.Ordinal).ToList());
+    }
+
+    [Fact]
+    public void Every_audited_class_exists_and_carries_its_evidence()
+    {
+        var testClasses = typeof(TestHostShapeTests).Assembly
+            .GetTypes()
+            .Where(type => !type.IsAbstract)
+            .Select(type => type.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var missing = SharedHostPolicy.Audited.Keys.Where(name => !testClasses.Contains(name)).ToList();
+        var silent = SharedHostPolicy.Audited
+            .Where(entry => string.IsNullOrWhiteSpace(entry.Value.Evidence))
+            .Select(entry => entry.Key)
+            .ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            "the ADR-0161 audit names classes this assembly does not have: " + string.Join(", ", missing));
+        Assert.True(
+            silent.Count == 0,
+            "these classes have a verdict but no evidence for it, which is an opinion rather than an "
+            + "audit: " + string.Join(", ", silent));
+    }
+
+    [Fact]
     public void A_class_that_constructs_its_own_factory_is_named_as_the_reason()
     {
         // The read the gate is built on, checked against a class that is

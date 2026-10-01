@@ -11,18 +11,21 @@ namespace Spatial.Host.Tests;
 /// enabled renders its persisted-style feature layers through the shared tile
 /// pipeline; a map without the service is not-found.
 /// </summary>
-public sealed class MapTileTests : IDisposable
+/// <remarks>
+/// One host for the class, one map name per test (ADR-0160, ADR-0161). The
+/// tile cache is a host singleton, but its key folds in the map name, so no
+/// other test's render can answer this test's request.
+/// </remarks>
+public sealed class MapTileTests : IClassFixture<MapTileTests.MapTileHost>
 {
     private const string Token = "test-admin-token";
 
     private const string Circle =
         """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#ff0000","circle-radius":8}}]""";
 
-    private readonly string _directory = Directory.CreateTempSubdirectory("spatial-map-tiles-").FullName;
+    private readonly MapTileHost _host;
 
-    public void Dispose() => Directory.Delete(_directory, recursive: true);
-
-    private MapTileFactory Factory() => new MapTileFactory(Path.Combine(_directory, "maps.json"));
+    public MapTileTests(MapTileHost host) => _host = host;
 
     private static async Task PutMapAsync(HttpClient client, string name, string[] services, string? style = Circle)
     {
@@ -45,11 +48,11 @@ public sealed class MapTileTests : IDisposable
     [Fact]
     public async Task A_tiled_map_renders_a_png_tile()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PutMapAsync(client, "tiled", ["tiles"]);
+        var tiled = _host.NextMapName("tiled");
+        var client = _host.Client;
+        await PutMapAsync(client, tiled, ["tiles"]);
 
-        var response = await client.GetAsync("/api/maps/tiled/tiles/0/0/0.png");
+        var response = await client.GetAsync($"/api/maps/{tiled}/tiles/0/0/0.png");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
@@ -61,11 +64,11 @@ public sealed class MapTileTests : IDisposable
     [Fact]
     public async Task The_path_format_is_authoritative()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PutMapAsync(client, "tiled", ["tiles"]);
+        var tiled = _host.NextMapName("tiled");
+        var client = _host.Client;
+        await PutMapAsync(client, tiled, ["tiles"]);
 
-        var response = await client.GetAsync("/api/maps/tiled/tiles/2/1/1.jpeg");
+        var response = await client.GetAsync($"/api/maps/{tiled}/tiles/2/1/1.jpeg");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("image/jpeg", response.Content.Headers.ContentType?.MediaType);
@@ -74,11 +77,11 @@ public sealed class MapTileTests : IDisposable
     [Fact]
     public async Task Query_options_reach_the_renderer()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PutMapAsync(client, "tiled", ["tiles"]);
+        var tiled = _host.NextMapName("tiled");
+        var client = _host.Client;
+        await PutMapAsync(client, tiled, ["tiles"]);
 
-        var response = await client.GetAsync("/api/maps/tiled/tiles/0/0/0.png?quality=50&background=%23000000&transparent=true&scale=2");
+        var response = await client.GetAsync($"/api/maps/{tiled}/tiles/0/0/0.png?quality=50&background=%23000000&transparent=true&scale=2");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("512", response.Headers.GetValues("X-Raster-Width").Single());
@@ -87,17 +90,17 @@ public sealed class MapTileTests : IDisposable
     [Fact]
     public async Task The_cache_key_follows_the_composed_style()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PutMapAsync(client, "tiled", ["tiles"], Circle);
-        var first = await client.GetAsync("/api/maps/tiled/tiles/0/0/0.png");
+        var tiled = _host.NextMapName("tiled");
+        var client = _host.Client;
+        await PutMapAsync(client, tiled, ["tiles"], Circle);
+        var first = await client.GetAsync($"/api/maps/{tiled}/tiles/0/0/0.png");
 
         await PutMapAsync(
             client,
-            "tiled",
+            tiled,
             ["tiles"],
             """[{"type":"circle","layout":{"visibility":"visible"},"paint":{"circle-color":"#0000ff","circle-radius":40,"circle-opacity":1.0}}]""");
-        var second = await client.GetAsync("/api/maps/tiled/tiles/0/0/0.png");
+        var second = await client.GetAsync($"/api/maps/{tiled}/tiles/0/0/0.png");
 
         Assert.NotEqual(
             await first.Content.ReadAsByteArrayAsync(),
@@ -107,11 +110,11 @@ public sealed class MapTileTests : IDisposable
     [Fact]
     public async Task A_map_without_the_tiles_service_is_not_found()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PutMapAsync(client, "draft", []);
+        var draft = _host.NextMapName("draft");
+        var client = _host.Client;
+        await PutMapAsync(client, draft, []);
 
-        var response = await client.GetAsync("/api/maps/draft/tiles/0/0/0.png");
+        var response = await client.GetAsync($"/api/maps/{draft}/tiles/0/0/0.png");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
@@ -121,10 +124,10 @@ public sealed class MapTileTests : IDisposable
     [Fact]
     public async Task An_unknown_map_is_not_found()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
+        var absent = _host.NextMapName("absent");
+        var client = _host.Client;
 
-        var response = await client.GetAsync("/api/maps/absent/tiles/0/0/0.png");
+        var response = await client.GetAsync($"/api/maps/{absent}/tiles/0/0/0.png");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
@@ -134,24 +137,32 @@ public sealed class MapTileTests : IDisposable
     [Fact]
     public async Task An_out_of_range_tile_is_rejected()
     {
-        using var factory = Factory();
-        using var client = factory.CreateClient();
-        await PutMapAsync(client, "tiled", ["tiles"]);
+        var tiled = _host.NextMapName("tiled");
+        var client = _host.Client;
+        await PutMapAsync(client, tiled, ["tiles"]);
 
-        var response = await client.GetAsync("/api/maps/tiled/tiles/0/1/0.png");
+        var response = await client.GetAsync($"/api/maps/{tiled}/tiles/0/1/0.png");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
         Assert.Equal("invalid.arguments", body.GetProperty("code").GetString());
     }
 
-    /// <summary>A host with an admin token and a per-test map file.</summary>
-    private sealed class MapTileFactory(string mapsPath) : SpatialHostFactory
+    /// <summary>
+    /// One host for the class, with an admin token and a per-class map file
+    /// (ADR-0160). The map name is the test's.
+    /// </summary>
+    public sealed class MapTileHost : ClassHostFixture
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        public MapTileHost()
+            : base("spatial-map-tiles")
+        {
+        }
+
+        protected override void ConfigureHost(IWebHostBuilder builder)
         {
             builder.UseSetting("Spatial:Admin:Token", Token);
-            builder.UseSetting("Spatial:Maps:Path", mapsPath);
+            builder.UseSetting("Spatial:Maps:Path", MapsPath);
         }
     }
 }
