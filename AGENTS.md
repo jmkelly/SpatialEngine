@@ -44,44 +44,20 @@ interop surface.
   cannot promote a merge to the exhaustive lane. `--skip-tests <substring>`
   (repeatable, or `VERIFY_SKIP_TESTS`) leaves a named suite to CI on one run;
   it prints what it dropped and cannot drop `Spatial.Architecture.Tests`.
-- `eng/verify.sh --plan` prints what a lane would run and runs nothing.
-  Every lane starts with `tools/trailing_whitespace.py`, because `dotnet
-  format` does not enforce the `trim_trailing_whitespace` the `.editorconfig`
-  claims for `[*]` on a comment-only line (ADR-0143), and with
-  `tools/conflict_markers.py`, which reads every tracked file for an
-  unresolved merge-conflict marker — a rule that was a `tools/test_*.py` and so
-  ran only on a change set that touched `tools/**`, which is how a marker
-  reached `CHANGELOG.md` on main through a docs merge (ADR-0146). It also runs
-  `tools/doc_surface.py`: the repository root carries no document answering
-  "what is happening now", and the changelog is at `docs/CHANGELOG.md`
-  (ADR-0148). Every lane also runs `tools/package_agents.py`: each package
-  that owns a hazard — raw SQL, a byte format, font embedding, raster
-  ownership, a datum grid, and the whole TypeScript surface — carries a
-  nested `AGENTS.md` under thirty lines naming its two binding records, its
-  never-list and its test command.
-  `CI=true` with no lane named selects `--full`, so a workflow that calls the
+- `eng/verify.sh --plan` prints what a lane would run and runs nothing. Every
+  lane also runs the repository's own checks, and the record named after each
+  one is where the reason it exists is written down: `trailing_whitespace.py`
+  (ADR-0143), `conflict_markers.py` (ADR-0146), `doc_surface.py` (ADR-0148),
+  `package_agents.py`, `skip_gate.py` (ADR-0139 — `VERIFY_SKIP_RATIO` 0.5 and
+  `VERIFY_MIN_SKIPPED` 10 fail a suite that ran but skipped most of what it was
+  asked to, and a suite dropped by `--skip-tests` is out of the count rather
+  than judged) and `beads_gate.py` (ADR-0152 — a closed bead's merge records
+  the bead, a `Core` or `Contracts` commit changes or cites an ADR, and an open
+  bead whose agent `paseo` still reports *running* is a finding, ADR-0162; a
+  run that can read neither the queue nor `paseo` — CI — judges those as *not
+  judged*, and `--strict` fails instead).
+- `CI=true` with no lane named selects `--full`, so a workflow that calls the
   bare script gets the exhaustive gate rather than the fast one (ADR-0118).
-  Every lane that runs `dotnet test` also fails a suite that skipped most of
-  what it was asked to run, read back out of the trx files
-  (`tools/skip_gate.py`, ADR-0139): `VERIFY_SKIP_RATIO` (0.5) and
-  `VERIFY_MIN_SKIPPED` (10) are the thresholds, and a suite dropped by
-  `--skip-tests` is out of the count rather than judged.
-  Every lane then runs the bead-protocol gate (`tools/beads_gate.py`,
-  ADR-0152): a closed bead's merge records the bead it merged — a `Task: <id>`
-  trailer naming that same bead, on the merge commit or on the work it brought
-  in — and a commit touching `src/Spatial.Contracts/**` or
-  `src/Spatial.Core/**` changes an ADR or cites `ADR-NNNN` in its body. It is
-  the prose in this file turned into a comparison — it had already failed
-  in-tree (SpatialEngine-imz.4). The ADR citation and register checks are read
-  through `tools/arch-index.py` rather than gated twice. It also reads the
-  reclaim race from the damage rather than from a hook, because `bd` exposes no
-  registration surface for one: an open bead holding no lease while `paseo`
-  still reports an agent *running* in that bead's worktree is a finding
-  (ADR-0162), and an *idle* session parked on one is printed, not failed. Its
-  liveness question is asked through `tools/bd-safe-reclaim.py`, so the gate and
-  the fix cannot drift. The bead queue and `paseo` are local coordination state,
-  so a run that can read neither (CI) reports those checks as *not judged* and
-  judges the rest; `--strict` fails instead.
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
   for the full agent workflow.
 - `python3 tools/swarm_lock.py` — the swarm's file-overlap lock, derived from
