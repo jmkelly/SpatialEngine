@@ -20,6 +20,16 @@ namespace Spatial.Transformations.ProjNet.Tests;
 /// this fixture produces a pair, and <see cref="ToBytes(Grid, bool)"/> exists
 /// for the test that damages one half of it.
 /// </para>
+/// <para>
+/// The bytes are written in the container's convention, which is not the one
+/// the datums are tabulated in: <see cref="Grid.Shifts"/> carries what the
+/// <em>file</em> states, so a <c>.los</c> value is positive west, and the
+/// header's longitudes are positive west too. That is not this fixture's
+/// invention — it is what a deployed pair holds (ADR-0181), and a fixture that
+/// wrote the datums' own convention would pin the reader against a file NADCON
+/// does not publish. The expected <em>answers</em> are therefore stated in
+/// degrees east-positive, which is where the conversion belongs.
+/// </para>
 /// </summary>
 internal static class NadconFixture
 {
@@ -42,10 +52,15 @@ internal static class NadconFixture
 
     /// <summary>
     /// A grid description: the block it covers, the increments the nodes sit
-    /// at, and the shift at every node, supplied row-major from the
-    /// <em>south-west</em> corner. The fixture writes them in NADCON's own
-    /// order — north row first — which is what makes the reader's
-    /// normalisation a thing the tests exercise.
+    /// at, and the shift at every node as the <em>file</em> states it —
+    /// positive north for the <c>.las</c> half and positive west for the
+    /// <c>.los</c> half — supplied row-major from the south-west corner. The
+    /// block itself is given in degrees east-positive, as the datums are; the
+    /// fixture negates its longitudes on the way into the header.
+    /// <para>
+    /// The nodes are written in NADCON's own order — north row first — which
+    /// is what makes the reader's normalisation a thing the tests exercise.
+    /// </para>
     /// </summary>
     public sealed record Grid(
         string SubGridName,
@@ -118,7 +133,7 @@ internal static class NadconFixture
         {
             for (var column = 0; column <= Columns(grid); column++)
             {
-                var node = BitConverter.GetBytes(grid.Shifts[row, column]);
+                var node = BitConverter.GetBytes(Stated(grid, row, column, longitude));
                 if (BitConverter.IsLittleEndian)
                 {
                     stream.Write(node);
@@ -137,20 +152,31 @@ internal static class NadconFixture
     /// <summary>
     /// The ten numbers the header states, in the order the reader reads them:
     /// the four edges, the two increments, the two node counts, and the
-    /// south-west corner the increments are measured from.
+    /// south-west corner the increments are measured from. The longitudes are
+    /// written positive west, in both halves and identically — a deployed
+    /// pair's two headers are the same header — so a reader that took them as
+    /// written would place the block on the wrong side of the prime meridian.
     /// </summary>
     public static string Block(Grid grid) => string.Join(
         " ",
         Number(grid.SouthLatitude),
         Number(grid.NorthLatitude),
-        Number(grid.EastLongitude),
-        Number(grid.WestLongitude),
+        Number(-grid.EastLongitude),
+        Number(-grid.WestLongitude),
         Number(grid.LatitudeIncrement),
         Number(grid.LongitudeIncrement),
         (Rows(grid) + 1).ToString(CultureInfo.InvariantCulture),
         (Columns(grid) + 1).ToString(CultureInfo.InvariantCulture),
         Number(grid.SouthLatitude),
-        Number(grid.WestLongitude));
+        Number(-grid.WestLongitude));
+
+    /// <summary>
+    /// What the node holds as the file states it: the <c>.las</c> half carries
+    /// latitude shifts positive north and the <c>.los</c> half longitude
+    /// shifts positive west, so the longitude half is negated on the way out.
+    /// </summary>
+    private static float Stated(Grid grid, int row, int column, bool longitude) =>
+        longitude ? -grid.Shifts[row, column] : grid.Shifts[row, column];
 
     private static string Number(double value) => value.ToString("F8", CultureInfo.InvariantCulture);
 

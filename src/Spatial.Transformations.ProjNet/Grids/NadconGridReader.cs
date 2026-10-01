@@ -50,6 +50,22 @@ namespace Spatial.Transformations.ProjNet.Grids;
 /// the same bilinear one every other grid here is.
 /// </para>
 /// <para>
+/// The container keeps its sign the other way round from the datums it
+/// serves, and this reader is where that is answered. Every longitude a
+/// NADCON deployment states — the block's edges, the corner its increments run
+/// from, and the shifts the <c>.los</c> half tabulates — is positive west,
+/// because the method was built for NAD27's positive-west longitudes. EPSG
+/// says so on the operations themselves (1241, 1243 and 15864 each note that
+/// the NADCON method "expects longitudes positive west" while the datums the
+/// grid reaches are positive east), and PROJ 9.8.1 negates the header extents
+/// and the node values for the same reason. Both are negated here, so the
+/// <see cref="DatumShiftGrid"/> a pair produces is tabulated in the datum's
+/// own convention and nothing downstream — the registry, the graph, the
+/// published operation — carries the container's sign. This is the whole of
+/// the difference between the two containers ADR-0168 §1 speaks of, alongside
+/// the pairing itself.
+/// </para>
+/// <para>
 /// What the byte layout is verified against is stated rather than assumed: it
 /// is pinned by this repository's own fixture and by nothing else, because
 /// ADR-0105 §licence keeps published bundles out of the engine and its tests.
@@ -129,6 +145,20 @@ internal static class NadconGridReader
             {
                 error = $"'{latitudeName}' and '{longitudeName}' describe different blocks, so they are not one grid.";
                 return false;
+            }
+
+            // The .los half states its longitude shifts positive west, because
+            // NADCON's method was built for NAD27's positive-west longitudes
+            // while the datums it reaches are positive east — EPSG's own note
+            // on operations 1241, 1243 and 15864 says so, and PROJ 9.8.1
+            // negates these same values in NTv1Grid::valueAt for the nadcon
+            // file type. The half is negated here, where the two halves are
+            // joined into one grid, so nothing downstream of the reader has to
+            // know which way round the container kept its sign.
+            var longitudeShifts = longitudes[index].Shifts;
+            for (var node = 0; node < longitudeShifts.Length; node++)
+            {
+                longitudeShifts[node] = -longitudeShifts[node];
             }
 
             var block = latitudes[index].Block;
@@ -392,18 +422,26 @@ internal static class NadconGridReader
     /// node counts against the shape those imply, and the anchor corner
     /// against the block. The edges are ordered rather than trusted, so a
     /// header written north-to-south reads the same way as one written
-    /// south-to-north.
+    /// south-to-north, and every longitude in it is negated out of the
+    /// container's positive-west convention.
     /// </summary>
     private static bool TryBlock(string name, List<double> numbers, out Block block, out string? error)
     {
         block = default;
         var (south, north) = (numbers[0], numbers[1]);
-        (var east, var west) = (numbers[2], numbers[3]);
+
+        // Every longitude a NADCON header states is positive west, for the
+        // same reason the .los values are: the edges of a block, the corner
+        // the increments are measured from and the shifts tabulated over it
+        // are all in the convention of the datum the grid was built from, not
+        // the datum it reaches. Negated on the way in, so the block the grid
+        // is built over is the block the datums are tabulated over.
+        (var east, var west) = (-numbers[2], -numbers[3]);
         var latitudeIncrement = Math.Abs(numbers[4]);
         var longitudeIncrement = Math.Abs(numbers[5]);
         var rows = (int)Math.Round(numbers[6]);
         var columns = (int)Math.Round(numbers[7]);
-        var (anchorLatitude, anchorLongitude) = (numbers[8], numbers[9]);
+        var (anchorLatitude, anchorLongitude) = (numbers[8], -numbers[9]);
 
         (south, north) = (Math.Min(south, north), Math.Max(south, north));
         (west, east) = (Math.Min(west, east), Math.Max(west, east));
