@@ -35,10 +35,14 @@ Service operations map** onto an engine verb and the other five (`offset`,
 `trimExtend`, `autoComplete`, `cut`, `reshape`) are refused by name with a
 typed `invalid.arguments` — §2's table is the current per-operation answer,
 and a served operation there is *partial*, not exact, because its parameter
-shapes differ from the spec's. The Feature Service clause is still stated
-as that baseline read it: **1 of 6 Feature Service operations had an
-analogue** then (append-only, different shape), and §3 is the table to read
-for the surface served since.
+shapes differ from the spec's. The Feature Service surface is not the 1-of-6
+this verdict recorded at the 2026-09-11 baseline, when the only analogue was
+an append-only `addFeatures` of a different shape. Today **6 of 6 Feature
+Service operations** are served — the six the layer resource numbers,
+`query`, `queryRelatedRecords`, `addFeatures`, `updateFeatures`,
+`deleteFeatures` and `applyEdits` (ADR-0037, ADR-0061, ADR-0077) — and §3
+is the table to read for each of them, where a served operation is
+*partial*, not exact, because its parameter shapes differ from the spec's.
 
 Two directions must not be confused:
 
