@@ -135,7 +135,20 @@ public sealed record MapLayerSource(
     IFeatureStore Features,
     IDataCatalogue Catalogue,
     Predicate? Where = null,
-    MapTimeExtent? Time = null);
+    MapTimeExtent? Time = null)
+{
+    /// <summary>
+    /// Which of the row's date fields bound it, when the publication
+    /// designates them (ADR-0183). <c>null</c> means the layer designates
+    /// none, so the renderer applies the bag rule every layer has always been
+    /// answered by. Additive and non-positional: an existing construction, and
+    /// the catalogue description the renderer reads beside it, still mean what
+    /// they meant. The designation travels here rather than being read from the
+    /// store because it is publication state — a layer may be published with a
+    /// designation over a dataset the store itself designates nothing.
+    /// </summary>
+    public TemporalExtentFields? TimeFields { get; init; }
+}
 
 /// <summary>
 /// A complete render request: viewport, style document, resolved layer

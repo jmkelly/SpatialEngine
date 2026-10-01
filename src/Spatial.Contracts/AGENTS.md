@@ -36,7 +36,9 @@ implementations and the host — never the reverse.
   — a map layer's declared relationships to the map's other layers
   (ADR-0077): two key columns plus a cardinality, with a join dataset for
   many-to-many. The declaration is publication state, so it lives on
-  `MapLayer` and never in a store.
+  `MapLayer` and never in a store. `MapLayer.TimeFields` and
+  `MapLayerSource.TimeFields` are publication state for the same reason
+  (ADR-0183): the date fields bounding a feature.
 - `IDatasetIngest` + `IngestRequest`/`IngestOutcome`/`IngestIdentity` —
   atomic bulk create-and-load with an identity mode (ADR-0041).
 - `Providers/IStoreRegistry` — the typed seam over the keyed stores

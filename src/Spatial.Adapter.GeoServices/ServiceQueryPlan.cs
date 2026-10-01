@@ -36,7 +36,8 @@ internal static class ServiceQueryPlan
         foreach (var layer in selected)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var description = await catalogue.DescribeAsync(layer.Dataset, cancellationToken);
+            var description = GeoServicesResolution.Designated(
+                await catalogue.DescribeAsync(layer.Dataset, cancellationToken), layer);
             fallback ??= EsriLayerModel.LayerCoordinateReference(description.Srid);
             descriptions.Add((layer, description));
         }

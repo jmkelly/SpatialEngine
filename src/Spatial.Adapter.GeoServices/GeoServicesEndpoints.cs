@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
+using Spatial.Core.Features;
 using Spatial.Esri.Codec;
 
 namespace Spatial.Adapter.GeoServices;
@@ -138,8 +139,14 @@ public static partial class GeoServicesEndpoints
         && !services.Any(service => string.Equals(service.Name, entry.Name, StringComparison.OrdinalIgnoreCase));
 }
 
-/// <summary>One layer resolved for serving (id via the publication or the whole-store order).</summary>
-internal sealed record PublishedLayer(int Id, string Dataset, string Name, string? Style = null);
+/// <summary>
+/// One layer resolved for serving (id via the publication or the whole-store
+/// order), carrying the start/end date fields its publication designates
+/// (ADR-0183) so every serving edge projects the same declaration onto the
+/// description it reads. <c>null</c> designates nothing.
+/// </summary>
+internal sealed record PublishedLayer(
+    int Id, string Dataset, string Name, string? Style = null, TemporalExtentFields? TimeFields = null);
 
 /// <summary>A resolved GeoServices server: its store, its explicit layers (null means whole-store),
 /// and the map's authored service description, copyright and metadata document (ADR-0068).</summary>

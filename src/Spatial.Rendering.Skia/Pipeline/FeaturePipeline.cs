@@ -36,7 +36,11 @@ internal sealed class FeaturePipeline
             cancellationToken.ThrowIfCancellationRequested();
             foreach (var feature in batch.Features)
             {
-                if (source.Time is null || MatchesTime(feature, source.Dataset, source.Time, description.TimeFields))
+                // The publication's designation (ADR-0183) is read beside the
+                // store's own description and wins: it is the one the request
+                // edges judged this layer by.
+                var designated = source.TimeFields ?? description.TimeFields;
+                if (source.Time is null || MatchesTime(feature, source.Dataset, source.Time, designated))
                 {
                     features.Add(feature);
                 }

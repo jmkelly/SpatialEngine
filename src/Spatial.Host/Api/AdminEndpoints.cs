@@ -115,7 +115,9 @@ internal static class AdminEndpoints
     /// image layer needs the store to expose an <see cref="IRasterCatalogue"/>.
     /// Declared relationships (ADR-0077) are checked against the same live
     /// schemas here, at declaration time, so a relationship over a column that
-    /// does not exist never reaches a served service.
+    /// does not exist never reaches a served service; a layer's designated
+    /// start/end date fields (ADR-0183) are checked the same way, so a
+    /// designation over a missing or non-date field never reaches one either.
     /// </summary>
     internal static async Task EnsureLayersAreServableAsync(IStoreRegistry stores, Map map, CancellationToken token)
     {
@@ -136,6 +138,11 @@ internal static class AdminEndpoints
         }
 
         await MapRelationshipSchemas.ValidateAsync(
+            map,
+            (store, dataset, cancellationToken) => stores.Catalogue(store).DescribeAsync(dataset, cancellationToken),
+            token);
+
+        await MapTimeFieldSchemas.ValidateAsync(
             map,
             (store, dataset, cancellationToken) => stores.Catalogue(store).DescribeAsync(dataset, cancellationToken),
             token);
