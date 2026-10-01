@@ -255,8 +255,9 @@ date and cross-reference)
 | 0175 | A feature's temporal extent is the interval its layer's schema designates as the start and end date fields — not a min/max over whatever date attributes a row happens to carry — and one rule in `Spatial.Core` evaluates all three relations against it for the query, identify and render readers alike; a layer with no designation keeps ADR-0100's typed reject. |
 | 0177 | The documentation audit's **queue carries defects and its report carries signals**, and the line between them is whether a reader could be *wrong*: `lint-leakage` becomes a defect class with a detectable shape — a doc that **denies** a wall `ArchitectureGuardTests` already fails on — while the restatement census it was actually measuring moves to `signals` as `lint-restatement`, and `init-fossil` moves with it, because "one commit" is a maintenance fact and its only available fix is an edit manufactured to move a counter. Neither signal is queued, so `doc-queue.md` is rows somebody can close; neither is dropped, so the census survives. No lane's verdict changes (SpatialEngine-3kk). |
 | 0178 | The ADR-0175 model is implemented as `TemporalExtent` in `Spatial.Core` with a non-positional `DatasetDescription.TimeFields` designation, the query, identify and render readers all call it, a designated layer's pushed pre-filter is that rule's overlaps shape, and no layer carries a designation yet — so every served answer is unchanged and ADR-0100's typed reject stands. |
+| 0179 | The published-bundle agreement with PROJ is an **operator-run deployment exercise** — gated on a bundle in `SPATIALENGINE_GRID_DIR` and an installed PROJ, never a CI gate, and never silently absent: every run reports which bundle it covered, which it did not, and which of the two it is missing. |
 
-164 records on disk. The full index — status, date and every
+165 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->
