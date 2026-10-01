@@ -257,8 +257,10 @@ adapter-side verb (ADR-0036), and the **plan carries no spatial-relation
 term** (ADR-0167). A pushdown face is admissible when it cannot change an
 answer: the box is a superset for every served verb and the adapter still
 decides each row, while a store's own spatial predicate is a different reading
-of the same OGC row — measured to agree on all 1,536 single-part fixture
-checks and to diverge on 16 multi-part ones, all `Crosses` (ADR-0166). A
+of the same OGC row — measured on 1,734 single-part fixture checks, where the
+only disagreement is the one pair a line lying wholly inside an area and
+touching its boundary from inside makes (ADR-0169), and, over ADR-0166's wider
+battery, on 16 multi-part ones, all `Crosses` (ADR-0166). A
 topology request's *reductions* therefore stay in the adapter too: a
 `returnCountOnly` over `esriSpatialRelContains` counts the matches rather than
 the rows in the box, because a store-side count of the box is a different

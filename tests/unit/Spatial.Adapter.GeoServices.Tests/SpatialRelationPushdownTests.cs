@@ -27,7 +27,7 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// these tests are the two halves of why it is checkable rather than
 /// asserted: the <b>superset property</b> — every pair a served verb accepts
 /// is admitted by the pushed box, which is what makes the box a pre-filter
-/// rather than an answer — over all 256 ordered fixture pairs crossed with all
+/// rather than an answer — over all 289 ordered fixture pairs crossed with all
 /// six served verbs, and the <b>cost</b> — a store that answered the relation
 /// with its own spatial predicates would not answer the same question, named
 /// pair by pair. A change that ever made the box narrower than a superset, or
@@ -128,16 +128,66 @@ public sealed class SpatialRelationPushdownTests
     }
 
     /// <summary>
+    /// The fixture the class ADR-0169 serves deliberately has to be in
+    /// <em>this</em> battery, or the divergence measurement below is a
+    /// statement about fixtures that cannot reach the class: a line lying
+    /// wholly inside the area whose interior reaches the area's boundary —
+    /// position 1 and position 4 non-empty and position 7 empty — is the pair
+    /// this engine serves <c>Crosses</c> and the provider does not, and until
+    /// the table carried one, the measurement walked 1,536 checks without ever
+    /// asking that question. The fixture is found by the geometry rather than
+    /// by name, so a fixture that reaches the class is what makes this pass.
+    /// </summary>
+    [Fact]
+    public void The_battery_carries_a_line_inside_an_area_touching_its_boundary_from_inside()
+    {
+        var square = SpatialRelationMatrix.Of(SpatialRelationMatrix.Feature).ReferenceGeometry;
+
+        var inTheClass = SpatialRelationMatrix.Names
+            .Select(SpatialRelationMatrix.Of)
+            .Where(fixture => fixture.ReferenceGeometry.Dimension == Nts.Dimension.Curve)
+            .Where(fixture => TouchesTheEdgeFromInside(fixture.ReferenceGeometry, square))
+            .Select(fixture => fixture.Name)
+            .ToArray();
+
+        Assert.NotEmpty(inTheClass);
+    }
+
+    /// <summary>
+    /// Whether the pair is the ADR-0169 class, read off the matrix with the
+    /// area on the left: position 1 (interior against interior) and position 4
+    /// (the area's boundary against the line's interior) are non-empty and
+    /// position 7 (the area's exterior against the line's interior) is empty.
+    /// The served <c>T**T*****</c> mask asks the first two and the provider's
+    /// predicate asks all three.
+    /// </summary>
+    private static bool TouchesTheEdgeFromInside(Nts.Geometry line, Nts.Geometry square)
+    {
+        var matrix = square.Relate(line).ToString();
+
+        return matrix[0] != 'F' && matrix[3] != 'F' && matrix[6] == 'F';
+    }
+
+    /// <summary>
     /// The cost of the decision, measured: the served reading against the
-    /// provider's own named predicates over all 256 ordered pairs and six
+    /// provider's own named predicates over all 289 ordered pairs and six
     /// verbs. Every pair the two disagree on is named here, so a store that
     /// answered a pushed relation with its own spatial predicates is a store
     /// that does not answer the same question — and a divergence that moves is
     /// a failing test (ADR-0166 measured the same disagreement over a wider
     /// battery; this is the adapter's own fixture table).
+    ///
+    /// <para>The result is not zero, and saying so is the point: the battery
+    /// now carries <c>line-touch-edge</c> — the line lying wholly inside the
+    /// area whose interior reaches the area's boundary — so the pair ADR-0169
+    /// serves deliberately is measured here rather than only characterised in
+    /// <c>NtsRelateCellSemanticsTests</c>. It is the one single-part pair the
+    /// served table and the provider's predicate answer differently, and the
+    /// list is asserted exactly, so a battery that stopped covering the class
+    /// and a battery that started covering more of it both fail.</para>
     /// </summary>
     [Fact]
-    public async Task A_store_answering_the_relation_with_its_own_predicates_agrees_on_every_single_part_pair()
+    public async Task A_store_answering_the_relation_with_its_own_predicates_diverges_on_exactly_the_line_touching_the_edge_class()
     {
         var queries = new Dictionary<string, EsriFeatureQuery>(StringComparer.Ordinal);
         foreach (var spatialRel in SpatialRelationMatrix.Relations)
@@ -165,21 +215,38 @@ public sealed class SpatialRelationPushdownTests
             }
         }
 
-        // 16 fixtures, ordered both ways, six served verbs. Zero divergence.
-        Assert.Equal(1536, checks);
-        Assert.Empty(measured);
+        // 17 fixtures, ordered both ways, six served verbs.
+        Assert.Equal(1734, checks);
+        Assert.Equal(DocumentedDivergences, measured.Order(StringComparer.Ordinal));
     }
 
     /// <summary>
-    /// …and the divergence lives in the collection spellings, which is where a
-    /// store's own predicates part company with the served table (ADR-0166
-    /// measured 16 of 1,536 there, all <c>Crosses</c>): the served table keys
+    /// The single-part pairs the served reading and the provider's own
+    /// predicates disagree on, as <c>relation|feature|query</c>, carrying why.
+    /// One row, and it is the class ADR-0169 serves deliberately: the served
+    /// <c>T**T*****</c> mask asks that the interiors meet and that the line's
+    /// interior reach the area's boundary, both of which hold; the predicate
+    /// also asks that the line reach the area's <em>exterior</em>, which it
+    /// never does, and answers false. With the area on the left the served
+    /// answer is <c>true</c> — with the line on the left the mask is
+    /// <c>T*T******</c>, whose position 3 is empty for this pair, so it is
+    /// <c>false</c> there and there is no divergence to record. The wider
+    /// battery (multi-part spellings and the 0-D class) is
+    /// <c>NtsRelateCellSemanticsTests</c>.
+    /// </summary>
+    private static readonly string[] DocumentedDivergences =
+        [$"{EsriFeatureQuery.Crosses}|{SpatialRelationMatrix.Feature}|line-touch-edge"];
+
+    /// <summary>
+    /// …and the second place a store's own predicates part company with the
+    /// served table is a collection spelling (ADR-0166 measured 16 divergences
+    /// over its wider battery, all <c>Crosses</c>): the served table keys
     /// on the collection's dimension and names no mask for a pair involving a
     /// point, while a provider's predicate is component-wise over a
     /// <c>MultiPoint</c> and answers true when one of its points crosses.
     /// Pinned here as the reason the term is refused, not re-measured: this
-    /// suite walks the single-part fixture table the served verdicts are read
-    /// from, and the collection battery is characterised where it lives.
+    /// suite walks the single-part fixture table, whose one divergence is named
+    /// above, and the collection battery is characterised where it lives.
     /// </summary>
     [Fact]
     public void A_multi_part_operand_is_where_the_two_readings_part_company()

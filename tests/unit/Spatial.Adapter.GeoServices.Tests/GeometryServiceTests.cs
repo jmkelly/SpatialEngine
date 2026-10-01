@@ -219,7 +219,7 @@ public sealed class GeometryServiceTests
             await FeatureSpatialRelationTests.MatchesAsync(feature, query, relation));
 
     /// <summary>
-    /// Every ordered pair of the sixteen polygon, line and point fixtures the
+    /// Every ordered pair of the seventeen polygon, line and point fixtures the
     /// query path is measured over, so the two surfaces of <c>Overlaps</c> and
     /// <c>Crosses</c> are measured over one fixture set in both operand
     /// orders. The one fixture list is <see cref="SpatialRelationMatrix"/>'s.
@@ -228,7 +228,7 @@ public sealed class GeometryServiceTests
 
     /// <summary>
     /// The served <c>Overlaps</c> against the reference implementation's own
-    /// named <c>Overlaps</c> predicate, over all 256 ordered pairs of the
+    /// named <c>Overlaps</c> predicate, over all 289 ordered pairs of the
     /// fixtures and with any fixture in either operand position — the
     /// measurement SpatialEngine-61g names. A fix to the one surface of a verb
     /// can leave the other surface of the same verb holding the old reading
@@ -258,15 +258,34 @@ public sealed class GeometryServiceTests
     /// <c>Crosses</c> predicate. A collinear pair that shares a span
     /// <c>Overlaps</c> and does not cross, and a crossing pair is the other
     /// way round, so the two verbs have to be right together.
+    ///
+    /// <para>One ordered pair is not a comparison and is not meant to be: the
+    /// area with <c>line-touch-edge</c> — a line lying wholly inside it whose
+    /// interior reaches its boundary — is the class ADR-0169 serves
+    /// deliberately, so there the served answer is asserted to be the
+    /// opposite of the reference's and the disagreement is named. Every other
+    /// ordered pair is a comparison, and the fixture that makes the exception
+    /// necessary is the one that keeps the battery from being silent about the
+    /// class.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(SpatialRelationMatrix.Pairs), MemberType = typeof(SpatialRelationMatrix))]
-    public async Task Relation_crosses_agrees_with_the_reference_over_every_ordered_pair(
+    public async Task Relation_crosses_matches_the_reference_on_every_pair_but_the_line_touching_the_edge(
         string feature, string query)
     {
         var expected = Fixture(feature).ReferenceGeometry.Crosses(Fixture(query).ReferenceGeometry);
+        var served = await RelatesAsync(feature, query, "esriSpatialRelCrosses", Capabilities.Relations);
 
-        Assert.Equal(expected, await RelatesAsync(feature, query, "esriSpatialRelCrosses", Capabilities.Relations));
+        if (feature == SpatialRelationMatrix.Feature && query == "line-touch-edge")
+        {
+            // The served mask is T**T***** and the predicate also asks
+            // position 7, which is empty for a line that never leaves.
+            Assert.True(served);
+            Assert.False(expected);
+            return;
+        }
+
+        Assert.Equal(expected, served);
     }
 
     /// <summary>
