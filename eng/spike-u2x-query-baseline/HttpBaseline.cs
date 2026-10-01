@@ -18,37 +18,43 @@ internal sealed record HttpReport(
     long ResultRows);
 
 /// <summary>
-/// The same requests over HTTP against a running host's demo FeatureServer
-/// (layer 0 is <c>demo.world_cities</c>). This is the number a client actually
-/// sees — it includes the Esri JSON the in-process paths never write — and the
-/// <c>countOnly</c> variant doubles as the fidelity check on the in-adapter
-/// mirror: the host counts through the real <c>FeatureSpatialMatcher</c>, so
-/// its count must equal the mirror's.
+/// The same requests over HTTP against a running host's FeatureServer (by
+/// default the demo service's <c>world_cities</c> layer; a host serving
+/// PostGIS names its own service and layer). This is the number a client
+/// actually sees — it includes the Esri JSON the in-process paths never write —
+/// and the <c>countOnly</c> variant doubles as the fidelity check on the
+/// in-adapter mirror: the host counts through the real
+/// <c>FeatureSpatialMatcher</c>, so its count must equal the mirror's.
 /// </summary>
 internal static class HttpBaseline
 {
-    private const string BasePath = "/arcgis/rest/services/demo/FeatureServer";
+    private const string BasePath = "/arcgis/rest/services";
 
     /// <summary>The demo layer the world-cities snapshot is published as.</summary>
-    private const string LayerName = "world_cities";
+    private const string DemoLayerName = "world_cities";
 
     /// <summary>
-    /// The layer id the snapshot is published under, found by name so the
-    /// number does not depend on the demo catalogue's ordering.
+    /// The layer id the layer under test is published under, found by name so
+    /// the number does not depend on a service's layer ordering.
     /// </summary>
-    internal static async Task<int> ResolveLayerAsync(HttpClient client, CancellationToken cancellationToken)
+    internal static async Task<int> ResolveLayerAsync(
+        HttpClient client,
+        string service,
+        string layerName,
+        CancellationToken cancellationToken)
     {
         using var document = JsonDocument.Parse(
-            await client.GetStringAsync($"{BasePath}?f=json", cancellationToken));
+            await client.GetStringAsync($"{BasePath}/{service}/FeatureServer?f=json", cancellationToken));
         foreach (var layer in document.RootElement.GetProperty("layers").EnumerateArray())
         {
-            if (string.Equals(layer.GetProperty("name").GetString(), LayerName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(layer.GetProperty("name").GetString(), layerName, StringComparison.OrdinalIgnoreCase))
             {
                 return layer.GetProperty("id").GetInt32();
             }
         }
 
-        throw new InvalidOperationException($"the host's demo FeatureServer does not publish a '{LayerName}' layer.");
+        throw new InvalidOperationException(
+            $"the host's '{service}' FeatureServer does not publish a '{layerName}' layer.");
     }
 
     /// <summary>One page-walk result: how many round trips a full transfer took, and what it cost.</summary>
@@ -68,11 +74,13 @@ internal static class HttpBaseline
     /// </summary>
     internal static async Task<IReadOnlyList<PagingReport>> PageThroughAsync(
         string host,
+        string service,
+        string layerName,
         int warmup,
         CancellationToken cancellationToken)
     {
         using var client = new HttpClient { BaseAddress = new Uri(host) };
-        var layer = await ResolveLayerAsync(client, cancellationToken);
+        var layer = await ResolveLayerAsync(client, service, layerName, cancellationToken);
         var reports = new List<PagingReport>();
         foreach (var request in QueryRequest.Scenarios)
         {
@@ -90,7 +98,7 @@ internal static class HttpBaseline
 
             for (var i = 0; i < warmup; i++)
             {
-                using var warm = await client.GetAsync(Query(layer, parameters, 0), cancellationToken);
+                using var warm = await client.GetAsync(Query(service, layer, parameters, 0), cancellationToken);
             }
 
             var pages = 0;
@@ -101,7 +109,7 @@ internal static class HttpBaseline
             var exceeded = true;
             while (exceeded)
             {
-                var page = await ReadAsync(client, Query(layer, parameters, rows), cancellationToken);
+                var page = await ReadAsync(client, Query(service, layer, parameters, rows), cancellationToken);
                 var carried = CountOf(page);
                 lastPageRows = (int)carried;
                 bytes += page.RootElement.GetRawText().Length;
@@ -117,29 +125,31 @@ internal static class HttpBaseline
         return reports;
     }
 
-    private static string Query(int layer, Dictionary<string, string> parameters, int offset)
+    private static string Query(string service, int layer, Dictionary<string, string> parameters, int offset)
     {
         var withOffset = new Dictionary<string, string>(parameters, StringComparer.Ordinal)
         {
             ["resultOffset"] = offset.ToString(CultureInfo.InvariantCulture),
         };
-        return $"{BasePath}/{layer}/query?{string.Join('&', withOffset.Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value)}"))}";
+        return $"{BasePath}/{service}/FeatureServer/{layer}/query?{string.Join('&', withOffset.Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value)}"))}";
     }
 
     internal static async Task<IReadOnlyList<HttpReport>> RunAsync(
         string host,
+        string service,
+        string layerName,
         int warmup,
         int iterations,
         CancellationToken cancellationToken)
     {
         using var client = new HttpClient { BaseAddress = new Uri(host) };
-        var layer = await ResolveLayerAsync(client, cancellationToken);
-        Console.WriteLine($"# end-to-end layer {layer} ({LayerName}) of {BasePath}");
+        var layer = await ResolveLayerAsync(client, service, layerName, cancellationToken);
+        Console.WriteLine($"# end-to-end layer {layer} ({layerName}) of {BasePath}/{service}/FeatureServer");
         var reports = new List<HttpReport>(); foreach (var request in QueryRequest.Scenarios)
         {
             foreach (var variant in QueryRequest.Variants)
             {
-                var path = Path(layer, request, variant);
+                var path = Path(service, layer, request, variant);
                 var samples = await SampleAsync(client, path, warmup, iterations, cancellationToken);
                 var sorted = samples.Select(sample => sample.Milliseconds).Order().ToArray();
                 var body = await ReadAsync(client, path, cancellationToken);
@@ -198,7 +208,7 @@ internal static class HttpBaseline
         return root.TryGetProperty("features", out var features) ? features.GetArrayLength() : 0;
     }
 
-    internal static string Path(int layer, QueryRequest request, string variant)
+    internal static string Path(string service, int layer, QueryRequest request, string variant)
     {
         var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -214,27 +224,27 @@ internal static class HttpBaseline
         if (QueryRequest.IsCountOnly(variant))
         {
             parameters["returnCountOnly"] = "true";
-            return Query(layer, parameters);
+            return Query(service, layer, parameters);
         }
 
         if (QueryRequest.IsStatistics(variant))
         {
             parameters["outStatistics"] = StatisticsJson(request);
             parameters["groupByFieldsForStatistics"] = request.GroupByField ?? string.Empty;
-            return Query(layer, parameters);
+            return Query(service, layer, parameters);
         }
 
         parameters["orderByFields"] = request.OrderDescending
             ? FormattableString.Invariant($"{request.OrderByField} DESC")
             : request.OrderByField;
         parameters["resultRecordCount"] = request.ResultRecordCount.ToString(CultureInfo.InvariantCulture);
-        return Query(layer, parameters);
+        return Query(service, layer, parameters);
     }
 
     private static string StatisticsJson(QueryRequest request) =>
         FormattableString.Invariant(
             $$"""[{"statisticType":"count","onStatisticField":"*","outStatisticFieldName":"n"},{"statisticType":"{{QueryRequest.StatisticsType}}","onStatisticField":"{{QueryRequest.PopulationField}}","outStatisticFieldName":"avg_{{QueryRequest.PopulationField}}"}]""");
 
-    private static string Query(int layer, Dictionary<string, string> parameters) =>
-        $"{BasePath}/{layer}/query?{string.Join('&', parameters.Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value)}"))}";
+    private static string Query(string service, int layer, Dictionary<string, string> parameters) =>
+        $"{BasePath}/{service}/FeatureServer/{layer}/query?{string.Join('&', parameters.Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value)}"))}";
 }

@@ -1,0 +1,34 @@
+# SpatialEngine-u2x.1 query baseline — store=postgis label=idle-postgis-r1
+# layer public.spike_world_cities rows=34135 srid=4326 geometry=geometry idColumns=[] iterations=30 warmup=5
+# A=ScanAsync+in-adapter  B=QueryAsync pushdown  Bp=QueryAsync paged plan (order+limit)  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)
+
+path     scenario variant     cold_ms     p50_ms     p95_ms    mean_ms      alloc_MB    peak_MB       rows    result
+# path C (IFeatureLookup by identity) is unavailable here: dataset 'public.spike_world_cities' declares no integer identity column, so the per-feature read face refuses it (ADR-0140).
+# europe: bbox BoundingBox { MinX = -10, MinY = 36, MaxX = 5, MaxY = 55 } where 'population > 100000' → attribute pushdown supported
+# global: bbox BoundingBox { MinX = -180, MinY = -90, MaxX = 180, MaxY = 90 } where 'population > 100000' → attribute pushdown supported
+A-scan   europe  page25        151.892    167.040    201.761    171.434      31.11      17.67      34135         25
+B-push   europe  page25        160.904    188.250    224.734    190.509      46.80      20.78        283         25
+Bp-page  europe  page25        147.439    175.628    220.828    179.181      46.74      20.22         25         25
+D-emul   europe  page25          6.860      7.322      9.614      7.707       0.81       0.82         25         25
+A-scan   europe  countOnly     105.776    114.776    134.241    117.694      31.11      17.72      34135        283
+B-push   europe  countOnly     120.878    141.384    180.220    144.443      46.78      20.73        283        283
+Bp-page  europe  countOnly     131.744    171.321    201.155    171.746      46.80      20.32        283        283
+D-emul   europe  countOnly       5.356      5.704      6.939      6.115       0.78       0.79          0        283
+A-scan   europe  statistics    119.469    125.842    150.570    129.492      31.09      17.71      34135          8
+B-push   europe  statistics    123.918    135.192    148.619    136.165      46.75      20.21        283          8
+Bp-page  europe  statistics    123.784    132.485    155.748    137.117      46.80      20.74        283          8
+D-emul   europe  statistics      5.377      5.666      6.973      5.855       0.78       0.80          8          8
+A-scan   global  page25        145.879    185.923    233.464    188.936      31.91      18.59      34135         25
+B-push   global  page25        146.779    175.469    219.415    178.084      48.02      21.96       6253         25
+Bp-page  global  page25        146.259    164.118    262.657    183.222      47.56      21.09         25         25
+D-emul   global  page25         16.117     19.904     26.822     19.967       1.31       1.33         25         25
+A-scan   global  countOnly     116.550    124.535    159.476    130.721      31.91      18.58      34135       6253
+B-push   global  countOnly     135.374    151.772    217.864    168.955      48.04      21.97       6253       6253
+Bp-page  global  countOnly     145.421    175.017    229.072    175.176      48.72      22.71       6253       6253
+D-emul   global  countOnly       6.451      7.004      8.916      7.451       0.78       0.79          0       6253
+A-scan   global  statistics    139.322    160.492    175.462    159.891      31.58      18.25      34135        171
+B-push   global  statistics    148.750    180.846    218.916    187.168      47.69      21.69       6253        171
+Bp-page  global  statistics    178.919    205.052    283.513    216.413      48.40      22.40       6253        171
+D-emul   global  statistics      6.913      7.487     12.037      8.013       0.79       0.80        171        171
+
+# json written to artifacts/spike-u2x.1/postgis-no-index.json

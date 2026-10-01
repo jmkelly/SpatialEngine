@@ -1,7 +1,7 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
-using Spatial.Esri.Codec;
+using Spatial.Core.Features.Query;
 
 namespace Spatial.Spike.QueryBaseline;
 
@@ -33,7 +33,7 @@ internal sealed class QueryRunner
     internal async Task<Outcome> ScanAsync(
         QueryRequest request,
         string variant,
-        EsriFilterClause? where,
+        Predicate? where,
         CancellationToken cancellationToken)
     {
         var batches = await _store.ScanAsync(Dataset, cancellationToken);
@@ -51,13 +51,14 @@ internal sealed class QueryRunner
     internal async Task<Outcome> PushdownAsync(
         QueryRequest request,
         string variant,
-        EsriFilterClause? where,
-        string? storeFilter,
+        Predicate? where,
+        Predicate? storeFilter,
+        bool paged,
         CancellationToken cancellationToken)
     {
-        var batches = await _store.QueryAsync(Dataset, request.Bbox, storeFilter, cancellationToken);
-        var matched = AdapterMirror.Match(batches, _model, where, request.Envelope, cancellationToken);
-        return Shape(request, variant, matched, Materialised(batches), cancellationToken);
+        var page = await _store.QueryAsync(Dataset, request.Plan(paged, variant), cancellationToken);
+        var matched = AdapterMirror.Match(page.Batches, _model, where, request.Envelope, cancellationToken);
+        return Shape(request, variant, matched, Materialised(page.Batches), cancellationToken);
     }
 
     /// <summary>
@@ -70,12 +71,37 @@ internal sealed class QueryRunner
     {
         try
         {
-            await _store.QueryAsync(Dataset, request.Bbox, request.StoreFilter, cancellationToken);
+            await _store.QueryAsync(
+                Dataset,
+                new FeatureQuery(Where: request.StoreFilter, BoundingBox: request.Bbox),
+                cancellationToken);
             return true;
         }
         catch (SpatialException failure) when (failure.Code == SpatialException.InvalidArguments)
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Whether the per-feature read face can be measured at all on this layer:
+    /// the store has to implement it, and the dataset has to declare an
+    /// identity column — a keyless dataset is refused with
+    /// <c>invalid.arguments</c> by name (ADR-0140), not answered empty, so
+    /// path C is reported as unavailable rather than failed.
+    /// </summary>
+    internal string? IdentityUnavailable
+    {
+        get
+        {
+            if (_lookup is null)
+            {
+                return "the store under test does not implement IFeatureLookup.";
+            }
+
+            return _model.IdentityIndex < 0
+                ? $"dataset '{Dataset}' declares no integer identity column, so the per-feature read face refuses it (ADR-0140)."
+                : null;
         }
     }
 
@@ -95,7 +121,7 @@ internal sealed class QueryRunner
     internal Task<Outcome> EmulatedPushdownAsync(
         QueryRequest request,
         string variant,
-        EsriFilterClause? where,
+        Predicate? where,
         CancellationToken cancellationToken) =>
         Task.FromResult(EmulatedPushdown.Run(request, variant, _resident, _model, where, cancellationToken));
 
@@ -170,7 +196,7 @@ internal static class EmulatedPushdown
         string variant,
         IReadOnlyList<Feature> resident,
         LayerModel model,
-        EsriFilterClause? where,
+        Predicate? where,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -195,7 +221,7 @@ internal static class EmulatedPushdown
         QueryRequest request,
         IReadOnlyList<Feature> resident,
         LayerModel model,
-        EsriFilterClause? where) =>
+        Predicate? where) =>
         [.. Order([.. Matches(request, resident, model, where)], model, request).Take(PageCap(request))];
 
     private static int PageCap(QueryRequest request) => Math.Min(request.ResultRecordCount, 1000);
@@ -204,7 +230,7 @@ internal static class EmulatedPushdown
         QueryRequest request,
         IReadOnlyList<Feature> resident,
         LayerModel model,
-        EsriFilterClause? where)
+        Predicate? where)
     {
         var groups = new HashSet<string>(StringComparer.Ordinal);
         foreach (var feature in Matches(request, resident, model, where))
@@ -219,16 +245,14 @@ internal static class EmulatedPushdown
         QueryRequest request,
         IReadOnlyList<Feature> resident,
         LayerModel model,
-        EsriFilterClause? where)
+        Predicate? where)
     {
         var envelope = request.Envelope;
         long ordinal = 0;
         foreach (var feature in resident)
         {
             ordinal++;
-            var objectId = model.ResolveObjectId(feature, ordinal);
-            var synthetic = new EsriSyntheticField("OBJECTID", AttributeValue.FromInt64(objectId));
-            if ((where is null || where.Matches(feature, synthetic)) && Intersects(feature, model, envelope))
+            if (AdapterMirror.MatchesWhere(feature, where) && Intersects(feature, model, envelope))
             {
                 yield return feature;
             }

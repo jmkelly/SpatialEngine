@@ -1,0 +1,50 @@
+# SpatialEngine-u2x.1 query baseline — store=memory label=e2e/memory-host-r2
+# layer public.spike_world_cities rows=34135 srid=4326 geometry=geometry idColumns=[] iterations=20 warmup=3
+# A=ScanAsync+in-adapter  B=QueryAsync pushdown  Bp=QueryAsync paged plan (order+limit)  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)
+
+path     scenario variant     cold_ms     p50_ms     p95_ms    mean_ms      alloc_MB    peak_MB       rows    result
+# path C (IFeatureLookup by identity) is unavailable here: dataset 'public.spike_world_cities' declares no integer identity column, so the per-feature read face refuses it (ADR-0140).
+# europe: bbox BoundingBox { MinX = -10, MinY = 36, MaxX = 5, MaxY = 55 } where 'population > 100000' → attribute pushdown supported
+# global: bbox BoundingBox { MinX = -180, MinY = -90, MaxX = 180, MaxY = 90 } where 'population > 100000' → attribute pushdown supported
+A-scan   europe  page25          8.647      9.830     49.121     20.833       1.36       1.37      34135         25
+B-push   europe  page25          5.824      8.800     12.623      8.743       0.86       0.88        283         25
+Bp-page  europe  page25          5.980      6.337      6.870      6.353       0.84       0.86         25         25
+D-emul   europe  page25          6.466      8.355      8.936      8.096       0.81       0.82         25         25
+A-scan   europe  countOnly       9.486     10.549     17.148     11.596       1.36       1.38      34135        283
+B-push   europe  countOnly       7.570      7.831     10.042      8.272       0.86       0.88        283        283
+Bp-page  europe  countOnly       8.034      8.732      9.551      8.774       0.89       0.90        283        283
+D-emul   europe  countOnly       6.744      8.021      9.162      8.137       0.78       0.79          0        283
+A-scan   europe  statistics     10.500     11.260     13.197     11.679       1.35       1.36      34135          8
+B-push   europe  statistics      7.256      8.157      9.114      8.241       0.84       0.85        283          8
+Bp-page  europe  statistics      7.359      7.970     11.145      8.376       0.88       0.89        283          8
+D-emul   europe  statistics      6.897      7.503     11.135      7.932       0.78       0.80          8          8
+A-scan   global  page25         18.398     22.490     28.483     23.621       2.17       2.18      34135         25
+B-push   global  page25         18.121     19.799     21.226     19.708       2.10       2.12       6253         25
+Bp-page  global  page25         20.924     22.922     27.890     23.858       1.66       1.67         25         25
+D-emul   global  page25         15.489     16.046     18.171     16.552       1.31       1.33         25         25
+A-scan   global  countOnly      18.389     19.859     20.518     20.048       2.17       2.18      34135       6253
+B-push   global  countOnly      17.590     19.416     24.913     20.242       2.10       2.12       6253       6253
+Bp-page  global  countOnly      27.050     32.768     40.981     34.714       2.79       2.81       6253       6253
+D-emul   global  countOnly       7.055      7.643     11.771      8.153       0.78       0.79          0       6253
+A-scan   global  statistics     12.061     13.490     19.601     14.283       1.83       1.85      34135        171
+B-push   global  statistics     11.510     13.740     20.088     14.915       1.77       1.78       6253        171
+Bp-page  global  statistics     19.132     25.594     32.932     25.579       2.46       2.47       6253        171
+D-emul   global  statistics      5.525      5.688      6.777      6.153       0.79       0.80        171        171
+# end-to-end layer 2 (world_cities) of /arcgis/rest/services/demo/FeatureServer
+
+# end-to-end over HTTP at http://127.0.0.1:5212 (FeatureServer service 'demo', 20 iterations)
+scenario variant     p50_ms     p95_ms     bytes    rows
+europe   page25         85.652     90.529       4661         25
+europe   countOnly      85.113     90.629         13        283
+europe   statistics     84.945     91.787        962          8
+global   page25        254.893    290.475       4702         25
+global   countOnly     224.138    240.458         14       6253
+global   statistics    236.843    319.617      12202        171
+
+# mirror fidelity, europe countOnly: MATCH
+# mirror fidelity, global countOnly: MATCH
+
+# paging the whole matched set with resultOffset (the layer's maxRecordCount page)
+scenario     pages      bytes   total_ms  mean_page_ms  last_page
+europe          1      46009     80.474       80.474         283
+global          7    1008751   2132.470      304.639         253

@@ -1,0 +1,13 @@
+                                                                                                                       QUERY PLAN                                                                                                                       
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on spike_world_cities (actual rows=283 loops=1)
+   Recheck Cond: (population > 100000)
+   Filter: st_intersects(geometry, '0103000020E6100000010000000500000000000000000024C0000000000000424000000000000024C00000000000804B4000000000000014400000000000804B400000000000001440000000000000424000000000000024C00000000000004240'::geometry)
+   Heap Blocks: exact=38
+   ->  BitmapAnd (actual rows=0 loops=1)
+         ->  Bitmap Index Scan on world_cities_geometry_gix (actual rows=2655 loops=1)
+               Index Cond: (geometry && '0103000020E6100000010000000500000000000000000024C0000000000000424000000000000024C00000000000804B4000000000000014400000000000804B400000000000001440000000000000424000000000000024C00000000000004240'::geometry)
+         ->  Bitmap Index Scan on world_cities_population_ix (actual rows=6253 loops=1)
+               Index Cond: (population > 100000)
+(9 rows)
+

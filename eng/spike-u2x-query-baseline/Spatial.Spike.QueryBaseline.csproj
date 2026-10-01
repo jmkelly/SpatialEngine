@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\Spatial.Core\Spatial.Core.csproj" />
     <ProjectReference Include="..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Spatial.Esri.Codec\Spatial.Esri.Codec.csproj" />
+    <ProjectReference Include="..\..\src\Spatial.Querying\Spatial.Querying.csproj" />
     <ProjectReference Include="..\..\src\Spatial.Stores.Demo\Spatial.Stores.Demo.csproj" />
     <ProjectReference Include="..\..\src\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
     <ProjectReference Include="..\..\src\Spatial.Stores.PostGIS\Spatial.Stores.PostGIS.csproj" />

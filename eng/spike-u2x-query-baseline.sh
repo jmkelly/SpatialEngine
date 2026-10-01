@@ -9,7 +9,11 @@
 #
 #   eng/spike-u2x-query-baseline.sh                     # in-memory store, no Docker
 #   eng/spike-u2x-query-baseline.sh --store=postgis     # real PostGIS in a container
-#   eng/spike-u2x-query-baseline.sh --host=URL          # add the end-to-end HTTP numbers
+#   eng/spike-u2x-query-baseline.sh --host=URL --host-service=NAME --host-layer=NAME
+#
+# For the end-to-end run on a host that serves PostGIS, use
+# eng/spike-u2x-postgis-e2e.sh: it starts the database, the host and the
+# publish flow for you.
 #
 # With --store=postgis a throwaway postgis/postgis container is started,
 # the snapshot is loaded, the paths are measured twice — once over the table
@@ -36,7 +40,7 @@ while [[ $# -gt 0 ]]; do
     --reuse)
       FORWARD+=("--reuse")
       ;;
-    --host=* | --iterations=* | --warmup=* | --label=* | --json=* | --connection=*)
+    --host=* | --host-service=* | --host-layer=* | --iterations=* | --warmup=* | --label=* | --json=* | --connection=*)
       FORWARD+=("$1")
       ;;
     -h | --help)
