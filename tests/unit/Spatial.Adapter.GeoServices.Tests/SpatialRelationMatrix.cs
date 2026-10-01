@@ -27,8 +27,13 @@ internal sealed record RelationFixture(
         ]),
         FixtureShape.Line => GeometryFactory.CreateLineString(
             [new Coordinate(Ordinates[0], Ordinates[1]), new Coordinate(Ordinates[2], Ordinates[3])]),
+        FixtureShape.Polyline => GeometryFactory.CreateLineString(Vertices().ToArray()),
         _ => GeometryFactory.CreatePoint(Ordinates[0], Ordinates[1]),
     };
+
+    /// <summary>The vertices of a multi-vertex line, read off the ordinates in pairs.</summary>
+    private IEnumerable<Coordinate> Vertices() =>
+        Ordinates.Chunk(2).Select(pair => new Coordinate(pair[0], pair[1]));
 
     /// <summary>
     /// The same fixture as the Esri JSON a <c>geometries1</c>/<c>geometries2</c>
@@ -41,6 +46,8 @@ internal sealed record RelationFixture(
             $$"""{"rings":[[[{{Ordinates[0]}},{{Ordinates[1]}}],[{{Ordinates[2]}},{{Ordinates[1]}}],[{{Ordinates[2]}},{{Ordinates[3]}}],[{{Ordinates[0]}},{{Ordinates[3]}}],[{{Ordinates[0]}},{{Ordinates[1]}}]]]}""",
         FixtureShape.Line =>
             $$"""{"paths":[[[{{Ordinates[0]}},{{Ordinates[1]}}],[{{Ordinates[2]}},{{Ordinates[3]}}]]]}""",
+        FixtureShape.Polyline =>
+            $$"""{"paths":[[{{string.Join(',', Vertices().Select(vertex => $$"""[{{vertex.X}},{{vertex.Y}}]"""))}}]]}""",
         _ => $$"""{"x":{{Ordinates[0]}},"y":{{Ordinates[1]}}}""",
     };
 
@@ -60,17 +67,27 @@ internal sealed record RelationFixture(
                     [first, new Nts.Coordinate(Ordinates[2], Ordinates[1]), new Nts.Coordinate(Ordinates[2], Ordinates[3]), new Nts.Coordinate(Ordinates[0], Ordinates[3]), first]),
                 FixtureShape.Line => Nts.GeometryFactory.Default.CreateLineString(
                     [first, new Nts.Coordinate(Ordinates[2], Ordinates[3])]),
+                FixtureShape.Polyline => Nts.GeometryFactory.Default.CreateLineString(
+                    [.. Vertices().Select(vertex => new Nts.Coordinate(vertex.X, vertex.Y))]),
                 _ => Nts.GeometryFactory.Default.CreatePoint(first),
             };
         }
     }
 }
 
-/// <summary>The three fixture shapes: a polygon, a line or a point.</summary>
+/// <summary>
+/// The four fixture shapes: a polygon, a two-vertex line, a multi-vertex line
+/// or a point. The polyline is the pair ADR-0169 serves deliberately and no
+/// two-vertex line can spell — a line lying wholly inside an area and touching
+/// its boundary at its own interior vertex is three vertices, because a
+/// straight line either lies along the edge, crosses the area, or stops short
+/// of it.
+/// </summary>
 internal enum FixtureShape
 {
     Polygon,
     Line,
+    Polyline,
     Point,
 }
 
@@ -148,6 +165,7 @@ internal sealed record RelationVerdicts(
 /// | line (5,0)-(20,0), along the edge and past it | <c>FF2101102</c> | F | F | T | F | F | T |
 /// | line (0,5)-(20,5), crossing | <c>1F2001102</c> | F | F | F | F | T | T |
 /// | line (2,2)-(8,8), inside | <c>102FF1FF2</c> | F | T | F | F | F | T |
+/// | line (5,2)-(10,5)-(5,8), inside and touching the edge | <c>1020F1FF2</c> | F | T | F | F | T | T |
 /// | line (0,0)-(0,10), lying on the boundary | <c>FF2101FF2</c> | F | F | T | F | F | T |
 /// | point (5,5), inside | <c>0F2FF1FF2</c> | F | T | F | F | F | T |
 /// | point (0,5), on the boundary | <c>FF20F1FF2</c> | F | F | T | F | F | T |
@@ -165,6 +183,17 @@ internal sealed record RelationVerdicts(
 /// the digits now show at a glance:
 /// <see cref="FeatureSpatialRelationTests"/> derives each one from the
 /// geometry and is what caught the two that were not (ADR-0156).
+///
+/// The <c>line-touch-edge</c> row is a polyline rather than a two-vertex
+/// line, and it is here for a measurement rather than for a served answer: it
+/// is the single-part half of the divergence class ADR-0166 measured and
+/// ADR-0169 serves deliberately, and a straight two-vertex line cannot spell
+/// it — a line either lies along the edge, crosses the area, or stops short
+/// of it, and only a line that bends reaches the boundary at its own interior
+/// vertex. Before this row the pushdown battery's "zero divergences over 1,536
+/// single-part checks" was true of the fixtures it walked and silent on the
+/// class (SpatialEngine-sck); the row makes that one pair a measured
+/// divergence rather than a fixture table's missing letter.
 /// </summary>
 internal static class SpatialRelationMatrix
 {
@@ -173,7 +202,7 @@ internal static class SpatialRelationMatrix
     [
         "square-equal", "square-inner", "square-overlap", "square-corner", "square-above", "square-outside",
         "line-crossing", "line-inside", "line-on-boundary", "line-collinear", "line-edge",
-        "line-shifted-collinear",
+        "line-shifted-collinear", "line-touch-edge",
         "point-inside", "point-on-boundary", "point-vertex", "point-outside",
     ];
 
@@ -192,6 +221,7 @@ internal static class SpatialRelationMatrix
         ["line-collinear"] = Line("line-collinear", -5, 0, 15, 0),
         ["line-edge"] = Line("line-edge", 0, 0, 10, 0),
         ["line-shifted-collinear"] = Line("line-shifted-collinear", 5, 0, 20, 0),
+        ["line-touch-edge"] = Polyline("line-touch-edge", 5, 2, 10, 5, 5, 8),
         ["point-inside"] = Point("point-inside", 5, 5),
         ["point-on-boundary"] = Point("point-on-boundary", 0, 5),
         ["point-vertex"] = Point("point-vertex", 0, 0),
@@ -221,6 +251,7 @@ internal static class SpatialRelationMatrix
             ["line-collinear"] = new("FF21F1102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-shifted-collinear"] = new("FF2101102", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["line-crossing"] = new("1F2001102", Contains: false, Within: false, Touches: false, Overlaps: false, Crosses: true, Intersects: true),
+            ["line-touch-edge"] = new("1020F1FF2", Contains: false, Within: true, Touches: false, Overlaps: false, Crosses: true, Intersects: true),
             ["line-inside"] = new("102FF1FF2", Contains: false, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
             ["line-on-boundary"] = new("FF2101FF2", Contains: false, Within: false, Touches: true, Overlaps: false, Crosses: false, Intersects: true),
             ["point-inside"] = new("0F2FF1FF2", Contains: false, Within: true, Touches: false, Overlaps: false, Crosses: false, Intersects: true),
@@ -322,6 +353,10 @@ internal static class SpatialRelationMatrix
 
     private static RelationFixture Line(string name, double x1, double y1, double x2, double y2) =>
         new(name, FixtureShape.Line, [x1, y1, x2, y2]);
+
+    /// <summary>A line of more than two vertices, ordinates in x/y pairs.</summary>
+    private static RelationFixture Polyline(string name, params double[] ordinates) =>
+        new(name, FixtureShape.Polyline, ordinates);
 
     private static RelationFixture Point(string name, double x, double y) =>
         new(name, FixtureShape.Point, [x, y]);

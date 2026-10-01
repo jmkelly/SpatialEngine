@@ -56,9 +56,10 @@ The rule that decides every future case is this one:
    is the OGC pattern table read off the matrix this engine computes (ADR-0106,
    ADR-0166), and a provider's named predicate — `ST_Crosses`,
    `geometry.STCrosses` — is its own reading of the same row. Measured: over
-   the shared fixture table the two agree on all 1,536 single-part checks, and
-   they part company on multi-part operands, where ADR-0166 measured 16
-   divergences of 1,536, all `Crosses`, in two named classes. So a store
+   the shared fixture table the two agree on every single-part check but the
+   one ADR-0169 serves deliberately, and they part company on multi-part
+   operands, where ADR-0166 measured 16 divergences of 1,536, all `Crosses`,
+   in two named classes. So a store
    implementing the term with its own predicate does not answer the same
    question, and the served answer becomes a property of which store is behind
    the layer. A store that instead compiled the *served mask* would need its
@@ -128,16 +129,19 @@ the box is a different question.
 ## Consequences
 
 - `tests/unit/Spatial.Adapter.GeoServices.Tests/SpatialRelationPushdownTests.cs`
-  is the conformance, over all 256 ordered fixture pairs crossed with the six
+  is the conformance, over all 289 ordered fixture pairs crossed with the six
   served verbs: the plan a topology request compiles to is the query
-  geometry's envelope and no other member (1,536 cases), and every pair a verb
+  geometry's envelope and no other member (1,734 cases), and every pair a verb
   accepts is admitted by that box — the superset property the pre-filter rests
   on, so a change that made the box narrower than a superset fails here rather
   than dropping served features. The measured divergence is pinned beside it:
-  the served table against the provider's own named predicates is 0 of 1,536 on
-  single-part pairs, and the multi-part pair where they part company is spelled
-  out. Success, failure and cancellation are covered — the cancellation case is
-  the same cancellable match every other verb makes.
+  the served table against the provider's own named predicates is 1 of 1,734 on
+  single-part pairs — the pair ADR-0169 serves deliberately, added as the
+  `line-touch-edge` fixture when this battery was found to carry no line that
+  reached an area's boundary from inside (SpatialEngine-sck) — and the
+  multi-part pair where they part company is spelled out. Success, failure and
+  cancellation are covered — the cancellation case is the same cancellable
+  match every other verb makes.
 - Both pins were confirmed to bite. Narrowing the pushed box by one unit in
   `FeatureMatchPushdown.Box` fails the superset cases; restoring the discarded
   dimension-masked `Crosses` reading fails both divergence tests.
@@ -179,11 +183,22 @@ cancellation).
 
 | measurement | result |
 | --- | --- |
-| plan shape, 256 ordered fixture pairs × 6 served verbs | the plan is the query geometry's envelope; `Ids`, `Where`, `Projection`, `Order`, `Limit`, `Offset`, `Cursor` all null |
-| superset property over the same 1,536 | every pair a served verb accepts is admitted by the pushed box |
-| served table vs the provider's named predicates, 256 pairs × 6 verbs | **0 divergences of 1,536** on single-part fixtures |
+| plan shape, 289 ordered fixture pairs × 6 served verbs | the plan is the query geometry's envelope; `Ids`, `Where`, `Projection`, `Order`, `Limit`, `Offset`, `Cursor` all null |
+| superset property over the same 1,734 | every pair a served verb accepts is admitted by the pushed box |
+| served table vs the provider's named predicates, 289 pairs × 6 verbs | **1 divergence of 1,734** on single-part fixtures: the `line-touch-edge` row, `Crosses`, served `true` against the predicate's `false` (ADR-0169) |
 | the same over multi-part operands (ADR-0166's battery, 256 pairs × 6 verbs) | **16 divergences**, all `Crosses`: 6 area/line pairs where the line lies wholly inside the area and touches its boundary, 10 pairs with a 0-D operand |
 | count residual: `geometry=2,2,4,4`, `esriSpatialRelWithin`, `returnCountOnly` | box admits 2 rows, served count is 1 |
+
+2026-10-02, re-measured by SpatialEngine-sck: the battery grew a fixture. The
+single-part table carried no line that lies wholly inside an area and reaches
+its boundary from inside, so this record's "0 divergences of 1,536" was true
+of the fixtures it walked and silent on the class ADR-0169 serves
+deliberately. With `line-touch-edge` (5,2)-(10,5)-(5,8) in the table the
+figure is 17 fixtures, 289 ordered pairs, 1,734 checks and exactly one
+divergence — the pair ADR-0169 pins — and both the served table and the
+Geometry Service's `relation` cross-check now state that exception rather than
+ruling the class out. The decision is unchanged and the superset property is
+unaffected; only the coverage and the count are.
 
 Mutation checks, to show the pins are the claim rather than a restatement of
 the implementation: insetting the pushed box by one unit in
