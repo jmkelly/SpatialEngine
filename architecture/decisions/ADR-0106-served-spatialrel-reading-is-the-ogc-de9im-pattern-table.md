@@ -96,6 +96,13 @@ crosses and overlaps) are corrections *of* this reading, made against it.
   record decides which pattern answers which verb; it does not decide that
   asking the pattern computes the matrix. That is ADR-0156's subject, and the
   oracle it keeps is what checks it.
+> **Update (2026-10-01):** the engine's cell semantics are closed by ADR-0166:
+> the served table is read off the matrix NetTopologySuite 2.6 reports, that
+> matrix is the DE-9IM matrix, and the two ways into it are one computation.
+> What a live ArcGIS Server makes of `Crosses` for a line lying wholly inside a
+> polygon and touching its boundary is still open, and ADR-0166 names that pair
+> as the one where the served reading and the provider's own predicate differ.
+
 - **The edge semantics against a live ArcGIS Server** (SpatialEngine-msc) and
   **`esriSpatialRelContains` against a point query geometry**
   (SpatialEngine-aqy).

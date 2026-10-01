@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**153 records on disk.** `status` is the record's own word;
+**154 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -169,6 +169,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0163](ADR-0163-registered-null-operation-is-published.md) | A registered null operation is an operation, and it is published | accepted | 2026-10-08 | ADR-0087, ADR-0111 |
 | [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md) | Discovery reads the geometry type only from a value the server calls valid | accepted | 2026-10-01 | ADR-0157, ADR-0151 |
 | [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md) | The De9im column is the matrix, not a display of it | accepted | 2026-10-02 | ADR-0156 |
+| [0166](ADR-0166-the-engines-relate-is-the-de9im-matrix-read-as-jts-reads-it.md) | The engine's `Relate` is the DE-9IM matrix, read as JTS reads it | accepted | 2026-10-01 | ADR-0036, ADR-0106, ADR-0156, ADR-0165 |
 
 ## Reading order
 
@@ -214,6 +215,14 @@ out: the "Amended by" row already says everything about a pair.
 6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
 7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
 
+### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 5 records, 7,659 words (4% of the corpus)
+
+1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0106, 0156, 0166)*
+2. [0106](ADR-0106-served-spatialrel-reading-is-the-ogc-de9im-pattern-table.md)
+3. [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) *(narrowed by 0165)*
+4. [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md)
+5. [0166](ADR-0166-the-engines-relate-is-the-de9im-matrix-read-as-jts-reads-it.md)
+
 ### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 5 records, 8,654 words (5% of the corpus)
 
 1. [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) *(narrowed by 0154)*
@@ -221,13 +230,6 @@ out: the "Amended by" row already says everything about a pair.
 3. [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) *(narrowed by 0160)*
 4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) *(narrowed by 0161)*
 5. [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md)
-
-### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 4 records, 5,647 words (3% of the corpus)
-
-1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0106, 0156)*
-2. [0106](ADR-0106-served-spatialrel-reading-is-the-ogc-de9im-pattern-table.md)
-3. [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) *(narrowed by 0165)*
-4. [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md)
 
 ### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 4 records, 6,125 words (4% of the corpus)
 
@@ -271,7 +273,7 @@ record nobody amends does not appear, and a record that carries a
 hand-written `amended-by:` is checked against this list rather than
 believed.
 
-- **0036** is amended by 0106, 0156
+- **0036** is amended by 0106, 0156, 0166
 - **0038** is amended by 0140
 - **0041** is amended by 0082, 0090, 0149
 - **0058** is amended by 0100
