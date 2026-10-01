@@ -279,17 +279,38 @@ internal static class SqlServerQueries
     /// authored table is discovered by sampling its data; an empty table falls
     /// back to the dataset's recorded SRID and then to
     /// <see cref="DefaultSrid"/>.
+    ///
+    /// <para>
+    /// The SRID is a property and is read unconditionally. The type is a
+    /// method the server refuses to run on a value it considers invalid
+    /// (error 24144), which is a value this store reads, writes and reduces,
+    /// so it is read through a <c>CASE</c> that answers nothing for such a
+    /// value and leaves the type at <see cref="DefaultGeometryType"/> — the
+    /// answer an empty table already gives (ADR-0164).
+    /// </para>
     /// </summary>
     public static string SampleGeometry(SqlServerDatasetName dataset, string geometryColumn) =>
-        $"SELECT TOP 1 {Quoted(geometryColumn)}.STSrid, {Quoted(geometryColumn)}.STGeometryType() "
+        $"SELECT TOP 1 {Quoted(geometryColumn)}.STSrid, {SampledType(Quoted(geometryColumn))} "
         + $"FROM {dataset.QuoteQualified()} WHERE {Quoted(geometryColumn)} IS NOT NULL";
+
+    /// <summary>
+    /// The geometry type of one value, or nothing when the server considers it
+    /// invalid. SQL Server's <c>CASE</c> evaluates its branches in order and
+    /// stops at the first that holds, so <c>STGeometryType()</c> is only ever
+    /// run on a value <c>STIsValid()</c> has already accepted (ADR-0164).
+    /// </summary>
+    private static string SampledType(string property) =>
+        $"CASE WHEN {property}.STIsValid() = 1 THEN {property}.STGeometryType() END";
+
     /// <summary>
     /// One statement sampling the SRID and geometry type of every listed
     /// dataset, so the whole catalogue costs one round trip. Each arm carries
     /// its catalogue ordinal so the union is ordered deterministically; a
     /// dataset with no rows contributes NULL samples. The names come from the
     /// catalogue query itself (discovered, then bracket-quoted), never from
-    /// client text.
+    /// client text. A dataset whose sampled value is one the server considers
+    /// invalid contributes its SRID and no type rather than failing the whole
+    /// listing (ADR-0164).
     /// </summary>
     public static string SampleAllGeometry(IReadOnlyList<GeometrySample> datasets)
     {
@@ -315,7 +336,7 @@ internal static class SqlServerQueries
         var source = $"{sample.Dataset.QuoteQualified()} AS g WHERE g.{Quoted(sample.GeometryColumn)} IS NOT NULL";
         var property = $"g.{Quoted(sample.GeometryColumn)}";
         return $"SELECT {ordinal} AS ordinal, (SELECT TOP 1 {property}.STSrid FROM {source}) AS srid, "
-            + $"(SELECT TOP 1 {property}.STGeometryType() FROM {source}) AS geometry_type";
+            + $"(SELECT TOP 1 {SampledType(property)} FROM {source}) AS geometry_type";
     }
 
     /// <summary>

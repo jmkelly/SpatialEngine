@@ -104,6 +104,63 @@ public sealed class SqlServerIntegrationTests : IClassFixture<SqlServerContainer
         Assert.Contains("label", exception.Message);
     }
 
+    /// <summary>
+    /// A dataset whose <em>sampled</em> geometry is one the server considers
+    /// invalid is described, not refused. <c>STGeometryType()</c> raises a .NET
+    /// error (24144) on such a value, so an unguarded sample made the dataset
+    /// undescribable and every request on it failed at the catalogue with a
+    /// store error, while the read path returned the very same value (ADR-0164).
+    /// The SRID is a property and is still sampled from the value; the geometry
+    /// type falls back to the default, which is the answer an empty table gives.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_dataset_whose_sampled_geometry_is_invalid_is_still_described_and_read()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = $"dbo.invalid_{Guid.NewGuid().ToString("N")[..8]}";
+        // The bowtie, written out of band: a ring that crosses itself, which
+        // nothing in this store refuses to write and nothing in the shared
+        // reference refuses to reduce (ADR-0157).
+        await context.ExecuteAsync(
+            $"CREATE TABLE {dataset} (id bigint NOT NULL PRIMARY KEY, geom geometry NULL); "
+            + $"INSERT INTO {dataset} VALUES "
+            + "(1, geometry::STGeomFromText('POLYGON ((0 0, 2 2, 2 0, 0 2, 0 0))', 4326));");
+
+        var description = await context.Store.DescribeAsync(dataset);
+
+        Assert.Equal(dataset, description.Id);
+        Assert.Equal(4326, description.Srid);
+        Assert.Equal("Geometry", description.GeometryType);
+
+        var feature = (await context.Store.ScanAsync(dataset)).SelectMany(batch => batch.Features).Single();
+        Assert.Equal("1", feature.Id.Value);
+        Assert.IsType<Polygon>(feature["geom"].GeometryValue);
+    }
+
+    /// <summary>
+    /// One dataset holding an invalid geometry costs that dataset its sampled
+    /// geometry type and nothing else: every dataset is sampled in a single
+    /// statement, so an unguarded type read failed the whole catalogue
+    /// listing rather than one arm of it (ADR-0164).
+    /// </summary>
+    [SkippableFact]
+    public async Task The_catalogue_still_lists_a_dataset_whose_geometry_is_invalid_alongside_the_others()
+    {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
+        await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
+        var dataset = $"dbo.invalidcat_{Guid.NewGuid().ToString("N")[..8]}";
+        await context.ExecuteAsync(
+            $"CREATE TABLE {dataset} (id bigint NOT NULL PRIMARY KEY, geom geometry NULL); "
+            + $"INSERT INTO {dataset} VALUES "
+            + "(1, geometry::STGeomFromText('POLYGON ((0 0, 2 2, 2 0, 0 2, 0 0))', 4326));");
+
+        var ids = (await context.Store.ListAsync()).Select(summary => summary.Id).ToArray();
+
+        Assert.Contains(dataset, ids);
+        Assert.Contains("dbo.places", ids);
+    }
+
     [SkippableFact]
     public async Task Scan_returns_canonical_batches_with_crs_stamped_geometry()
     {
