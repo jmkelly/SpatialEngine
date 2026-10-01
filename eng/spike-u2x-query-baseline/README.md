@@ -38,6 +38,21 @@ uses) and reports, per path:
 Path D is an emulation over the same rows the store holds, not a store call —
 it is labelled as such in the output so nobody mistakes it for a shipped path.
 
+**B and Bp measure a pushdown only on a layer that can carry one.** A SQL
+store may only push a plan where the push is identity-preserving, and a dataset
+that declares no identity column names its features by the ordinal of the read
+— so a `WHERE` in SQL would renumber them (ADR-0097 §1) and an `ORDER BY` with
+no identity tie-break is an order an `OFFSET` cannot name (ADR-0116 §1). On
+such a layer the store answers the plan by reading the whole table and finishing
+it with the reference executor: the answer is right, and the read is the layer.
+The world-cities snapshot is such a layer (no integer identity field, so a
+table `CreateAsync` builds from it has no primary key), which is why the
+PostGIS `rows` column counts rows *returned* rather than rows read, and why the
+harness prints a note saying so on every run where it applies. An in-process
+store has no such limit: it evaluates the plan over the rows it already holds,
+named by the ordinal of that same set. See
+[RESULTS.md](RESULTS.md#the-postgis-rows-column-is-not-what-the-database-read).
+
 ## Request variants
 
 Each path is measured for the three result shapes the bead names:
