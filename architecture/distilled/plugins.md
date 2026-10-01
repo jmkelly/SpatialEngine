@@ -25,6 +25,10 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
 - Name a pushed row by the identity columns' positions in what was read, not by
   the columns appended for the mapper: the appended set named every pushed row
   of a keyed table by its ordinal. (SpatialEngine-u2x.55)
+- Ask what a declined pushdown is protecting before making every face decline
+  it: ADR-0097's rule is about the ordinal a feature is named by, and a count,
+  a distinct set and a grouped reduction return values, so they push on a
+  keyless layer where the feature read cannot. (SpatialEngine-xg5)
 - Apply each sort key as a then-key in `FeaturePlanExecutor.Order`; a fresh
   `OrderBy` per key made a composite order its last key's, and the SQL
   pushdowns were narrowed to the orders both sides agreed on.

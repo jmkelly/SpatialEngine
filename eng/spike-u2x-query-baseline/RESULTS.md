@@ -131,7 +131,16 @@ second time into features and then narrowed. That is why:
   move together;
 - `countOnly` and `statistics` cost the same as `page25` — the plan has no
   cap on those variants and nothing is reduced in SQL either, because the
-  count and the grouped aggregate are pushed under the same identity rule;
+  count and the grouped aggregate were pushed under the same identity rule.
+  **This is no longer true of the store** (ADR-0184 §1, 2026-10-06): a count,
+  a distinct set and a grouped reduction return values and no feature, so their
+  restriction is now pushed on a keyless layer too. The `countOnly` and
+  `statistics` cells in the tables above are the *measured* figures from
+  before that record and have not been re-run; expect them to fall to the
+  `D`-shaped allocation for a plan that returns one number. The `B`/`Bp`
+  feature reads are unchanged, and the whole read behind them is still the
+  documented answer for a keyless dataset (ADR-0184 §2), not a leak in the
+  plan;
 - the in-process `MemoryStore` numbers below *do* follow the rows (Bp 0.83 MB
   for 25 rows): an in-process store evaluates the plan over rows it already
   holds and names them by the ordinal of that same set, so nothing it does
@@ -249,7 +258,10 @@ are the ones that still hold and are reproduced above.
 
 - The box is shared; every number here is a **minimum of three runs**, and the
   load averages are recorded. Treat the milliseconds as ±20%, not as exact.
-- `Bp`'s 46–48 MB per call on PostGIS is unexplained and filed separately.
+- `Bp`'s 46–48 MB per call on PostGIS was unexplained when this file was
+  written; it is now explained (the whole read a keyless layer's feature page
+  still takes, ADR-0184 §2) and half of it is fixed (the reduction variants,
+  ADR-0184 §1). The cells above still show the pre-fix figures.
 - Path `D` remains an emulation over the rows the store holds. It is the only
   column that reaches the count and grouped-aggregate shapes, and no store face
   reaches it today (`IFeatureStore` has no count or aggregate plan;

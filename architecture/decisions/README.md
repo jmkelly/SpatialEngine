@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**169 records on disk.** `status` is the record's own word;
+**170 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -185,6 +185,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0181](ADR-0181-nadcon-states-its-longitudes-positive-west.md) | A NADCON deployment states its longitudes positive west, and the reader is where that is answered | accepted | 2026-10-08 | ADR-0168, ADR-0105, ADR-0180 |
 | [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md) | Serve the contains and within relations on a designated layer | accepted | 2026-10-04 | ADR-0100, ADR-0175, ADR-0081 |
 | [0183](ADR-0183-the-designation-is-authored-on-the-published-map-layer.md) | The designation is authored on the published map layer | accepted | 2026-10-05 | ADR-0175, ADR-0182, ADR-0053, ADR-0077 |
+| [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) | A reduction pushes its restriction on a dataset with no identity column | accepted | 2026-10-06 | ADR-0097, ADR-0116, ADR-0131, ADR-0133, ADR-0140, ADR-0147, ADR-0149 |
 
 ## Reading order
 
@@ -199,10 +200,10 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 19 records, 35,833 words (18% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 20 records, 37,895 words (19% of the corpus)
 
 1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158, 0167)*
-2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md)
+2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md) *(narrowed by 0184)*
 3. [0098](ADR-0098-store-query-surface.md) *(narrowed by 0121, 0127, 0128, 0131, 0132, 0133)*
 4. [0121](ADR-0121-ordinal-string-comparisons-in-pushdown.md) *(narrowed by 0123, 0124, 0136)*
 5. [0123](ADR-0123-a-pushed-comparison-states-the-order-it-wants.md) *(narrowed by 0126, 0132, 0136)*
@@ -220,6 +221,7 @@ out: the "Amended by" row already says everything about a pair.
 17. [0158](ADR-0158-json-query-plan-on-the-http-query-route.md)
 18. [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md)
 19. [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md)
+20. [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md)
 
 ### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 7 records, 10,973 words (6% of the corpus)
 
@@ -241,7 +243,7 @@ out: the "Amended by" row already says everything about a pair.
 6. [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md) *(narrowed by 0174)*
 7. [0174](ADR-0174-the-esri-wkt1-hotine-variant-a-takes-its-skew-angle-from-its-azimuth.md)
 
-### ADR-0109: the verification lanes, implemented — 7 records, 12,781 words (7% of the corpus)
+### ADR-0109: the verification lanes, implemented — 7 records, 12,781 words (6% of the corpus)
 
 1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
 2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148)*
@@ -268,7 +270,7 @@ out: the "Amended by" row already says everything about a pair.
 4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) *(narrowed by 0161)*
 5. [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md)
 
-### ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty — 4 records, 4,927 words (3% of the corpus)
+### ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty — 4 records, 4,927 words (2% of the corpus)
 
 1. [0058](ADR-0058-map-export-time-dynamic-layers-layer-option-cached-root.md) *(narrowed by 0100)*
 2. [0100](ADR-0100-map-timerelation-advertises-the-relation-the-engine-applies.md) *(narrowed by 0182)*
@@ -321,6 +323,7 @@ believed.
 - **0086** is amended by 0111, 0153, 0170, 0172
 - **0087** is amended by 0111, 0163
 - **0092** is amended by 0147
+- **0097** is amended by 0184
 - **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133
 - **0100** is amended by 0182
 - **0105** is amended by 0107, 0168, 0179, 0180
