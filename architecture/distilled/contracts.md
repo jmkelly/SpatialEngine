@@ -147,8 +147,10 @@ metres on the ground rather than degrees on a plane. Pure and cancellable.
   sharing no ground. The null operation is published alone: the concatenated
   form would have no steps and the reduced form a wider area at the same price.
 - **A deployed datum shift grid is applied per coordinate** (ADR-0105,
-  ADR-0107). Grids are configured, not embedded (`Spatial:Grids:Directories`,
-  a priority order), read as NTv2, and cached once found. Where a grid covers a
+  ADR-0107, ADR-0168). Grids are configured, not embedded (`Spatial:Grids:Directories`,
+  a priority order), read as NTv2 or as a NADCON `.las`/`.los` pair into the
+  same grid value, and cached once found. The standard that served a datum is
+  published with the operation. Where a grid covers a
   coordinate the shift is the grid's; where it does not — off its block, or for
   a datum no bundle serves — the classic Helmert stands, bit for bit as before.
   The choice is per coordinate, not per request, so a geometry crossing a

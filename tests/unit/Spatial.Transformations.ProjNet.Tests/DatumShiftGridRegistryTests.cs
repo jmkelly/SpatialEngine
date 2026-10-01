@@ -14,6 +14,17 @@ public sealed class DatumShiftGridRegistryTests : IDisposable
     private const string OrdnanceSurvey = "OSGB36";
     private const string NorthAmerican = "NAD83";
 
+    /// <summary>A NADCON pair's file names, as a catalogue row would carry them.</summary>
+    private const string NadconLatitudeFile = "conus.las";
+    private const string NadconLongitudeFile = "conus.los";
+
+    /// <summary>
+    /// The accuracy a NADCON operation is published at. A NADCON shift record
+    /// holds the shift alone, so there is no worst node in the file to read
+    /// and the row carries the figure instead.
+    /// </summary>
+    private const double NadconAccuracy = 0.15;
+
     private readonly List<string> _directories = [];
 
     public void Dispose()
@@ -182,6 +193,67 @@ public sealed class DatumShiftGridRegistryTests : IDisposable
         // Both are reported, including the one that does not exist: an operator
         // who mistyped a path needs to see it echoed back, not silently absent.
         Assert.Equal([directory, "/does/not/exist"], registry.Directories);
+    }
+
+    [Fact]
+    public void A_deployed_nadcon_pair_is_found_and_read_as_a_nadcon_grid()
+    {
+        var directory = DeployNadconPair();
+
+        var registry = DatumShiftGridRegistry.Load([directory], [NadconOperation]);
+
+        Assert.True(registry.TryGet(OrdnanceSurvey, out var grid));
+        Assert.Equal(GridFormat.Nadcon, grid!.Format);
+        Assert.Equal("CONUS", grid.Name);
+        Assert.Equal(NadconLatitudeFile, grid.FileName);
+        Assert.Equal(NadconAccuracy, grid.AccuracyMetres, 9);
+
+        // The two halves of the pair are separate containers: the latitude
+        // shift comes from the .las and the longitude shift from the .los, so
+        // the fixture's two different numbers come out as two different shifts.
+        Assert.Equal(1.0, ShiftOf(grid, -0.1276, 50.0), 6);
+        Assert.True(grid.TryShiftForward(-0.1276, 50.0, out var latitude, out var longitude));
+        Assert.Equal(50.0 + (1.0 / 3600.0), latitude, 9);
+        Assert.Equal(-0.1276 + (3.0 / 3600.0), longitude, 9);
+    }
+
+    [Fact]
+    public void A_nadcon_pair_with_one_half_missing_is_not_a_grid()
+    {
+        var directory = DeployNadconPair(longitude: false);
+
+        var registry = DatumShiftGridRegistry.Load([directory], [NadconOperation]);
+
+        // Half a pair is not a grid: a longitude shift with no latitude shift
+        // beside it is a datum error in every coordinate, so the half is
+        // refused and told about rather than read.
+        Assert.False(registry.TryGet(OrdnanceSurvey, out _));
+        var failure = Assert.Single(registry.Failures);
+        Assert.Equal(NadconLatitudeFile, failure.FileName);
+        Assert.Contains(NadconLongitudeFile, failure.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A NADCON row over the Ordnance Survey datum. The row is the test's own
+    /// rather than the catalogue's, because the point exercised here is the
+    /// registry's dispatch and not which bundle EPSG registers against which
+    /// datum.
+    /// </summary>
+    private static EpsgGridShiftOperations.GridShiftOperation NadconOperation =>
+        new(OrdnanceSurvey, NadconLatitudeFile, 4326, "Great Britain", NadconLongitudeFile, NadconAccuracy);
+
+    private string DeployNadconPair(bool longitude = true)
+    {
+        var directory = NewDirectory();
+        var latitudes = NadconFixture.Constant("CONUS", 49.5, 50.5, -1.0, 1.0, 0.25, 0.25, 1.0f);
+        var longitudes = NadconFixture.Constant("CONUS", 49.5, 50.5, -1.0, 1.0, 0.25, 0.25, 3.0f);
+        File.WriteAllBytes(Path.Combine(directory, NadconLatitudeFile), NadconFixture.ToBytes(latitudes, longitude: false));
+        if (longitude)
+        {
+            File.WriteAllBytes(Path.Combine(directory, NadconLongitudeFile), NadconFixture.ToBytes(longitudes, longitude: true));
+        }
+
+        return directory;
     }
 
     /// <summary>The latitude shift a grid applies, in seconds of arc.</summary>

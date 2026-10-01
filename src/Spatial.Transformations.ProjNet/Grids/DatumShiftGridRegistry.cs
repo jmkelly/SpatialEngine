@@ -40,20 +40,40 @@ internal sealed record GridLoadFailure(string FileName, string Reason);
 internal sealed class DatumShiftGridRegistry
 {
     /// <summary>A registry with no configured directory: no datum is grid-backed.</summary>
-    public static readonly DatumShiftGridRegistry Empty = new([]);
+    public static readonly DatumShiftGridRegistry Empty = new([], EpsgGridShiftOperations.Bundles);
 
     private readonly string[] _directories;
+    private readonly IReadOnlyList<EpsgGridShiftOperations.GridShiftOperation> _operations;
     private readonly ConcurrentDictionary<string, DatumShiftGrid?> _loaded = new(StringComparer.Ordinal);
     private readonly List<GridLoadFailure> _failures = [];
 
-    private DatumShiftGridRegistry(IReadOnlyList<string> directories) => _directories = [.. directories];
+    private DatumShiftGridRegistry(
+        IReadOnlyList<string> directories,
+        IReadOnlyList<EpsgGridShiftOperations.GridShiftOperation> operations)
+    {
+        _directories = [.. directories];
+        _operations = operations;
+    }
 
     /// <summary>
-    /// Builds a registry over a priority-ordered set of directories. The
-    /// order given is the order kept; a directory that does not exist is
-    /// remembered (so an operator sees it echoed back) and otherwise ignored.
+    /// Builds a registry over a priority-ordered set of directories, serving
+    /// the datums the catalogue publishes grid operations for. The order given
+    /// is the order kept; a directory that does not exist is remembered (so an
+    /// operator sees it echoed back) and otherwise ignored.
     /// </summary>
-    public static DatumShiftGridRegistry Load(IReadOnlyList<string> directories) => new(directories);
+    public static DatumShiftGridRegistry Load(IReadOnlyList<string> directories) =>
+        Load(directories, EpsgGridShiftOperations.Bundles);
+
+    /// <summary>
+    /// The same registry over a caller-supplied set of grid operations. A seam
+    /// for the tests, which exercise the two container shapes against datums
+    /// of their own choosing rather than only the bundles the catalogue
+    /// happens to name; the catalogue is what production resolves.
+    /// </summary>
+    public static DatumShiftGridRegistry Load(
+        IReadOnlyList<string> directories,
+        IReadOnlyList<EpsgGridShiftOperations.GridShiftOperation> operations) =>
+        new(directories, operations);
 
     /// <summary>The configured directories, in priority order, as configured.</summary>
     public IReadOnlyList<string> Directories => _directories;
@@ -113,40 +133,78 @@ internal sealed class DatumShiftGridRegistry
     /// </summary>
     private DatumShiftGrid? Load(string datumName)
     {
-        var operation = EpsgGridShiftOperations.For(datumName);
-        if (operation is null)
+        foreach (var operation in _operations.Where(operation =>
+            string.Equals(operation.GraphName, datumName, StringComparison.Ordinal)))
         {
-            return null;
-        }
-
-        foreach (var directory in _directories)
-        {
-            var path = Path.Combine(directory, operation.FileName);
-            if (!File.Exists(path))
+            foreach (var directory in _directories)
             {
-                continue;
-            }
+                var path = Path.Combine(directory, operation.FileName);
+                if (!File.Exists(path))
+                {
+                    continue;
+                }
 
-            if (!Ntv2GridReader.TryRead(path, out var grids, out var reason))
-            {
-                Record(operation.FileName, reason!);
-                continue;
-            }
+                // A row naming its own second file is a NADCON pair: the
+                // latitude shifts and the longitude shifts are two containers,
+                // and the reader joins them. Everything else is a single
+                // NTv2 bundle. Which of the two a row is is stated by the
+                // row, never guessed from the file's extension.
+                var read = operation.LongitudeFileName is { } longitudeFileName
+                    ? ReadNadconPair(directory, operation, path, longitudeFileName)
+                    : ReadNtv2Bundle(path);
 
-            // A bundle holds one sub-grid per published block. A grid
-            // operation names the datum it serves, so any sub-grid in it will
-            // do; a bundle that somehow holds none is a failure, not an empty
-            // grid.
-            if (grids.Count == 0)
-            {
-                Record(operation.FileName, $"'{Path.GetFileName(path)}' holds no sub-grid to shift with.");
-                continue;
-            }
+                if (read.Grid is not null)
+                {
+                    return read.Grid;
+                }
 
-            return grids[0];
+                Record(operation.FileName, read.Reason);
+            }
         }
 
         return null;
+    }
+
+    private static (DatumShiftGrid? Grid, string Reason) ReadNtv2Bundle(string path)
+    {
+        if (!Ntv2GridReader.TryRead(path, out var grids, out var reason))
+        {
+            return (null, reason!);
+        }
+
+        // A bundle holds one sub-grid per published block. A grid operation
+        // names the datum it serves, so any sub-grid in it will do; a bundle
+        // that somehow holds none is a failure, not an empty grid.
+        return grids.Count > 0
+            ? (grids[0], string.Empty)
+            : (null, $"'{Path.GetFileName(path)}' holds no sub-grid to shift with.");
+    }
+
+    private static (DatumShiftGrid? Grid, string Reason) ReadNadconPair(
+        string directory,
+        EpsgGridShiftOperations.GridShiftOperation operation,
+        string latitudePath,
+        string longitudeFileName)
+    {
+        // A NADCON grid's shift record states no accuracy, so the figure the
+        // operation is published with is the one its row carries. A row that
+        // names no figure has nothing to publish, which is a row that cannot
+        // be read rather than a grid with an accuracy of nothing.
+        if (operation.AccuracyMetres is not { } accuracy)
+        {
+            return (null, $"The grid operation for {operation.GraphName} names a NADCON pair but no accuracy to publish it at.");
+        }
+
+        return NadconGridReader.TryRead(
+            latitudePath,
+            Path.Combine(directory, longitudeFileName),
+            accuracy,
+            out var grids,
+            out var reason)
+            ? grids.Count > 0
+                ? (grids[0], string.Empty)
+                : (null, $"'{Path.GetFileName(latitudePath)}' and '{longitudeFileName}' hold no sub-grid to shift with.")
+            : (null, reason!);
     }
 
     /// <summary>

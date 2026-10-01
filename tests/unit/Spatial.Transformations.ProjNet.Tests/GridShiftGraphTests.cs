@@ -70,6 +70,42 @@ public sealed class GridShiftGraphTests : IDisposable
         GraphInvoker.Search(source, target, datumShiftGridRegistry: deployed ? Registry(deployed: true) : DatumShiftGridRegistry.Empty);
 
     [Fact]
+    public void A_deployed_nadcon_pair_publishes_the_standard_that_served_it()
+    {
+        // ADR-0105 §1 promises a client is told which standard its shift came
+        // from, so the format is published on the step and named in the method
+        // text rather than left as the file it happened to be read from.
+        var step = Assert.Single(
+            GraphInvoker.Search("EPSG:4326", "EPSG:4277", datumShiftGridRegistry: NadconRegistry())
+                .SelectMany(candidate => candidate.Steps),
+            step => step.GridShift is not null);
+
+        Assert.Equal("NADCON", step.GridShift!.Format);
+        Assert.Equal("conus.las", step.GridShift.FileName);
+        Assert.Contains("NADCON", step.Method, StringComparison.Ordinal);
+        Assert.DoesNotContain("NTv2", step.Method, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A registry over a directory holding a NADCON pair for Ordnance Survey
+    /// 1936 — the latitude shifts in one file and the longitude shifts in the
+    /// other, which is the shape a NADCON bundle has and an NTv2 bundle does
+    /// not.
+    /// </summary>
+    private static DatumShiftGridRegistry NadconRegistry()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"spatialengine-graph-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var latitudes = NadconFixture.Constant("CONUS", 49.5, 50.5, -1.0, 1.0, 0.25, 0.25, 1.0f);
+        var longitudes = NadconFixture.Constant("CONUS", 49.5, 50.5, -1.0, 1.0, 0.25, 0.25, 3.0f);
+        File.WriteAllBytes(Path.Combine(directory, "conus.las"), NadconFixture.ToBytes(latitudes, longitude: false));
+        File.WriteAllBytes(Path.Combine(directory, "conus.los"), NadconFixture.ToBytes(longitudes, longitude: true));
+        return DatumShiftGridRegistry.Load(
+            [directory],
+            [new EpsgGridShiftOperations.GridShiftOperation("OSGB36", "conus.las", 4326, "Great Britain", "conus.los", 0.15)]);
+    }
+
+    [Fact]
     public void With_no_bundle_deployed_the_search_is_the_one_it_was()
     {
         var candidates = Search("EPSG:4326", "EPSG:4277", deployed: false);
@@ -173,7 +209,7 @@ public sealed class GridShiftGraphTests : IDisposable
 
         var direct = bare[0];
         Assert.Contains("Helmert approximation", direct.Method, StringComparison.Ordinal);
-        Assert.Contains("no NTv2 grid is deployed", direct.Method, StringComparison.Ordinal);
+        Assert.Contains("no grid is deployed", direct.Method, StringComparison.Ordinal);
         Assert.Contains($"{bare[0].AccuracyMetres:F1} m", direct.Method, StringComparison.Ordinal);
     }
 
