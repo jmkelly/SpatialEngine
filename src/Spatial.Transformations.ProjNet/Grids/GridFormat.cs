@@ -13,6 +13,14 @@ internal enum GridFormat
     /// shifts in seconds of arc, with the accuracy in metres.
     /// </summary>
     Ntv2,
+
+    /// <summary>
+    /// NADCON (the <c>.las</c>/<c>.los</c> pair): two files rather than one
+    /// bundle, one holding the latitude shifts and one the longitude shifts,
+    /// with the block itself described in a header of fixed-width records
+    /// rather than keyed pairs.
+    /// </summary>
+    Nadcon,
 }
 
 /// <summary>How a <see cref="GridFormat"/> is named in a published operation.</summary>
@@ -26,6 +34,7 @@ internal static class GridFormats
     public static string Standard(GridFormat format) => format switch
     {
         GridFormat.Ntv2 => "NTv2",
+        GridFormat.Nadcon => "NADCON",
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, "No published name for this grid format."),
     };
 }

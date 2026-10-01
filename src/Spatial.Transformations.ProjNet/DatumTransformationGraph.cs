@@ -291,7 +291,7 @@ internal static class DatumTransformationGraph
     private static string Fallback(double accuracyMetres, bool gridDeployed) =>
         gridDeployed
             ? $"OSGB36 classic Helmert approximation, stated at {accuracyMetres:F1} m: a grid is deployed and ranked ahead of this, and this is what the transform verb applies to every point the grid does not cover"
-            : $"OSGB36 classic Helmert approximation, stated at {accuracyMetres:F1} m: no NTv2 grid is deployed, so this is the operation applied and the Helmert is the fallback";
+            : $"OSGB36 classic Helmert approximation, stated at {accuracyMetres:F1} m: no grid is deployed, so this is the operation applied and the Helmert is the fallback";
 
     private static bool Covers(CrsAreaOfUse areaOfUse, CrsAreaOfUse? areaOfInterest) =>
         !IsEmpty(areaOfUse) && (areaOfInterest is null || Contains(areaOfUse, areaOfInterest));

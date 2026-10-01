@@ -125,12 +125,23 @@ internal static class GridShiftCandidate
         var names = string.Join(" and ", grids.Select(grid => grid.Name));
         var blocks = grids.Length == 1 ? "the block the grid covers" : "the blocks the grids cover";
         var described = grids.Length == 1
-            ? $"NTv2 grid shift, sub-grid {names} from bundle {grids[0].FileName}, {Interpolation}ly interpolated over {blocks}"
-            : $"NTv2 grid shift concatenated through WGS 84, sub-grids {names} from bundles {string.Join(" and ", grids.Select(grid => grid.FileName))}, {Interpolation}ly interpolated over {blocks}";
+            ? $"{GridFormats.Standard(grids[0].Format)} grid shift, sub-grid {names} from bundle {grids[0].FileName}, {Interpolation}ly interpolated over {blocks}"
+            : $"{Standard(grids)} grid shift concatenated through WGS 84, sub-grids {names} from bundles {string.Join(" and ", grids.Select(grid => grid.FileName))}, {Interpolation}ly interpolated over {blocks}";
         var composed = legs.Any(leg => leg.IsHelmert)
             ? $"{described}, with a classic Helmert on the leg no grid serves"
             : described;
         return $"{composed} (the transform verb applies the grid per coordinate where it covers the ground, and the Helmert elsewhere)";
+    }
+
+    /// <summary>
+    /// The standards behind a concatenated path, named once when they agree
+    /// and separately when they do not: two grids in one candidate may have
+    /// been read from different formats, and the client is told which.
+    /// </summary>
+    private static string Standard(DatumShiftGrid[] grids)
+    {
+        var formats = grids.Select(grid => GridFormats.Standard(grid.Format)).Distinct().ToArray();
+        return formats.Length == 1 ? formats[0] : string.Join(" and ", formats);
     }
 
     /// <summary>One leg of the path: the operation applied, and what it costs.</summary>
@@ -151,7 +162,7 @@ internal static class GridShiftCandidate
         public static Leg FromGrid(DatumShiftGrid grid, string fromName, string toName, bool transformForward)
         {
             var name = $"{fromName}_To_{toName}_{grid.Name}";
-            var method = $"NTv2 grid shift, sub-grid {grid.Name} from bundle {grid.FileName}, {Interpolation}ly interpolated";
+            var method = $"{GridFormats.Standard(grid.Format)} grid shift, sub-grid {grid.Name} from bundle {grid.FileName}, {Interpolation}ly interpolated";
             return new Leg(
                 new CrsTransformationStep(
                     name,
