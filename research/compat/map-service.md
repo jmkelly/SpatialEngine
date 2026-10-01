@@ -82,9 +82,14 @@ the model rather than the plumbing: they compare the requested window against
 a *feature's* time extent, and the engine models a feature's dates as a bag
 of instants matched by "any value inside the window" — there is no feature
 temporal extent to compare against, in the render pipeline, the identify
-matcher or the query path. Deciding what one is (min/max over date
-attributes, a declared start/end pair, a store-declared extent) is its own
-decision, filed as a follow-up rather than taken here.
+matcher or the query path. **The model is now decided (ADR-0175):** a feature's
+temporal extent is the interval its layer's schema *designates* — a start date
+field and an end date field on the layer — not a min/max over whatever date
+attributes a row carries, and one rule in `Spatial.Core` evaluates all three
+relations against it for the query, identify and render readers alike. A layer
+with no designation (every layer today) keeps this bag rule and keeps the typed
+reject, so nothing served changes when the model lands; the implementation is
+filed as a follow-up, not done.
 
 ## 3. Follow-ups (filed)
 
@@ -96,7 +101,9 @@ decision, filed as a follow-up rather than taken here.
   application noted in §2: **done in the flag direction (ADR-0100)** — the
   unapplied relations are rejected by name and the root advertises
   `supportsTimeRelation:false`; applying them needs a feature temporal
-  extent model and is filed as a follow-up.
+  extent model, **decided in ADR-0175** (the layer designates its start/end
+  date fields, and one rule in `Spatial.Core` serves all three relations across
+  the query, identify and render readers) and not yet implemented.
 - T-F Map offline/async surface: `exportTiles`+estimate, WMTS, KML, async jobs —
   scoping task (WMTS/KML detail spawns from `tiles.md` T-M). **Closed as
   documented non-goals, mounted and rejected by name (ADR-0060); vector tiles

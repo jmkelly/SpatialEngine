@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**161 records on disk.** `status` is the record's own word;
+**162 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -177,6 +177,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0171](ADR-0171-spatialrel-is-the-features-relation-to-the-input-geometry.md) | `spatialRel` is the feature's relation to the input geometry | accepted | 2026-10-03 | ADR-0106, ADR-0169, ADR-0166, ADR-0156, ADR-0036 |
 | [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md) | A Hotine variant A's false offsets are applied at the natural origin | accepted | 2026-10-01 | ADR-0086, ADR-0027, ADR-0153, ADR-0170 |
 | [0174](ADR-0174-the-esri-wkt1-hotine-variant-a-takes-its-skew-angle-from-its-azimuth.md) | The ESRI WKT1 Hotine variant A takes its skew angle from its azimuth | accepted | 2026-10-01 | ADR-0172, ADR-0027, ADR-0086, ADR-0170 |
+| [0175](ADR-0175-a-features-temporal-extent-is-what-the-layer-designates.md) | A feature's temporal extent is what the layer designates | accepted | 2026-10-02 | ADR-0058, ADR-0100 |
 
 ## Reading order
 
@@ -191,7 +192,7 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 19 records, 35,833 words (20% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 19 records, 35,833 words (19% of the corpus)
 
 1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158, 0167)*
 2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md)
