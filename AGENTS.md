@@ -69,9 +69,15 @@ interop surface.
   `src/Spatial.Core/**` changes an ADR or cites `ADR-NNNN` in its body. It is
   the prose in this file turned into a comparison — it had already failed
   in-tree (SpatialEngine-imz.4). The ADR citation and register checks are read
-  through `tools/arch-index.py` rather than gated twice. The bead queue is
-  local coordination state, so a run that cannot read it (CI) reports check 1
-  as *not judged* and judges the rest; `--strict` fails instead.
+  through `tools/arch-index.py` rather than gated twice. It also reads the
+  reclaim race from the damage rather than from a hook, because `bd` exposes no
+  registration surface for one: an open bead holding no lease while `paseo`
+  still reports an agent *running* in that bead's worktree is a finding
+  (ADR-0162), and an *idle* session parked on one is printed, not failed. Its
+  liveness question is asked through `tools/bd-safe-reclaim.py`, so the gate and
+  the fix cannot drift. The bead queue and `paseo` are local coordination state,
+  so a run that can read neither (CI) reports those checks as *not judged* and
+  judges the rest; `--strict` fails instead.
 - `bd` — the development task queue (capture, claim, status). Run `bd prime`
   for the full agent workflow.
 - `eng/e2e-web.sh`, `eng/workbench-e2e.sh` — real host + delivered clients.
@@ -130,7 +136,9 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
   `paseo ls` — the bead's `bd/<id>` worktree, or the `agent <id>` its notes
   recorded at claim time — and reclaims only the beads no live agent holds,
   reporting each one it leaves in place. `--dry-run` reports the verdicts and
-  reaps nothing; a worker can renew its own lease mid-bead with
+  reaps nothing; every lane also reports a lease that went while its agent was
+  still running (ADR-0162), so read the gate's finding before reclaiming
+  anything by hand. A worker can renew its own lease mid-bead with
   `python3 tools/bd-safe-reclaim.py --heartbeat <id>` (a plain `bd heartbeat
   <id>` does the same). Reclaim stays reversible: record the agent id and
   branch in the notes when you claim, and treat "reclaimed N" as a prompt to

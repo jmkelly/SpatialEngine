@@ -86,9 +86,13 @@ def beads_gate_gate(base="main"):
     `--no-queue` is here because `ScriptLaneTests` sets `VERIFY_NO_QUEUE=1`:
     the queue is local coordination state and a fixture must not read the
     repository's real one, so these plans are what a lane runs with the queue
-    switched off (which is also what CI runs).
+    switched off (which is also what CI runs). It brings `--no-paseo` because
+    the gate's lease check reads `paseo ls`, which is the same kind of live
+    local state — a fixture running a lane would otherwise call the real CLI on
+    every plan and fail `tools/test_no_real_queue.py` (ADR-0162).
     """
-    return f"python3 tools/beads_gate.py --root . --base {base} --no-queue"
+    return (f"python3 tools/beads_gate.py --root . --base {base} "
+            "--no-queue --no-paseo")
 
 #: A real project in this repository, and the test suites that reach it.
 CORE_PROJECT = "src/Spatial.Core/Spatial.Core.csproj"

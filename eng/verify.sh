@@ -126,8 +126,9 @@ PLAN_ONLY=0
 # skips them is a merge that leaned on CI, and the close reason says so.
 #
 # VERIFY_NO_QUEUE=1 tells the bead-protocol gate below not to read the beads
-# queue. The queue is local coordination state, and a fixture that runs a lane
-# has no business reading the live one (ADR-0152, `tools/test_no_real_queue.py`).
+# queue, nor the live paseo agents (the lease check's second input, ADR-0162).
+# Both are local coordination state, and a fixture that runs a lane has no
+# business reading the live ones (ADR-0152, `tools/test_no_real_queue.py`).
 SKIP_PATTERNS=()
 # The `--help` output: every paragraph of the header comment above
 # `set -euo pipefail`, which is the whole of what the lanes document
@@ -451,7 +452,7 @@ doc_gate() {
 # agents were still running; two merges landed with conflict resolutions written
 # by a coordinator without the workers' context; three commits exist purely to
 # rescue work the reclaim race orphaned (SpatialEngine-imz.4). So
-# `tools/beads_gate.py` judges the two mechanical halves of it on every lane:
+# `tools/beads_gate.py` judges the mechanical halves of it on every lane:
 # a closed bead's merge records the bead it merged — a `Task: <id>` trailer
 # naming it, on the merge or on the work it brought in — and a commit touching
 # `src/Spatial.Contracts/**` or `src/Spatial.Core/**` lands a decision record
@@ -459,12 +460,22 @@ doc_gate() {
 # read through `tools/arch-index.py --check` in the doc gate above rather than
 # implemented a second time.
 #
+# It also reads the reclaim race back, which ADR-0152 left as a wrapper an agent
+# has to remember: an open bead holding no lease while `paseo` still reports an
+# agent *running* in that bead's worktree is a finding (ADR-0162). `bd` exposes
+# no registration surface for a reclaim hook, so the damage is what is judged;
+# the liveness question is asked through `tools/bd-safe-reclaim.py`. An *idle*
+# session parked on an unleased bead is printed rather than failed — there were
+# two on the day it landed, and a gate red on them is a gate nobody merges from.
+#
 # It is a repo check rather than one over the change, so it is not scoped and
 # has no fallback case: the trailer is a property of how merges are written and
 # the wall is a property of what a commit says it did, neither of which is
 # narrower on a scoped lane. The one input it cannot always have is the bead
 # queue — it is local coordination state in the shared git dir and CI has none —
-# so a run that cannot read it says so in those words and judges the rest.
+# so a run that cannot read it says so in those words and judges the rest. Same
+# for `paseo`, which is a worker's machine: `--no-paseo` skips the lease check's
+# live read deliberately, and both are judged in one `for` over the two notes.
 beads_gate_step() {
   echo "== bead protocol: Task trailers on merge commits, ADR on a wall change =="
   # `VERIFY_NO_QUEUE=1` is for a fixture or a rehearsal that must not reach the
@@ -472,9 +483,12 @@ beads_gate_step() {
   # suite with `bd` and `paseo` shadowed on PATH and fails it if anything calls
   # either, and a fixture that ran the lane would be calling the live database
   # to learn about closed beads. The lane's check 1 is then reported as not
-  # judged, which is the same answer CI gets.
+  # judged, which is the same answer CI gets. It brings `--no-paseo` with it,
+  # because `paseo ls` is the same kind of input — a worker's machine, not the
+  # repository's — and a fixture that read the live agent list to judge the
+  # lease check (ADR-0162) would fail that guard on every lane it ran.
   if [[ "${VERIFY_NO_QUEUE:-}" == "1" ]]; then
-    step python3 tools/beads_gate.py --root . --base "$BASE" --no-queue
+    step python3 tools/beads_gate.py --root . --base "$BASE" --no-queue --no-paseo
   else
     step python3 tools/beads_gate.py --root . --base "$BASE"
   fi

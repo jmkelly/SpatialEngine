@@ -21,7 +21,7 @@ four separate ways, all of them recorded in git rather than hypothesised
     did not hold the workers' context;
   * three commits exist purely to rescue work the reclaim race orphaned.
 
-Prose that has already failed is advice. So four *mechanical* checks live here,
+Prose that has already failed is advice. So five *mechanical* checks live here,
 with no judgement in any of them:
 
   1. **the trailer.** A closed bead's merge records the bead it merged: the
@@ -41,7 +41,17 @@ with no judgement in any of them:
      together", as a comparison rather than a review. Only those two
      directories are walls; a host change with no record is ordinary work.
 
-  3. **the citation**, and 4. **the register**: G1/G2's, implemented once in
+  3. **the lease**, read against `paseo`: a bead with no lease while a live
+   agent is still in its worktree is the shape of the reclaim race — `bd
+   reclaim` keys on lease age alone, one tick released eight leases whose
+   agents were all still running, and three commits exist purely to rescue the
+   work that orphaned. `bd` exposes no registration surface for a reclaim hook
+   (SpatialEngine-8oe, ADR-0162), so the policy is enforced from the other
+   side: the damage is a finding rather than a hook, and the one question it
+   asks — is this agent live — is asked through `tools/bd-safe-reclaim.py`, the
+   documented fix, rather than answered a second time here.
+
+4. **the citation**, and 5. **the register**: G1/G2's, implemented once in
      `tools/arch-index.py` and shared rather than reimplemented here, because
      two answers to "does that ADR resolve" is one too many and the one nobody
      runs is the one that ships. They are *reported* on every run and gated by
@@ -305,7 +315,157 @@ def wall_findings(root: Path, base: str, head: str = "HEAD") -> list[str]:
     return findings
 
 
-# --- checks 3 and 4: shared with tools/arch-index.py -----------------------
+# --- check 3: the lease ----------------------------------------------------
+
+
+#: The two statuses `paseo` reports for a session that is not over. The gate
+#: only *fails* on the first: an agent mid-turn in a bead's worktree with no
+#: lease is the double-claim race, while an idle session parked on a finished
+#: bead is a coordinator's business and not a lane's — a gate red on the second
+#: would be red on the day it landed (ADR-0162).
+LIVE_STATUS = "running"
+PARKED_STATUS = "idle"
+
+
+def load_reclaim(root: Path):
+    """`tools/bd-safe-reclaim.py` as a module, loaded the way arch-index is.
+
+    The wrapper is the documented fix for the lease race (SpatialEngine-u2x.30)
+    and it already answers the only question this check has to ask — is the
+    agent holding that bead's branch live? — through two inputs: the worktree
+    the agent's cwd is, and the agent id the claim recorded in the notes.
+    Reimplementing that here would be a second answer to one question, and the
+    second answer is the one nobody runs (the reason checks 4 and 5 are read
+    through arch-index rather than written again).
+    """
+    path = Path(root) / "tools" / "bd-safe-reclaim.py"
+    spec = importlib.util.spec_from_file_location("bd_safe_reclaim", path)
+    if spec is None or spec.loader is None:
+        raise GitError(f"{path}: cannot load tools/bd-safe-reclaim.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _run(cmd):
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def _paseo_json(run, command, what):
+    done = run(command)
+    if done.returncode != 0:
+        detail = (done.stderr or done.stdout or "").strip().splitlines()
+        raise GitError(
+            f"{what}: {detail[-1] if detail else 'no output'}")
+    try:
+        return json.loads(done.stdout or "[]")
+    except json.JSONDecodeError as error:
+        raise GitError(f"{what}: printed no JSON ({error})")
+
+
+def load_paseo(root: Path, run=None) -> tuple[list[dict] | None, list[dict] | None, str]:
+    """The live agents and the bead worktrees, or `(None, None, why)`.
+
+    Same boundary as the queue, for the same reason: `paseo` is a worker's
+    machine, not CI's, and a check that could not run has to say so out loud
+    because silence and a pass look the same from the outside.
+    """
+    run = run or _run
+    try:
+        agents = _paseo_json(run, ["paseo", "ls", "--json"], "paseo ls")
+        workspaces = _paseo_json(
+            run, ["paseo", "workspace", "ls", "--json"], "paseo workspace ls")
+    except (GitError, OSError) as error:
+        return None, None, str(error)
+    return agents, workspaces, ""
+
+
+def holds_lease(bead: dict) -> bool:
+    """Whether this bead still holds what a claim took.
+
+    A claim writes the assignee and the lease expiry; a reclaim takes both back
+    and drops the bead into `bd ready`. So an open bead with neither is one a
+    reclaim has been through — or one nobody ever claimed, and the difference
+    is decided by `paseo`, not here.
+    """
+    if str(bead.get("status", "")).lower() == "in_progress":
+        return True
+    return bool(str(bead.get("assignee") or "").strip()) or bool(
+        str(bead.get("lease_expires_at") or "").strip())
+
+
+def unleased_beads(beads) -> list[dict]:
+    """The open beads with no lease, which is where a reclaimed bead lands."""
+    return [bead for bead in beads
+            if isinstance(bead, dict)
+            and str(bead.get("status", "")).lower() != "closed"
+            and not holds_lease(bead)]
+
+
+def _default_protect():
+    # The wrapper sits beside this file, so it is loaded from here rather than
+    # from the repository under judgement: a fixture repository has no
+    # `tools/`, and the question being asked is the wrapper's, not the root's.
+    return load_reclaim(Path(__file__).resolve().parent.parent).protect_reason
+
+
+def _holding(bead, agents, workspaces, status, protect):
+    """What holds this bead, counting only agents in one `paseo` status."""
+    return protect(bead,
+                   [a for a in agents if str(a.get("status", "")).lower() == status],
+                   workspaces)
+
+
+def reclaimed_lease_findings(beads, agents, workspaces, protect=None) -> list[str]:
+    """Unleased beads an agent is *running* in whose worktree nobody holds.
+
+    The incident, read mechanically: the lease is gone (a reclaim took it) and
+    `paseo` still reports somebody mid-turn in that bead's own worktree. That
+    pair is what dropped eight live leases back into `bd ready` in one tick
+    (SpatialEngine-u2x.30), where the next tick double-claims work that is
+    still being written.
+
+    `protect` is `bd-safe-reclaim.py`'s own `protect_reason`, so "does a live
+    agent hold this bead" has one answer in this repository rather than two
+    that drift. It is asked of *running* agents only — an idle session parked
+    on work it has finished is reported by `parked_lease_holds()` instead,
+    because a gate that fails the parked case is red on the day it lands.
+    """
+    protect = protect or _default_protect()
+    findings: list[str] = []
+    for bead in unleased_beads(beads):
+        held = _holding(bead, agents, workspaces, LIVE_STATUS, protect)
+        if not held:
+            continue
+        findings.append(
+            f"{bead.get('id')} has no lease while {held}: that is the shape "
+            "of the reclaim race, `bd reclaim` having keyed on lease age alone "
+            "(ADR-0162). Read the bead's worktree before touching it, recover "
+            "the queue with tools/bd-safe-reclaim.py, and never bare "
+            "`bd reclaim`")
+    return findings
+
+
+def parked_lease_holds(beads, agents, workspaces, protect=None) -> list[str]:
+    """Unleased beads an *idle* session is still parked in: reported, not gated.
+
+    Same read, same inputs, a session between turns rather than mid-turn. It
+    is printed on every run because it is worth a reader — that is how the two
+    findings this check found in the repository on the day it landed were
+    found — and it is not a finding because the work behind it is usually
+    finished or superseded, and a lane that failed it would have been a lane
+    nobody could merge from.
+    """
+    protect = protect or _default_protect()
+    held_beads = []
+    for bead in unleased_beads(beads):
+        if _holding(bead, agents, workspaces, PARKED_STATUS, protect):
+            held_beads.append(str(bead.get("id")))
+    return held_beads
+
+
+# --- checks 4 and 5: shared with tools/arch-index.py -----------------------
 
 
 def load_arch_index(root: Path):
@@ -324,7 +484,7 @@ def load_arch_index(root: Path):
 
 
 def shared_adr_findings(root: Path) -> dict[str, list[str]]:
-    """Checks 3 and 4, read through arch-index's own entry points.
+    """Checks 4 and 5, read through arch-index's own entry points.
 
     The bead's own instruction: implement once, have both call it. G1/G2 landed
     that implementation and its gate (`arch-index.py --check`, which every lane
@@ -398,7 +558,8 @@ def gate_from(root: Path) -> str | None:
 
 
 def judge(root: Path, base: str, head: str = "HEAD", beads=None,
-          gate_from_ref: str | None = None, adr: bool = False) -> dict:
+          gate_from_ref: str | None = None, adr: bool = False,
+          agents=None, workspaces=None) -> dict:
     """Every finding, and the counts a reader needs to trust the scope."""
     result: dict = {"findings": [], "scope": {}}
     result["findings"].extend(wall_findings(root, base=base, head=head))
@@ -420,6 +581,23 @@ def judge(root: Path, base: str, head: str = "HEAD", beads=None,
             + ("" if watermark is None else
                f", {all_merges - judged} grandfathered (merged before "
                f"{watermark[:7]}, which carried this gate)"))
+
+    if agents is None or workspaces is None or beads is None:
+        result["scope"]["lease"] = (
+            "not judged: the queue and paseo are the two halves of it, and "
+            "this run has neither (both are a worker's machine, not CI's "
+            "--strict would fail)")
+    else:
+        unleased = unleased_beads(beads)
+        result["findings"].extend(
+            reclaimed_lease_findings(beads, agents, workspaces))
+        parked = parked_lease_holds(beads, agents, workspaces)
+        result["scope"]["lease"] = (
+            f"{len(unleased)} unleased bead(s) read against {len(agents)} "
+            f"paseo agent(s)"
+            + ("" if not parked else
+               f"; {len(parked)} held by an idle session and reported rather "
+               f"than failed ({', '.join(parked)})"))
 
     if adr:
         shared = shared_adr_findings(root)
@@ -447,6 +625,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-queue", action="store_true",
                         help="do not read the queue at all: check 1 is "
                              "reported as not judged rather than read")
+    parser.add_argument("--no-paseo", action="store_true",
+                        help="do not read the live agents at all: check 3 is "
+                             "reported as not judged rather than read")
     parser.add_argument("--watermark", metavar="REF",
                         help="the commit this gate arrived on; merge commits "
                              "before it are grandfathered rather than judged")
@@ -471,6 +652,10 @@ def main(argv: list[str] | None = None) -> int:
             if arguments.adr:
                 print("beads-gate: would also gate the shared ADR citation and "
                       "register reads")
+            if not arguments.no_paseo:
+                print("beads-gate: would read every unleased bead against the "
+                      "live paseo agents and report one whose lease went while "
+                      "its agent was still running")
             return 0
 
         beads: list[dict] | None = None
@@ -480,16 +665,22 @@ def main(argv: list[str] | None = None) -> int:
         elif not arguments.no_queue:
             beads, queue_note = load_beads(root, arguments.db)
 
+        agents = workspaces = None
+        paseo_note = ""
+        if not arguments.no_paseo:
+            agents, workspaces, paseo_note = load_paseo(root)
+
         result = judge(root, base=arguments.base, head=arguments.head,
                        beads=beads, gate_from_ref=arguments.watermark,
-                       adr=arguments.adr)
+                       adr=arguments.adr, agents=agents, workspaces=workspaces)
     except (GitError, OSError) as error:
         print(f"beads-gate: {error}", file=sys.stderr)
         return 2
 
     findings = list(result["findings"])
-    if queue_note and arguments.strict:
-        findings.append(f"bead queue: {queue_note}")
+    for note, what in ((queue_note, "bead queue"), (paseo_note, "paseo")):
+        if note and arguments.strict:
+            findings.append(f"{what}: {note}")
     result["findings"] = findings
 
     if arguments.json:
@@ -499,6 +690,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"beads-gate: {name}: {text}")
         if queue_note:
             print(f"beads-gate: queue: {queue_note}")
+        if paseo_note:
+            print(f"beads-gate: paseo: {paseo_note}")
         for finding in findings:
             print(f"  {finding}", file=sys.stderr)
         if findings:

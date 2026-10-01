@@ -53,7 +53,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools.beads_gate import (  # noqa: E402
     closed_bead_findings,
     load_beads,
+    load_paseo,
     merge_bead,
+    parked_lease_holds,
+    reclaimed_lease_findings,
     shared_adr_findings,
     wall_findings,
 )
@@ -330,6 +333,139 @@ class TrailerTests(unittest.TestCase):
                         f"a merge of an unknown bead was not a finding: {found}")
 
 
+class ReclaimedLeaseTests(unittest.TestCase):
+    """A lease that went while the agent still held it is a finding.
+
+    The lease race `SpatialEngine-u2x.30` recorded: `bd reclaim` keys on lease
+    age alone, one coordinator tick released eight leases whose agents `paseo`
+    still reported as running, and three commits exist only to rescue the work
+    that orphaned (`WIP: preserve uncommitted work ... swarm reclaimed stale
+    lease`). `bd` exposes no registration surface for a reclaim hook
+    (`bd config set hooks.pre-commit` is refused by name; the only chaining
+    `bd hooks install` offers is the content outside the managed markers in a
+    *git* hook, which no reclaim runs — SpatialEngine-8oe), so the policy has
+    to be enforced from the other side: a bead whose lease is gone while a live
+    agent is still sitting in its worktree is the shape of the race, read
+    mechanically.
+    """
+
+    AGENT_ID = "8d15cb2d-76a1-4f5f-b388-e8776e72d86d"
+
+    def agent(self, status="running", cwd="~/worktrees/bd-spatialengine-aaa-1"):
+        return {"id": self.AGENT_ID, "shortId": self.AGENT_ID[:7],
+                "status": status, "cwd": cwd}
+
+    def unleased(self, bead_id="SpatialEngine-aaa.1", notes=None):
+        """A bead whose lease a reclaim took back: open, unassigned, no lease."""
+        return {"id": bead_id, "status": "open", "assignee": "",
+                "lease_expires_at": None,
+                "notes": notes if notes is not None else
+                f"687eb2e cdbfd61 bd/{bead_id} agent {self.AGENT_ID} "
+                "workspace wks_327ef32935e91319"}
+
+    def findings(self, beads, agents=None, workspaces=()):
+        return reclaimed_lease_findings(
+            beads, agents=[self.agent()] if agents is None else agents,
+            workspaces=list(workspaces))
+
+    def test_a_bead_with_no_lease_and_a_live_agent_in_its_worktree_is_a_finding(self):
+        # The reproduction: the lease is gone, the agent is running in the
+        # bead's own worktree, and nothing read that pair back.
+        found = self.findings([self.unleased()])
+        self.assertTrue(
+            any("SpatialEngine-aaa.1" in finding and self.AGENT_ID[:7] in finding
+                for finding in found),
+            f"a lease reclaimed out from under a live agent was not a finding: {found}")
+
+    def test_the_finding_names_the_recovery_and_forbids_bare_reclaim(self):
+        found = self.findings([self.unleased()])
+        self.assertTrue(any("bd-safe-reclaim.py" in finding for finding in found),
+                        f"the finding does not say what to do: {found}")
+        self.assertTrue(any("bd reclaim" in finding for finding in found),
+                        f"the finding does not forbid the primitive that caused it: {found}")
+
+    def test_the_worktree_match_is_enough_when_the_notes_name_no_agent(self):
+        # The other half of the hold, and the one that survives a notes field
+        # nobody filled in: paseo still lists the workspace and the agent in it.
+        bead = self.unleased(notes="687eb2e bd/SpatialEngine-aaa.1")
+        workspaces = [{"name": "bd/SpatialEngine-aaa.1",
+                       "cwd": "/home/james/.paseo/worktrees/1mmcart7/"
+                              "bd-spatialengine-aaa-1"}]
+        found = self.findings([bead], workspaces=workspaces)
+        self.assertTrue(any("SpatialEngine-aaa.1" in finding for finding in found),
+                        f"a live agent in the worktree was not read as holding it: {found}")
+
+    def test_a_claimed_bead_holding_its_lease_is_not_a_finding(self):
+        # The ordinary case, and the one a gate that failed it would fail every
+        # lane of the swarm: in progress, leased, agent running.
+        beads = [dict(self.unleased(), status="in_progress",
+                      assignee="James Kelly",
+                      lease_expires_at="2026-10-01T03:33:55Z")]
+        self.assertEqual(self.findings(beads), [])
+
+    def test_a_closed_bead_is_not_a_finding(self):
+        self.assertEqual(
+            self.findings([dict(self.unleased(), status="closed")]), [])
+
+    def test_an_unleased_bead_with_no_agent_on_it_is_not_a_finding(self):
+        # What `bd reclaim` is *for*: a crashed worker's bead, reclaimed with
+        # nobody left holding it.
+        self.assertEqual(self.findings([self.unleased()], agents=[]), [])
+
+    def test_an_agent_that_is_not_running_does_not_hold_a_lease(self):
+        # `paseo` reports `closed` for a finished session, and a bead whose
+        # worker ended cleanly is not the race.
+        for status in ("closed", "stopped", "unknown"):
+            self.assertEqual(self.findings([self.unleased()],
+                                           agents=[self.agent(status=status)]), [],
+                             f"a {status} agent was read as holding a lease")
+
+    def test_an_idle_session_is_reported_rather_than_failed(self):
+        # The boundary, and the reason for it: an idle session parked on a
+        # bead whose work is already finished or superseded is a coordinator's
+        # business, not a lane's. Two such beads existed in this repository on
+        # the day the check landed, and a gate that failed them would have been
+        # a gate nobody could merge from.
+        parked = parked_lease_holds(
+            [self.unleased()], [self.agent(status="idle")], [])
+        self.assertEqual(parked, ["SpatialEngine-aaa.1"])
+        self.assertEqual(self.findings([self.unleased()],
+                                       agents=[self.agent(status="idle")]), [])
+
+    def test_a_running_agent_is_not_counted_as_parked(self):
+        self.assertEqual(
+            parked_lease_holds([self.unleased()], [self.agent()], []), [])
+
+    def test_an_agent_in_another_worktree_holds_nothing(self):
+        # Neither half of the hold matches: not the worktree, and — the part
+        # that catches a lazy test — not the agent id the notes recorded, so
+        # the second lookup cannot rescue the first one's miss.
+        agents = [self.agent(cwd="~/worktrees/bd-spatialengine-aaa-11")]
+        bead = self.unleased(notes="687eb2e bd/SpatialEngine-aaa.1")
+        self.assertEqual(self.findings([bead], agents=agents), [])
+
+    def test_the_hold_is_decided_by_the_reclaim_wrapper_not_a_second_answer(self):
+        # One answer to "is this agent live", read through the tool that is the
+        # documented fix, or the gate and the wrapper drift apart.
+        from tools import beads_gate
+        module = beads_gate.load_reclaim(REPO_ROOT)
+        self.assertEqual(module.__name__, "bd_safe_reclaim")
+        self.assertTrue(callable(module.protect_reason))
+
+    def test_the_paseo_reads_are_reported_when_paseo_cannot_be_run(self):
+        # The queue's own boundary (ADR-0152): an input the run cannot read is
+        # reported as not judged, never as a pass.
+        class Failed:
+            returncode = 127
+            stdout = ""
+            stderr = "paseo: command not found"
+
+        agents, workspaces, note = load_paseo(Path("/nowhere"), run=lambda cmd: Failed())
+        self.assertIsNone(agents)
+        self.assertIsNone(workspaces)
+        self.assertIn("paseo", note)
+
+
 class QueueReadTests(unittest.TestCase):
     """The gate reads every bead the queue has, not only the closed ones.
 
@@ -378,6 +514,7 @@ def report_for(root: Path, beads, gate_from: str) -> str:
         [sys.executable, str(SCRIPT), "--root", str(root),
          "--base", gate_from,
          "--watermark", gate_from,
+         "--no-paseo",
          "--beads", write_beads(root, beads)],
         capture_output=True, text=True)
     return (done.stdout or "") + (done.stderr or "")
@@ -397,11 +534,12 @@ class ShippedRepositoryTests(unittest.TestCase):
         # gets disabled. Run over the range the gate itself introduced, with
         # no queue: the wall check is judged and check 1 says out loud that it
         # had no bead list to read rather than passing silently. (`--no-queue`
-        # rather than letting the test shell out to `bd`, which
+        # rather than letting the test shell out to `bd`, and `--no-paseo`
+        # rather than letting it shell out to `paseo`, which
         # `tools/test_no_real_queue.py` forbids for the whole tooling suite.)
         done = subprocess.run(
             [sys.executable, str(SCRIPT), "--root", str(REPO_ROOT),
-             "--base", "HEAD", "--no-queue"],
+             "--base", "HEAD", "--no-queue", "--no-paseo"],
             capture_output=True, text=True)
         output = (done.stdout or "") + (done.stderr or "")
         self.assertEqual(done.returncode, 0, output[-4000:])
