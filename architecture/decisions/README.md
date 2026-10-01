@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**152 records on disk.** `status` is the record's own word;
+**153 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -113,6 +113,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0100](ADR-0100-map-timerelation-advertises-the-relation-the-engine-applies.md) | The map root advertises the time relation the engine actually applies | accepted | 2026-09-28 | ADR-0058 |
 | [0101](ADR-0101-a-tile-without-extent-is-rejected-not-narrowed.md) | A tile with no extent on an axis is rejected, not narrowed | accepted | 2026-09-28 | ADR-0070 |
 | [0105](ADR-0105-datum-shift-grids-are-deployed-not-embedded.md) | Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback | accepted | 2026-09-28 | ADR-0107 |
+| [0106](ADR-0106-served-spatialrel-reading-is-the-ogc-de9im-pattern-table.md) | The served `spatialRel` reading is the OGC DE-9IM pattern table | accepted | 2026-10-02 | ADR-0036, ADR-0156 |
 | [0107](ADR-0107-the-transform-verb-applies-a-deployed-grid-per-coordinate.md) | The transform verb applies a deployed datum shift grid per coordinate, over the classic Helmert | accepted | 2026-09-29 | ADR-0105 |
 | [0109](ADR-0109-the-verification-lanes-implemented.md) | the verification lanes, implemented | accepted | 2026-09-30 | — |
 | [0110](ADR-0110-match-envelope-pushdown.md) | The feature-match envelope is compiled onto the store's plan, and the in-memory matcher is what verifies it | accepted | 2026-09-29 | — |
@@ -203,7 +204,7 @@ out: the "Amended by" row already says everything about a pair.
 17. [0158](ADR-0158-json-query-plan-on-the-http-query-route.md)
 18. [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md)
 
-### ADR-0109: the verification lanes, implemented — 7 records, 12,595 words (8% of the corpus)
+### ADR-0109: the verification lanes, implemented — 7 records, 12,595 words (7% of the corpus)
 
 1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
 2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148)*
@@ -221,18 +222,19 @@ out: the "Amended by" row already says everything about a pair.
 4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) *(narrowed by 0161)*
 5. [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md)
 
+### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 4 records, 5,647 words (3% of the corpus)
+
+1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0106, 0156)*
+2. [0106](ADR-0106-served-spatialrel-reading-is-the-ogc-de9im-pattern-table.md)
+3. [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) *(narrowed by 0165)*
+4. [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md)
+
 ### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 4 records, 6,125 words (4% of the corpus)
 
 1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153)*
 2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
 3. [0153](ADR-0153-a-polar-stereographic-standard-parallel-is-read-as-a-scale-factor.md)
 4. [0163](ADR-0163-registered-null-operation-is-published.md)
-
-### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 3 records, 3,962 words (2% of the corpus)
-
-1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0156)*
-2. [0156](ADR-0156-the-de9im-patterns-have-two-independent-readers.md) *(narrowed by 0165)*
-3. [0165](ADR-0165-the-de9im-column-is-the-matrix-not-a-display-of-it.md)
 
 ### ADR-0038: Read-by-identity is an additive store capability — 3 records, 3,423 words (2% of the corpus)
 
@@ -269,7 +271,7 @@ record nobody amends does not appear, and a record that carries a
 hand-written `amended-by:` is checked against this list rather than
 believed.
 
-- **0036** is amended by 0156
+- **0036** is amended by 0106, 0156
 - **0038** is amended by 0140
 - **0041** is amended by 0082, 0090, 0149
 - **0058** is amended by 0100

@@ -178,6 +178,12 @@ carry both without the two being swapped at a call site.
   both `Overlaps` and `Crosses` (SpatialEngine-u2x.56).
   `NtsGeometryRelationsFidelityTests` holds the hand-computed table, the
   transpose property and the agreement sweep.
+- The *reading* of that table — which pattern answers which verb, and what
+  the point/area case is — is ADR-0106: the OGC table verbatim, the feature
+  geometry as the left operand, and a dimension-selected pattern only for the
+  verbs OGC defines per dimension pair. ADR-0036 named the patterns and its
+  later corrections; ADR-0106 says which reading of them is served, and why
+  the discarded reading was not.
 
 ## References
 

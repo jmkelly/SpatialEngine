@@ -19,6 +19,27 @@ heading that is not above `<Version>`).
 
 ### Changed
 
+- **The served `spatialRel` reading is the OGC DE-9IM pattern table, stated
+  and pinned** (ADR-0106, SpatialEngine-onj): a duplicate-agent collision left
+  two complete implementations of the `spatialRel` verbs on the table and they
+  disagreed about `Within` and `Crosses`, which stopped the swarm because the
+  reading is an architectural decision. The reading is now recorded and no
+  served answer changes. The facade serves the OGC Simple Features patterns
+  verbatim with the feature geometry as the matrix's left operand, and keys the
+  two dimension-dependent verbs on the pair's **dimension pair**: `Within` is
+  `T*F**F***`, the transpose of the served `Contains` and so the same predicate
+  read in the other frame (the two implementations never actually disagreed
+  here — a transposed matrix swaps positions 2↔4, 3↔7 and 6↔8), and `Crosses`
+  is `T**T*****` / `T*T******` / `0********`. **A point is never `Crosses` an
+  area**: that dimension pair names no pattern, so none is asked, and a point
+  inside an area is `Within` it. The reading that was discarded asked
+  `0********` there and answered true — which is why it had to carry a
+  hand-written dimension switch to take the answer back — and it answered
+  false for a line crossing an area, which is a line crossing an area. The
+  served behaviour is pinned in `SpatialRelationReadingTests`, which fails 16
+  of its 48 cases against the discarded reading. Which geometry is the left
+  operand is still open (SpatialEngine-2ve) and is not decided here.
+
 - **The SQL Server store holds the dataset description it discovered**
   (ADR-0122, ADR-0151, SpatialEngine-hj2): `SqlServerCatalogue.DescribeAsync`
   ran its catalogue reads — column metadata, primary key, row estimate, the
