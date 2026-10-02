@@ -117,8 +117,11 @@ REPORT_NAME = "doc-report.json"
 
 #: Check 7's ceiling. The context-bloat study measured the *smallest* bloated
 #: file at 216 lines, so 200 is the line above which an instruction file is
-#: costing more than it carries; root AGENTS.md is 141, so this gate protects a
-#: property that is currently true, which is the point of a gate.
+#: costing more than it carries. Root AGENTS.md was already under it when the
+#: study was written, so this gate protects a property that was true of the
+#: study's own baseline, which is the point of a gate — and that baseline is a
+#: historical measurement, not a live one: measure the file you are pruning
+#: rather than sizing the edit against a number written here.
 BLOAT_CEILING = 200
 
 #: Directories no documentation check walks: vendored, generated or built trees

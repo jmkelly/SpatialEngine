@@ -657,6 +657,36 @@ class DocFreshnessTest(unittest.TestCase):
             str(doc_freshness.BLOAT_CEILING), over[0]["message"],
         )
 
+    def test_the_bloat_ceiling_comment_does_not_quote_a_stale_line_count(self):
+        # The defect this bead names (SpatialEngine-brb): the comment above
+        # BLOAT_CEILING read "root AGENTS.md is 141, so this gate protects a
+        # property that is currently true". 141 was the context-bloat study's
+        # *baseline* — root AGENTS.md was 200 lines when the study was written
+        # and 180 by the time the prune landed — so the sentence read a stale
+        # measurement as a live one, and a future pruner sizing its edit
+        # against it misjudges how much room is left. The ceiling's rationale
+        # must name the study rather than quote a count of a file the reader
+        # is expected to measure for themselves.
+        source = TOOL.read_text(encoding="utf-8")
+        lines = source.splitlines()
+        at = next(
+            n for n, line in enumerate(lines) if line.startswith("BLOAT_CEILING = ")
+        )
+        comment = []
+        for line in reversed(lines[:at]):
+            if not line.startswith("#: "):
+                break
+            comment.append(line)
+        comment = "\n".join(reversed(comment))
+        self.assertIsNone(
+            re.search(r"AGENTS\.md is \d+", comment),
+            "the BLOAT_CEILING comment quotes a line count as if it were current",
+        )
+        self.assertIn(
+            "study", comment,
+            "the ceiling's rationale must say where the 200 came from",
+        )
+
     def test_generated_files_are_not_init_fossilization(self):
         # architecture/decisions/README.md and arch-index.md are generated, so a
         # single commit is not a hand-written doc that was never revised. It is
