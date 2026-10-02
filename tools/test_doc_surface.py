@@ -127,6 +127,49 @@ class ChangelogTests(unittest.TestCase):
             (path / "CHANGELOG.md").write_text("# Changelog\n", encoding="utf-8")
             self.assertTrue(any("CHANGELOG.md" in finding for finding in findings(path)))
 
+    def test_a_changelog_in_an_ignored_dependency_directory_is_not_a_finding(self):
+        # The reproduction: `root.rglob("CHANGELOG.md")` has no skip set, so on
+        # any checkout that has run `npm install` it descends into
+        # `node_modules/` and reports six changelogs shipped by `@babel/parser`,
+        # `js-tokens`, `minimist`, `fflate`, `leaflet` and `lerc` as findings —
+        # six files that `git check-ignore` confirms are not repository content.
+        # The check is about what the repository SHIPS, so its verdict cannot
+        # depend on untracked local state: green on a CI clone, red on a
+        # worker's box.
+        with tempfile.TemporaryDirectory() as root:
+            path = make_repo(Path(root))
+            vendored = path / "apps" / "workbench-web" / "node_modules" / "leaflet"
+            vendored.mkdir(parents=True)
+            (vendored / "CHANGELOG.md").write_text("# Changelog\n", encoding="utf-8")
+            (path / "node_modules").mkdir()
+            (path / "node_modules" / "CHANGELOG.md").write_text(
+                "# Changelog\n", encoding="utf-8")
+            self.assertEqual(findings(path), [])
+
+    def test_a_changelog_in_a_build_output_directory_is_not_a_finding(self):
+        # `dist/`, `bin/` and `obj/` are the same shape as `node_modules/`: a
+        # generated or copied tree, untracked, and pruned for the same reason.
+        with tempfile.TemporaryDirectory() as root:
+            path = make_repo(Path(root))
+            for name in ("dist", "bin", "obj"):
+                (path / "apps" / "web" / name).mkdir(parents=True)
+                (path / "apps" / "web" / name / "CHANGELOG.md").write_text(
+                    "# Changelog\n", encoding="utf-8")
+            self.assertEqual(findings(path), [])
+
+    def test_a_tracked_changelog_at_any_depth_is_still_a_finding(self):
+        # The half of the rule that matters: pruning the dependency and build
+        # directories must not become a way to hide a real duplicate, so a
+        # second changelog under `src/` or `docs/` is still reported.
+        with tempfile.TemporaryDirectory() as root:
+            path = make_repo(Path(root))
+            nested = path / "src" / "Some.Package"
+            nested.mkdir(parents=True)
+            (nested / "CHANGELOG.md").write_text("# Changelog\n", encoding="utf-8")
+            self.assertTrue(
+                any("src/Some.Package/CHANGELOG.md" in finding for finding in findings(path)),
+                f"a tracked second changelog went unreported: {findings(path)}")
+
     def test_a_changelog_named_differently_is_not_read_as_one(self):
         # Matched on the exact name, like every other path in the repository:
         # a `CHANGELOG.draft.md` is somebody's scratch file and reads as one.
