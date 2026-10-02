@@ -404,6 +404,23 @@ class PlanTests(unittest.TestCase):
         self.assertFalse(plan.exhaustive)
         self.assertIn(MAPS, plan.build_projects)
 
+    def test_a_project_editorconfig_selects_that_projects_format_check(self):
+        """`FORMATTABLE_SUFFIXES` names `.editorconfig`, but `suffix` cannot match it.
+
+        `Path('src/Spatial.Maps/.editorconfig').suffix` is `''` — pathlib reads
+        a leading-dot filename as having no extension — so the suffix arm of the
+        formattable test never matched the file the constant names, and
+        `src/<project>/.editorconfig` selected *no* format projects at all. The
+        branch that restyled one project then ran `--format` over nothing: the
+        gate passed on a style change it never read.
+        """
+        self.repo.commit("src/Spatial.Maps/.editorconfig", "root = true\n")
+
+        plan = self.repo.plan()
+
+        self.assertIn(MAPS, plan.format_projects,
+                      "the project whose style changed is the one to format")
+
     def test_an_unreadable_change_set_refuses_to_scope(self):
         """A base that does not resolve must not read as 'nothing changed'."""
         plan = verify_scope.plan_quick(
