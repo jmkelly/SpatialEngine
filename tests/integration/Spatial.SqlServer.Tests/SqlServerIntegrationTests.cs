@@ -13,11 +13,12 @@ namespace Spatial.SqlServer.Tests;
 /// secret redaction — against a real SQL Server container. Every test skips
 /// with an explicit reason when no Docker daemon is available.
 /// </summary>
-public sealed class SqlServerIntegrationTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerIntegrationTests : IClassFixture<SqlServerDatabaseFixture>
 {
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerIntegrationTests(SqlServerContainerFixture fixture)
+    public SqlServerIntegrationTests(SqlServerDatabaseFixture fixture)
     {
         _fixture = fixture;
     }

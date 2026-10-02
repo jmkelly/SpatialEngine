@@ -13,15 +13,16 @@ namespace Spatial.SqlServer.Tests;
 /// table — success, per-id failure and cancellation. Every test skips with an
 /// explicit reason when no Docker daemon is available.
 /// </summary>
-public sealed class SqlServerAttachmentIntegrationTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerAttachmentIntegrationTests : IClassFixture<SqlServerDatabaseFixture>
 {
     private const string Target = "dbo.attach_target";
 
     private const string FoldTarget = "dbo.attach_ci";
 
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerAttachmentIntegrationTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerAttachmentIntegrationTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     [SkippableFact]
     public async Task Add_then_list_and_get_round_trip()

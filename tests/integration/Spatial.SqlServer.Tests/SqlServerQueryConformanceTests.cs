@@ -17,11 +17,12 @@ namespace Spatial.SqlServer.Tests;
 /// set) and the plans that carry a predicate. Skips with an explicit reason
 /// without Docker.
 /// </summary>
-public sealed class SqlServerQueryConformanceTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerQueryConformanceTests : IClassFixture<SqlServerDatabaseFixture>
 {
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerQueryConformanceTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerQueryConformanceTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     [SkippableFact]
     public async Task The_pushed_down_answers_match_the_reference_over_the_conformance_fixture()

@@ -19,6 +19,10 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
 - Compile a pushed text predicate through the same `Ordered` helper the sort
   keys use, so a `WHERE` and an `ORDER BY` cannot disagree about the order.
   (SpatialEngine-u2x.48)
+- Start the SQL Server suite's container once for the assembly (a collection
+  fixture, a database per class) and read the skip reasons: a run that reports
+  itself mostly skipped is twelve container starts losing a 60-second wait
+  strategy, not a missing daemon. (SpatialEngine-qhz)
 - Declare the order on the sidecar columns the store itself owns; a
   case-folding key cannot hold both codes at all, so restating the collation
   per statement cannot fix it. (SpatialEngine-u2x.57)

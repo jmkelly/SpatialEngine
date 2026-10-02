@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**172 records on disk.** `status` is the record's own word;
+**173 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -88,7 +88,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0070](ADR-0070-vector-tiles-in-scope.md) | Vector tiles and OGC API Tiles are in scope (ADR-0062 superseded) | accepted | 2026-09-16 | ADR-0062 |
 | [0071](ADR-0071-token-auth-with-oauth-path.md) | Token auth from username/password, with an OAuth2/OIDC path | proposed | 2026-09-16 | — |
 | [0072](ADR-0072-containerised-postgis-in-the-host-suite.md) | The host integration suite supplies its own PostGIS | accepted | 2026-09-26 | — |
-| [0073](ADR-0073-sqlserver-store-provider.md) | SQL Server data store provider | accepted | 2026-09-13 | — |
+| [0073](ADR-0073-sqlserver-store-provider.md) | SQL Server data store provider | accepted | 2026-09-13 | ADR-0187 |
 | [0074](ADR-0074-feature-query-plan-contract.md) | The feature-query contract is a core-typed query plan, not a filter string | accepted | 2026-09-28 | — |
 | [0075](ADR-0075-ground-distance-buffering-reproject-and-buffer.md) | Ground-distance buffering is reproject-and-buffer, within a stated tolerance | proposed | 2026-09-27 | — |
 | [0076](ADR-0076-maplibre-expression-dialect.md) | The MapLibre style dialect is a compiled expression tree with a per-feature scope | accepted | 2026-09-27 | — |
@@ -188,6 +188,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) | A reduction pushes its restriction on a dataset with no identity column | accepted | 2026-10-06 | ADR-0097, ADR-0185, ADR-0116, ADR-0131, ADR-0133, ADR-0140, ADR-0147, ADR-0149 |
 | [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md) | Map a row once, and order a page rather than the read | accepted | 2026-10-07 | ADR-0184, ADR-0074, ADR-0097, ADR-0116, ADR-0127, ADR-0131 |
 | [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md) | the final-newline rule is a check every lane runs | accepted | 2026-10-01 | ADR-0134, ADR-0143, ADR-0109, ADR-0146 |
+| [0187](ADR-0187-one-container-for-the-sql-server-suite-a-database-per-class.md) | one container for the SQL Server suite, a database per class | accepted | 2026-10-02 | ADR-0073, ADR-0139 |
 
 ## Reading order
 
@@ -247,7 +248,7 @@ out: the "Amended by" row already says everything about a pair.
 6. [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md)
 7. [0171](ADR-0171-spatialrel-is-the-features-relation-to-the-input-geometry.md)
 
-### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 7 records, 11,165 words (6% of the corpus)
+### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 7 records, 11,165 words (5% of the corpus)
 
 1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153, 0170, 0172)*
 2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*
@@ -321,6 +322,7 @@ believed.
 - **0041** is amended by 0082, 0090, 0149
 - **0058** is amended by 0100
 - **0070** is amended by 0101
+- **0073** is amended by 0187
 - **0074** is amended by 0097, 0098, 0132, 0158, 0167
 - **0083** is amended by 0129
 - **0084** is amended by 0091, 0125

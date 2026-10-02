@@ -36,11 +36,12 @@ namespace Spatial.SqlServer.Tests;
 /// by 1e-8 of tolerance, the invalid polygon by an error from the server.
 /// </para>
 /// </summary>
-public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerStatisticsPushdownTests : IClassFixture<SqlServerDatabaseFixture>
 {
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerStatisticsPushdownTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerStatisticsPushdownTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [

@@ -1,14 +1,38 @@
 using Microsoft.Data.SqlClient;
 using Testcontainers.MsSql;
+using Xunit;
 
 namespace Spatial.SqlServer.Tests;
 
 /// <summary>
-/// The containerised SQL Server fixture (ADR-0073): a Testcontainers SQL
-/// Server image started once per test class. When the Docker daemon is not
-/// reachable the fixture records an explicit skip reason; every test checks it
-/// through <c>Skip.If</c> (never a silent no-op). The fixture also seeds the
-/// spatial fixtures the data-path tests assert against.
+/// The one collection the container-backed classes belong to. Its fixture is
+/// <see cref="SqlServerContainerFixture"/>, so the container is started once
+/// for the assembly rather than once per class — thirteen SQL Server
+/// containers starting at once under a loaded lane is what degraded the suite
+/// into a run that reported most of itself as skipped while saying nothing
+/// about why (SpatialEngine-qhz, reported through ADR-0139).
+/// </summary>
+/// <remarks>
+/// The collection does not run its classes in parallel: they share one SQL
+/// Server instance, and each is given its own database
+/// (<see cref="SqlServerDatabaseFixture"/>), so running them one at a time
+/// costs the suite nothing it was not already paying in container starts.
+/// </remarks>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class SqlServerContainerDefinition : ICollectionFixture<SqlServerContainerFixture>
+{
+    public const string Name = "SQL Server container";
+}
+
+/// <summary>
+/// The containerised SQL Server fixture (ADR-0073): one Testcontainers SQL
+/// Server image, started once for the whole assembly with a generous budget
+/// and more than one attempt. When the Docker daemon is not reachable — or the
+/// host never gave the image the time it asked for — the fixture records an
+/// explicit skip reason; every test checks it through <c>Skip.If</c> (never a
+/// silent no-op). Test classes take a database inside it
+/// (<see cref="SqlServerDatabaseFixture"/>) rather than a container of their
+/// own.
 /// </summary>
 public sealed class SqlServerContainerFixture : IAsyncLifetime
 {
@@ -22,19 +46,34 @@ public sealed class SqlServerContainerFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        try
+        var start = await SqlServerContainerStart.StartAsync(
+            async cancellationToken =>
+            {
+                var container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
+                try
+                {
+                    await container.StartAsync(cancellationToken);
+                }
+                catch
+                {
+                    // The start owns what it created, so a retry is not a leak.
+                    await container.DisposeAsync();
+                    throw;
+                }
+
+                return container;
+            },
+            discardAsync: (container, _) => container.DisposeAsync().AsTask());
+
+        DockerAvailable = start.Started;
+        if (!DockerAvailable || start.Container is not MsSqlContainer container)
         {
-            _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
-            await _container.StartAsync();
-            DockerAvailable = true;
-            ConnectionString = WithTrustServerCertificate(_container.GetConnectionString());
-            await SeedAsync();
+            SkipReason = start.Reason ?? "the SQL Server container could not start.";
+            return;
         }
-        catch (Exception exception)
-        {
-            DockerAvailable = false;
-            SkipReason = $"the SQL Server container could not start (is the Docker daemon reachable?): {exception.Message}";
-        }
+
+        _container = container;
+        ConnectionString = WithTrustServerCertificate(container.GetConnectionString());
     }
 
     public async Task DisposeAsync()
@@ -43,6 +82,30 @@ public sealed class SqlServerContainerFixture : IAsyncLifetime
         {
             await _container.DisposeAsync();
         }
+    }
+
+    /// <summary>
+    /// A connection string to a database of its own inside the shared
+    /// container, created empty. Each test class takes one so that a class
+    /// which writes to <c>dbo.places</c> is not fighting the class that
+    /// asserts on it.
+    /// </summary>
+    public async Task<string> CreateDatabaseAsync(string database)
+    {
+        if (!IsSafeDatabaseName(database))
+        {
+            throw new ArgumentException(
+                $"'{database}' is not a database name this fixture will create.",
+                nameof(database));
+        }
+
+        await using var connection = new SqlConnection(ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"CREATE DATABASE [{database}]";
+        await command.ExecuteNonQueryAsync();
+
+        return new SqlConnectionStringBuilder(ConnectionString) { InitialCatalog = database }.ConnectionString;
     }
 
     /// <summary>
@@ -57,45 +120,14 @@ public sealed class SqlServerContainerFixture : IAsyncLifetime
             Encrypt = false,
         }.ConnectionString;
 
-    /// <summary>Seeds the fixture tables (or is a no-op when the fixture was skipped).</summary>
-    private async Task SeedAsync()
-    {
-        if (!DockerAvailable)
-        {
-            return;
-        }
-
-        await using var connection = new SqlConnection(ConnectionString);
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE TABLE places (
-                id int NOT NULL PRIMARY KEY,
-                name nvarchar(100) NOT NULL,
-                geom geometry NOT NULL
-            );
-            INSERT INTO places (id, name, geom) VALUES
-                (1, N'Berlin', geometry::STGeomFromText('POINT(13.405 52.5200)', 4326)),
-                (2, N'London', geometry::STGeomFromText('POINT(-0.1276 51.5072)', 4326)),
-                (3, N'Paris',  geometry::STGeomFromText('POINT(2.3522 48.8566)', 4326));
-
-            CREATE TABLE roads (
-                id int NOT NULL,
-                kind nvarchar(50) NULL,
-                geom geometry NOT NULL
-            );
-            INSERT INTO roads (id, kind, geom) VALUES
-                (1, N'highway', geometry::STGeomFromText('LINESTRING(0 0, 10 10)', 3857)),
-                (2, N'trail',   geometry::STGeomFromText('LINESTRING(5 5, 20 20)', 3857));
-
-            CREATE TABLE bigpoints (
-                id int NOT NULL,
-                geom geometry NOT NULL
-            );
-            INSERT INTO bigpoints (id, geom)
-            SELECT TOP (200000) g, geometry::STGeomFromText('POINT(' + CAST((g % 1000) AS varchar(20)) + ' ' + CAST((g / 1000) AS varchar(20)) + ')', 4326)
-            FROM (SELECT ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS g FROM sys.all_objects) AS numbers;
-            """;
-        await command.ExecuteNonQueryAsync();
-    }
+    /// <summary>
+    /// A database name the fixture will interpolate into <c>CREATE DATABASE</c>:
+    /// a lowercase letter, then letters, digits and underscores. The names are
+    /// generated here rather than taken from anywhere else, and this is the
+    /// check that says so.
+    /// </summary>
+    private static bool IsSafeDatabaseName(string database) =>
+        database.Length is > 0 and <= 64
+        && database[0] is >= 'a' and <= 'z'
+        && database.All(character => character is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '_');
 }
