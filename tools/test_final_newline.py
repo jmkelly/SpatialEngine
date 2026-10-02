@@ -84,17 +84,38 @@ class ChecksFinalNewlineTests(unittest.TestCase):
             result = run_check(Path(root), "src/Sample.cs")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def test_a_project_file_is_not_this_checks_business(self):
-        # Measured, not assumed: `dotnet format
-        # clients/dotnet/Spatial.Client/Spatial.Client.csproj
-        # --verify-no-changes` exits 0 on a `.csproj` with no final newline, so
-        # `FINALNEWLINE` is a diagnostic over C# source and only C# source.
-        # Claiming the rest of `[*]` would be a second project with ~190
-        # findings behind it.
-        with tree({".editorconfig": EDITORCONFIG,
-                   "src/Sample.csproj": NO_FINAL_NEWLINE}) as root:
-            result = run_check(Path(root), "src/Sample.csproj")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    def test_a_file_outside_csharp_is_reported(self):
+        # SpatialEngine-3rz. ADR-0186 §2 scoped this check to `.cs` because
+        # `FINALNEWLINE` is a Roslyn diagnostic and read nothing else, and named
+        # the rest of `[*]` as this bead. The `.editorconfig` claim is `[*]`, and
+        # a `.md`, `.json`, `.py`, `.sh` or `.csproj` file the repository ships
+        # with no final newline is as unformatted as a `.cs` one.
+        for name in ("docs/prose.md", "data/case.json", "tools/check.py",
+                     "eng/run.sh", "src/Sample.csproj", "Makefile"):
+            with self.subTest(name=name):
+                with tree({".editorconfig": EDITORCONFIG, name: NO_FINAL_NEWLINE}) as root:
+                    result = run_check(Path(root), name)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn(f"{name}: no final newline", result.stdout)
+
+    def test_a_captured_corpus_exempted_through_editorconfig_is_left_alone(self):
+        # ADR-0143's precedent: `psql` capture output is exempt through
+        # `.editorconfig` with the reason in it rather than retyped, and the same
+        # is done for the captured Esri/QGIS/ground-truth corpora and the
+        # vendored MapLibre bundles — a capture is the record of what the tool
+        # printed, so appending a byte to it makes it no longer that record.
+        body = '{"service":"esri"}'
+        captured = EDITORCONFIG + (
+            "\n# Captured tool output: the bytes are the record.\n"
+            "[tests/fixtures/esri-docs/**.json]\n"
+            "insert_final_newline = false\n")
+        with tree({".editorconfig": captured,
+                   "tests/fixtures/esri-docs/mapserver/mapserver-root.json": body,
+                   "tests/fixtures/other/other.json": body}) as root:
+            exempt = run_check(Path(root), "tests/fixtures/esri-docs/mapserver/mapserver-root.json")
+            reported = run_check(Path(root), "tests/fixtures/other/other.json")
+        self.assertEqual(exempt.returncode, 0, exempt.stdout + exempt.stderr)
+        self.assertEqual(reported.returncode, 1, reported.stdout + reported.stderr)
 
     def test_an_empty_file_is_clean(self):
         # There is no last byte to end with, so there is nothing to insert.
@@ -190,7 +211,10 @@ class LaneWiringTests(unittest.TestCase):
 class RepositoryTests(unittest.TestCase):
     """The repository itself, which is the finding the gate is for."""
 
-    def test_no_csharp_file_lacks_its_final_newline(self):
+    def test_no_file_the_rule_covers_lacks_its_final_newline(self):
+        # The whole point of the gate: every file `.editorconfig` names for
+        # `insert_final_newline`, and every file the repository ships is one of
+        # them.
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--repo", str(REPO_ROOT)],
             capture_output=True, text=True,

@@ -21,6 +21,34 @@ trim_trailing_whitespace = false
 [eng/spike-*/results/*.txt]
 trim_trailing_whitespace = false
 
+# Captured responses and vendored bundles, byte for byte as the tool or the
+# upstream shipped them. A capture is the record of what the server or the tool
+# printed; appending a newline to it makes it no longer that record, so these are
+# exempt from `insert_final_newline` the way the `psql` plans above are exempt
+# from trimming (ADR-0143), and tools/final_newline.py reads this section rather
+# than a file-type table of its own (ADR-0188).
+[research/compat/ground-truth/*.json]
+insert_final_newline = false
+
+[tests/fixtures/esri-docs/**.json]
+insert_final_newline = false
+
+[tests/fixtures/qgis/*.json]
+insert_final_newline = false
+
+# Recorded by eng/e2e-web.sh with `curl -o`, then rewritten by `sed`: whatever
+# the host served. `scripts/check-generated.mjs` parses it rather than
+# comparing it byte for byte, but the bytes are still the record.
+[clients/typescript/scripts/openapi.snapshot.json]
+insert_final_newline = false
+
+# Vendored upstream build, byte for byte as `maplibre-gl` v6.6.0 ships it
+# (`node_modules/maplibre-gl/dist/**`), pinned so the worker URL stays
+# resolvable offline. Re-vendoring replaces them wholesale, so a hand-applied
+# newline would be lost and then read back as a finding.
+[apps/workbench-web/public/*.mjs]
+insert_final_newline = false
+
 [*.cs]
 dotnet_sort_system_directives_first = true
 csharp_style_namespace_declarations = file_scoped:warning
