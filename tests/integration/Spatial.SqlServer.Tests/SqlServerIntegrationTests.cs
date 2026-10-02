@@ -520,6 +520,7 @@ public sealed class SqlServerIntegrationTests : IClassFixture<SqlServerContainer
     [SkippableFact]
     public async Task An_invalid_dataset_identifier_is_invalid_arguments()
     {
+        Skip.IfNot(_fixture.DockerAvailable, _fixture.SkipReason);
         await using var context = SqlServerTestContext.Create(_fixture.ConnectionString);
 
         var failure = await Assert.ThrowsAsync<SpatialException>(() => context.Store.ScanAsync("places; DROP TABLE places"));
