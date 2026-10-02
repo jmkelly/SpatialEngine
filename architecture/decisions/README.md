@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**173 records on disk.** `status` is the record's own word;
+**174 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -25,7 +25,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0007](ADR-0007-versioned-capability-contracts.md) | Capability contracts are versioned independently | superseded | 2026-08-30 | ADR-0033 |
 | [0008](ADR-0008-jobs-for-long-operations.md) | Long operations use the job model | superseded | 2026-08-30 | ADR-0033 |
 | [0009](ADR-0009-crs-identity-core-transform-plugin.md) | CRS identity is core; transformation is a plugin | accepted | 2026-08-30 | — |
-| [0010](ADR-0010-postgis-initial-provider.md) | Initial backing provider is PostGIS | accepted | 2026-08-30 | — |
+| [0010](ADR-0010-postgis-initial-provider.md) | Initial backing provider is PostGIS | accepted | 2026-08-30 | ADR-0189 |
 | [0011](ADR-0011-dotnet-10-backend.md) | .NET 10 is the initial backend and runtime | accepted | 2026-08-30 | — |
 | [0012](ADR-0012-host-jit-compiled.md) | The initial .NET host is JIT-compiled | accepted | 2026-08-30 | — |
 | [0013](ADR-0013-language-neutral-boundaries.md) | Worker boundaries are language-neutral | superseded | 2026-08-30 | ADR-0033 |
@@ -189,6 +189,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md) | Map a row once, and order a page rather than the read | accepted | 2026-10-07 | ADR-0184, ADR-0074, ADR-0097, ADR-0116, ADR-0127, ADR-0131 |
 | [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md) | the final-newline rule is a check every lane runs | accepted | 2026-10-01 | ADR-0134, ADR-0143, ADR-0109, ADR-0146 |
 | [0187](ADR-0187-one-container-for-the-sql-server-suite-a-database-per-class.md) | one container for the SQL Server suite, a database per class | accepted | 2026-10-02 | ADR-0073, ADR-0139 |
+| [0189](ADR-0189-one-postgis-container-a-database-per-class.md) | one container for the PostGIS suite, a database per class | accepted | 2026-10-02 | ADR-0010, ADR-0139, ADR-0187 |
 
 ## Reading order
 
@@ -203,7 +204,7 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 21 records, 39,837 words (20% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 21 records, 39,837 words (19% of the corpus)
 
 1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158, 0167)*
 2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md) *(narrowed by 0184)*
@@ -317,6 +318,7 @@ record nobody amends does not appear, and a record that carries a
 hand-written `amended-by:` is checked against this list rather than
 believed.
 
+- **0010** is amended by 0189
 - **0036** is amended by 0106, 0156, 0166
 - **0038** is amended by 0140
 - **0041** is amended by 0082, 0090, 0149

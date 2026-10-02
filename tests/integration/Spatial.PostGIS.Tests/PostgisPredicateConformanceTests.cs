@@ -11,11 +11,12 @@ namespace Spatial.PostGIS.Tests;
 /// PostGIS container, so the SQL pushdown and the reference evaluator are held
 /// to one answer. Skips with an explicit reason when Docker is unavailable.
 /// </summary>
-public sealed class PostgisPredicateConformanceTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisPredicateConformanceTests : IClassFixture<PostgisDatabaseFixture>
 {
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisPredicateConformanceTests(PostgisContainerFixture fixture)
+    public PostgisPredicateConformanceTests(PostgisDatabaseFixture fixture)
     {
         _fixture = fixture;
     }

@@ -13,13 +13,14 @@ namespace Spatial.PostGIS.Tests;
 /// Every test skips with an explicit reason when no Docker daemon is
 /// available.
 /// </summary>
-public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisAttachmentIntegrationTests : IClassFixture<PostgisDatabaseFixture>
 {
     private const string FoldDataset = "public.attach_fold";
 
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisAttachmentIntegrationTests(PostgisContainerFixture fixture)
+    public PostgisAttachmentIntegrationTests(PostgisDatabaseFixture fixture)
     {
         _fixture = fixture;
     }

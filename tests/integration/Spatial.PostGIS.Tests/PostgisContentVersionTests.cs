@@ -15,11 +15,12 @@ namespace Spatial.PostGIS.Tests;
 /// kind of write, after a rollback, and as a second connection — or a second
 /// store — sees it.
 /// </summary>
-public sealed class PostgisContentVersionTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisContentVersionTests : IClassFixture<PostgisDatabaseFixture>
 {
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisContentVersionTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisContentVersionTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [

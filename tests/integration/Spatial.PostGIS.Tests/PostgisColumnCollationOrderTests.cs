@@ -28,13 +28,14 @@ namespace Spatial.PostGIS.Tests;
 /// the only shape in which the term is skipped and the column still needs it.
 /// </para>
 /// </summary>
-public sealed class PostgisColumnCollationOrderTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisColumnCollationOrderTests : IClassFixture<PostgisDatabaseFixture>
 {
     private const string ByteOrderDatabase = "byte_order_collation";
 
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisColumnCollationOrderTests(PostgisContainerFixture fixture)
+    public PostgisColumnCollationOrderTests(PostgisDatabaseFixture fixture)
     {
         _fixture = fixture;
     }

@@ -26,14 +26,15 @@ namespace Spatial.PostGIS.Tests;
 /// when the entry expires.
 /// </para>
 /// </summary>
-public sealed class PostgisDescriptionCacheTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisDescriptionCacheTests : IClassFixture<PostgisDatabaseFixture>
 {
     private const int Rows = 40;
     private const int PageSize = 4;
 
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisDescriptionCacheTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisDescriptionCacheTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [

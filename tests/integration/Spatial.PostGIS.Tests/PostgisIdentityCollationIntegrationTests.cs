@@ -17,7 +17,8 @@ namespace Spatial.PostGIS.Tests;
 /// because that is the only way to make the two orders disagree.
 /// </para>
 /// </summary>
-public sealed class PostgisIdentityCollationIntegrationTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisIdentityCollationIntegrationTests : IClassFixture<PostgisDatabaseFixture>
 {
     private const string Dataset = "public.identity_fold";
 
@@ -28,9 +29,9 @@ public sealed class PostgisIdentityCollationIntegrationTests : IClassFixture<Pos
         new FieldDefinition("geometry", AttributeKind.Geometry, nullable: true),
     ]);
 
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisIdentityCollationIntegrationTests(PostgisContainerFixture fixture)
+    public PostgisIdentityCollationIntegrationTests(PostgisDatabaseFixture fixture)
     {
         _fixture = fixture;
     }

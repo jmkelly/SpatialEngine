@@ -10,11 +10,12 @@ namespace Spatial.PostGIS.Tests;
 /// identity modes, the omit-identity add (ADR-0043) and the rollback that
 /// leaves no table behind. Skips with an explicit reason without Docker.
 /// </summary>
-public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisIngestIntegrationTests : IClassFixture<PostgisDatabaseFixture>
 {
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisIngestIntegrationTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisIngestIntegrationTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     private static string Unique(string prefix) =>
         $"public.{prefix}_{Guid.NewGuid().ToString("N")[..8]}";

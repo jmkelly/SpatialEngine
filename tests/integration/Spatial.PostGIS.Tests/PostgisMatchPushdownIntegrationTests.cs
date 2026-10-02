@@ -26,11 +26,12 @@ namespace Spatial.PostGIS.Tests;
 /// restriction off the feature identity.
 /// </para>
 /// </summary>
-public sealed class PostgisMatchPushdownIntegrationTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisMatchPushdownIntegrationTests : IClassFixture<PostgisDatabaseFixture>
 {
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisMatchPushdownIntegrationTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisMatchPushdownIntegrationTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [

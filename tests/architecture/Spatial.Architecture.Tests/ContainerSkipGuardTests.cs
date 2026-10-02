@@ -40,7 +40,7 @@ public sealed class ContainerSkipGuardTests
     /// </summary>
     public static TheoryData<string, string> Suites => new()
     {
-        { "Spatial.PostGIS.Tests", "IClassFixture<PostgisContainerFixture>" },
+        { "Spatial.PostGIS.Tests", "IClassFixture<PostgisDatabaseFixture>" },
         { "Spatial.SqlServer.Tests", "IClassFixture<SqlServerDatabaseFixture>" },
     };
 

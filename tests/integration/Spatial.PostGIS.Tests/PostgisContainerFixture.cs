@@ -4,14 +4,20 @@ using Testcontainers.PostgreSql;
 namespace Spatial.PostGIS.Tests;
 
 /// <summary>
-/// The containerised PostGIS fixture (ADR-0010/0028): a Testcontainers
-/// PostGIS image started once per test class. When the Docker daemon is not
-/// reachable the fixture records an explicit skip reason; every test checks
-/// it through <c>Skip.If</c> (never a silent no-op). The fixture also seeds
-/// the spatial fixtures the data-path tests assert against.
+/// The containerised PostGIS fixture (ADR-0010/0028): one Testcontainers
+/// PostGIS image, started once for the whole assembly with a generous budget
+/// and more than one attempt. When the Docker daemon is not reachable — or
+/// the host never gave the image the time it asked for — the fixture records
+/// an explicit skip reason; every test checks it through <c>Skip.If</c> (never
+/// a silent no-op). Test classes take a database inside it
+/// (<see cref="PostgisDatabaseFixture"/>) rather than a container of their
+/// own.
 /// </summary>
 public sealed class PostgisContainerFixture : IAsyncLifetime
 {
+    /// <summary>The database the container itself is created with, and the one admin statements run against.</summary>
+    private const string AdministrativeDatabase = "postgres";
+
     private PostgreSqlContainer? _container;
 
     public bool DockerAvailable { get; private set; }
@@ -22,23 +28,38 @@ public sealed class PostgisContainerFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        try
+        var start = await PostgisContainerStart.StartAsync(
+            async cancellationToken =>
+            {
+                var container = new PostgreSqlBuilder("postgis/postgis:16-3.4")
+                    .WithDatabase(AdministrativeDatabase)
+                    .WithUsername("spatial")
+                    .WithPassword("spatial")
+                    .Build();
+                try
+                {
+                    await container.StartAsync(cancellationToken);
+                }
+                catch
+                {
+                    // The start owns what it created, so a retry is not a leak.
+                    await container.DisposeAsync();
+                    throw;
+                }
+
+                return container;
+            },
+            discardAsync: (container, _) => container.DisposeAsync().AsTask());
+
+        DockerAvailable = start.Started;
+        if (!DockerAvailable || start.Container is not PostgreSqlContainer container)
         {
-            _container = new PostgreSqlBuilder("postgis/postgis:16-3.4")
-                .WithDatabase("spatial")
-                .WithUsername("spatial")
-                .WithPassword("spatial")
-                .Build();
-            await _container.StartAsync();
-            DockerAvailable = true;
-            ConnectionString = _container.GetConnectionString();
-            await SeedAsync();
+            SkipReason = start.Reason ?? "the PostGIS container could not start.";
+            return;
         }
-        catch (Exception exception)
-        {
-            DockerAvailable = false;
-            SkipReason = $"the PostGIS container could not start (is the Docker daemon reachable?): {exception.Message}";
-        }
+
+        _container = container;
+        ConnectionString = container.GetConnectionString();
     }
 
     public async Task DisposeAsync()
@@ -49,47 +70,47 @@ public sealed class PostgisContainerFixture : IAsyncLifetime
         }
     }
 
-    /// <summary>Seeds the fixture tables (or is a no-op when the fixture was skipped).</summary>
-    private async Task SeedAsync()
+    /// <summary>
+    /// A connection string to a database of its own inside the shared
+    /// container, created empty. Each test class takes one so that a class
+    /// which writes to <c>places</c> is not fighting the class that asserts on
+    /// it.
+    /// </summary>
+    public async Task<string> CreateDatabaseAsync(string database)
     {
-        if (!DockerAvailable)
+        if (!IsSafeDatabaseName(database))
         {
-            return;
+            throw new ArgumentException(
+                $"'{database}' is not a database name this fixture will create.",
+                nameof(database));
         }
 
-        await using var dataSource = NpgsqlDataSource.Create(ConnectionString);
+        await using var dataSource = NpgsqlDataSource.Create(AdministrativeConnectionString());
         await using var connection = await dataSource.OpenConnectionAsync();
         await using var command = connection.CreateCommand();
-        command.CommandText = """
-            CREATE EXTENSION IF NOT EXISTS postgis;
-
-            CREATE TABLE places (
-                id bigint PRIMARY KEY,
-                name text NOT NULL,
-                geom geometry(Point, 4326) NOT NULL
-            );
-            INSERT INTO places (id, name, geom) VALUES
-                (1, 'Berlin', ST_GeomFromText('POINT(13.405 52.5200)', 4326)),
-                (2, 'London', ST_GeomFromText('POINT(-0.1276 51.5072)', 4326)),
-                (3, 'Paris',  ST_GeomFromText('POINT(2.3522 48.8566)', 4326));
-
-            CREATE TABLE roads (
-                id bigint,
-                kind text,
-                geom geometry(LineString, 3857)
-            );
-            INSERT INTO roads (id, kind, geom) VALUES
-                (1, 'highway', ST_GeomFromText('LINESTRING(0 0, 10 10)', 3857)),
-                (2, 'trail',   ST_GeomFromText('LINESTRING(5 5, 20 20)', 3857));
-
-            CREATE TABLE bigpoints (
-                id bigint NOT NULL,
-                geom geometry(Point, 4326) NOT NULL
-            );
-            INSERT INTO bigpoints (id, geom)
-            SELECT g, ST_MakePoint((g % 1000)::double precision / 10, (g / 1000)::double precision / 10)
-            FROM generate_series(1, 200000) AS g;
-            """;
+        command.CommandText = $"CREATE DATABASE \"{database}\"";
         await command.ExecuteNonQueryAsync();
+
+        return new NpgsqlConnectionStringBuilder(ConnectionString) { Database = database }.ConnectionString;
     }
+
+    /// <summary>
+    /// The shared container's own connection, pointed at the administrative
+    /// database rather than at any class's: a class's database is dropped while
+    /// that class is tearing down, and a drop issued through a connection into
+    /// the database being dropped cannot finish.
+    /// </summary>
+    public string AdministrativeConnectionString() =>
+        new NpgsqlConnectionStringBuilder(ConnectionString) { Database = AdministrativeDatabase }.ConnectionString;
+
+    /// <summary>
+    /// A database name the fixture will interpolate into <c>CREATE
+    /// DATABASE</c>: a lowercase letter, then letters, digits and underscores.
+    /// The names are generated by <see cref="PostgisDatabaseFixture"/> rather
+    /// than taken from anywhere else, and this is the check that says so.
+    /// </summary>
+    private static bool IsSafeDatabaseName(string database) =>
+        database.Length is > 0 and <= 63
+        && database[0] is >= 'a' and <= 'z'
+        && database.All(character => character is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '_');
 }

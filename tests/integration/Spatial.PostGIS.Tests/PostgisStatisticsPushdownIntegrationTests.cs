@@ -27,11 +27,12 @@ namespace Spatial.PostGIS.Tests;
 /// rows at all (one row of nulls ungrouped, no rows grouped).
 /// </para>
 /// </summary>
-public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisStatisticsPushdownIntegrationTests : IClassFixture<PostgisDatabaseFixture>
 {
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisStatisticsPushdownIntegrationTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisStatisticsPushdownIntegrationTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [

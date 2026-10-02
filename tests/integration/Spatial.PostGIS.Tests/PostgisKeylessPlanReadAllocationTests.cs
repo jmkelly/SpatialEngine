@@ -30,13 +30,16 @@ namespace Spatial.PostGIS.Tests;
 /// </para>
 /// </summary>
 /// <para>
-/// The measurements run in their own collection: allocation is counted for the
-/// whole process, so a figure is this test's only when nothing else in the
-/// assembly is allocating.
+/// The measurements run in the suite's one collection, which forbids
+/// parallelization (ADR-0189): allocation is counted for the whole process, so
+/// a figure is this test's only when nothing else in the assembly is
+/// allocating. That collection bought the property this test needs — no other
+/// class runs alongside it — and it now carries the shared container as well,
+/// so the class no longer needs a collection of its own to get one.
 /// </para>
 /// </summary>
-[Collection(PostgisKeylessPlanReadAllocationTests.Alone.Name)]
-public sealed class PostgisKeylessPlanReadAllocationTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisKeylessPlanReadAllocationTests : IClassFixture<PostgisDatabaseFixture>
 {
     private const int Rows = 5_000;
 
@@ -47,9 +50,9 @@ public sealed class PostgisKeylessPlanReadAllocationTests : IClassFixture<Postgi
     /// </summary>
     private const double Tolerance = 1.25;
 
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisKeylessPlanReadAllocationTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisKeylessPlanReadAllocationTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     [SkippableFact]
     public async Task A_capped_plan_read_on_a_keyless_layer_costs_no_more_than_the_scan_it_had_to_do()
@@ -129,17 +132,5 @@ public sealed class PostgisKeylessPlanReadAllocationTests : IClassFixture<Postgi
             + $"{Rows}) AS g");
         Assert.Empty((await context.Store.DescribeAsync(dataset)).IdColumns);
         return dataset;
-    }
-
-    /// <summary>
-    /// A collection of its own, so an allocation figure is not another test's:
-    /// <see cref="GC.GetTotalAllocatedBytes"/> counts the process, and the
-    /// other classes in this assembly run in parallel with any test that is not
-    /// in a collection that forbids it.
-    /// </summary>
-    [CollectionDefinition(Name, DisableParallelization = true)]
-    public sealed class Alone
-    {
-        public const string Name = "postgis-allocation";
     }
 }

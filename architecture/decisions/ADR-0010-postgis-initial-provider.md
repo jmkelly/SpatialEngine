@@ -2,6 +2,7 @@
 status: accepted
 date: 2026-08-30
 deciders: maintainer + agent
+amended-by: ADR-0189
 summary: PostGIS is the initial backing provider.
 ---
 
@@ -21,5 +22,7 @@ secrets, bounded streaming and database-command cancellation.
 ## Consequences
 
 - Provider contracts are proven against real-world behaviour early.
-- Integration tests run PostGIS in a container (local dev profile).
+- Integration tests run PostGIS in a container (local dev profile). ADR-0189
+  amends this: the container is one per test run, shared by a collection, with
+  a database per test class inside it, and a start that is retried.
 - Other stores (GeoParquet, COG, OGC APIs) follow the same contracts later.
