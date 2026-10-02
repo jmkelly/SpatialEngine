@@ -33,11 +33,10 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
   it: ADR-0097's rule is about the ordinal a feature is named by, and a count,
   a distinct set and a grouped reduction return values, so they push on a
   keyless layer where the feature read cannot. (SpatialEngine-xg5)
-- Measure where an allocation actually is before naming the class that owns
-  the feature: the 15 MB a keyless capped read cost over its scan was not
-  `FeaturePlanExecutor`, whose `Select` copies references, but two SQL stores'
-  row mapping building a second feature per row — so decide the projection once
-  per read, and order a page's window rather than the read. (SpatialEngine-yup)
+- Measure where an allocation is before naming the class that owns the feature:
+  the 15 MB was two SQL stores' row mapping building a second feature per row,
+  not `FeaturePlanExecutor` — decide the projection once per read, and order a
+  page's window rather than the read. (SpatialEngine-yup)
 - Apply each sort key as a then-key in `FeaturePlanExecutor.Order`; a fresh
   `OrderBy` per key made a composite order its last key's, and the SQL
   pushdowns were narrowed to the orders both sides agreed on.
