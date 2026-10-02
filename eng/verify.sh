@@ -24,6 +24,14 @@
 #                            reach for when a change is broad enough to doubt
 #                            the scoping, and what `--bead --full` asks the
 #                            merge tool for.
+#   eng/verify.sh --skip-tests <substring>
+#                            leave a named test project out of the scoped lane,
+#                            loudly, and out of the skip counts rather than
+#                            judged (repeatable, and VERIFY_SKIP_TESTS is the
+#                            comma-separated spelling). A value that
+#                            normalises to no pattern — a space, a comma,
+#                            `", ,"` — is rejected by name, not accepted and
+#                            dropped on the floor (SpatialEngine-drb).
 #   eng/verify.sh --plan     print the steps a lane would run, and run nothing
 #
 #   eng/quality-audit.sh --report     the documentation-freshness audit and the
