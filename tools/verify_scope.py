@@ -57,9 +57,18 @@ ARCHITECTURE_PROJECT = (
     "tests/architecture/Spatial.Architecture.Tests/Spatial.Architecture.Tests.csproj")
 
 #: Files whose project has to be format-checked when they change. A README or a
-#: shell script under a project directory changes no formatting.
+#: shell script under a project directory changes no formatting. `.editorconfig`
+#: is matched on the *name*, not the suffix: see `_is_formattable`.
 FORMATTABLE_SUFFIXES = frozenset({".cs", ".csproj", ".props", ".targets",
                                  ".editorconfig", ".resx"})
+
+#: The members of `FORMATTABLE_SUFFIXES` pathlib cannot reach by suffix,
+#: because a leading-dot filename has no extension
+#: (`Path('src/Spatial.Maps/.editorconfig').suffix == ''`). Matched on the
+#: file's own name instead, so a project-level `.editorconfig` selects the
+#: project whose style it changes. The root spelling is not here: it reaches
+#: every project and `SOLUTION_WIDE_FILES` turns it exhaustive first.
+FORMATTABLE_NAMES = frozenset({".editorconfig"})
 
 #: The python tooling tests read this directory; nothing else in the repo does.
 TOOLING_PREFIX = "tools/"
@@ -328,6 +337,17 @@ def changed_files(root: Path, base: str) -> tuple[frozenset[str], bool]:
     return frozenset(files), True
 
 
+def _is_formattable(path: str) -> bool:
+    """Whether a changed file means its project's style has to be checked.
+
+    Suffix or name, because the two spellings of `.editorconfig` are
+    unreachable by suffix and the arm that used one silently selected no
+    format projects for a project-level style change.
+    """
+    return (Path(path).suffix in FORMATTABLE_SUFFIXES
+            or Path(path).name in FORMATTABLE_NAMES)
+
+
 def _is_solution_wide(path: str) -> bool:
     """True for a changed file that no single project owns.
 
@@ -364,8 +384,7 @@ def plan_for_files(repository: Repository, files, base: str = "<given>") -> Plan
                     format_projects=(), build_projects=(), test_projects=(),
                     run_python_tooling=True, exhaustive=True)
 
-    formattable = {f for f in files
-                   if Path(f).suffix in FORMATTABLE_SUFFIXES}
+    formattable = {f for f in files if _is_formattable(f)}
     format_projects = sorted(repository.owning_projects(formattable))
     # Every changed file, not only the formattable ones: a `.json` fixture or a
     # `.resx` beside a project belongs to that project and has to select its

@@ -183,6 +183,27 @@ recorded in SpatialEngine-4h0. That evaluation is now written up in
 four gate call sites — and a merge gate that, since ADR-0134, runs no formatter
 at all.
 
+### A project-level `.editorconfig` is scoped, and formattable
+
+The two spellings of `.editorconfig` reach the lane by two different arms, and
+both have to be matched on the file's **name**: `Path('.editorconfig').suffix`
+is `''`, because pathlib reads a leading-dot filename as having no extension,
+so no suffix test can ever match either one.
+
+The root file reaches every project, so `_is_solution_wide` names it and the
+plan comes back `exhaustive` (SpatialEngine-x8p). A `.editorconfig` under
+`src/<project>/` is that project's own, so it stays scoped — but it still has
+to select that project's format check, and until 2026-10-02 the formattable
+arm tested `Path(f).suffix` while `FORMATTABLE_SUFFIXES` carried the literal
+`'.editorconfig'`. The constant named a file the test could not match, so a
+branch that added or edited a project-level `.editorconfig` selected **no**
+format projects and `--format` ran no formatter over the project whose style
+had just changed. The gate was green on a change it had not read.
+
+`_is_formattable` now tests the suffix *or* the name, and the split is pinned
+from both sides: the root spelling falls back to exhaustive, the below-the-root
+one selects its own project (SpatialEngine-148).
+
 ## Consequences
 
 - The default lane costs minutes instead of ~25, and scales with the size of

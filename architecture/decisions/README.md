@@ -227,7 +227,7 @@ out: the "Amended by" row already says everything about a pair.
 20. [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) *(narrowed by 0185)*
 21. [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md)
 
-### ADR-0109: the verification lanes, implemented — 8 records, 14,700 words (7% of the corpus)
+### ADR-0109: the verification lanes, implemented — 8 records, 14,885 words (7% of the corpus)
 
 1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
 2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148, 0186)*
