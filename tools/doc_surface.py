@@ -31,7 +31,10 @@ stopped them landing in the first place. This is the three rules that hold:
     with a pointer at it, which is the shape the corpus is supposed to have.
 2.  **One changelog, at `docs/CHANGELOG.md`.** A second `CHANGELOG.md` beside
     the one the release checklist names is two answers to "what shipped", and
-    the release moves one of them.
+    the release moves one of them. The walk that finds one prunes `IGNORED_DIRS`
+    (`node_modules/`, `dist/`, `bin/`, `obj/`, `.git/`) rather than filtering
+    their hits out, so the verdict is about what the repository *ships* and does
+    not turn red on a checkout that has run `npm install`.
 3.  **`<Version>` and the changelog agree.** `RELEASING.md` steps 2 and 3 are
     one edit: a `## [x.y.z]` heading above the product version is a release
     whose version was never bumped, so the tag and the built assembly disagree.
@@ -54,6 +57,7 @@ nothing and has no `--fix`.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -90,6 +94,20 @@ DURABLE_ROOT_DOCS = frozenset({
     "license",
 })
 
+#: Directory names the changelog walk prunes rather than filtering afterwards.
+#: `Path.rglob` has no skip set, so it descends into every one of them, and the
+#: directories it descends into are exactly the ones the repository does not
+#: ship: `node_modules/` is `.gitignore`d wholesale and carries a `CHANGELOG.md`
+#: per package, and `dist/`, `bin/` and `obj/` are build output. Pruning is
+#: also the cheaper way to not look — a checkout that has run `npm install` has
+#: tens of thousands of files under `node_modules/`, and the walk was paying to
+#: enumerate them on every lane. Pruned by name, not by reading `.gitignore`:
+#: the gate is about what the repository ships, and a hand-listed set is a set
+#: someone can check by reading it.
+IGNORED_DIRS = frozenset({
+    ".git", "node_modules", "dist", "bin", "obj",
+})
+
 VERSION_PROPERTY = re.compile(r"<Version>\s*([^<]+?)\s*</Version>")
 VERSION = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 RELEASE_HEADING = re.compile(r"^##\s+\[(\d+(?:\.\d+)*)\](?:\s*-\s*|$)", re.M)
@@ -122,6 +140,18 @@ def released_versions(root: Path) -> list[str]:
     return RELEASE_HEADING.findall(read(root / CHANGELOG_PATH))
 
 
+def changelogs(root: Path) -> list[Path]:
+    """Every `CHANGELOG.md` under `root` that is not inside a pruned directory."""
+    found: list[Path] = []
+    for directory, subdirectories, files in os.walk(root):
+        subdirectories[:] = sorted(
+            name for name in subdirectories if name not in IGNORED_DIRS
+        )
+        if "CHANGELOG.md" in files:
+            found.append(Path(directory) / "CHANGELOG.md")
+    return sorted(found)
+
+
 def findings(root: Path) -> list[str]:
     """Every way the repository root can carry agent-context sediment."""
     reported: list[str] = []
@@ -146,7 +176,7 @@ def findings(root: Path) -> list[str]:
             f"{CHANGELOG_PATH}: no such file; the release artefact is a release "
             "artefact, and `RELEASING.md` names this path (ADR-0148)"
         )
-    for path in sorted(root.rglob("CHANGELOG.md")):
+    for path in changelogs(root):
         if path.is_file() and path.relative_to(root).as_posix() != CHANGELOG_PATH:
             reported.append(
                 f"{path.relative_to(root)}: a second changelog beside "
