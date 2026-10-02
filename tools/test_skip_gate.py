@@ -290,6 +290,67 @@ def reference_from(referrer, target):
     return relative.replace("/", "\\")
 
 
+class HelpUsageTests(unittest.TestCase):
+    """`eng/verify.sh --help`: the opt-out has to be findable in the usage block.
+
+    The usage block is the run of lines the header writes as `#   <flag> …` —
+    one entry per lane, each with its continuations. Its end is *derived* from
+    that shape rather than a line number, because `print_header` prints the
+    whole header and a range that stops short silently drops whatever was
+    appended (SpatialEngine-2hf).
+    """
+
+    def help_usage_block(self):
+        """The lines `eng/verify.sh --help` prints as a usage entry.
+
+        The block is the run of lines the header indents under `#   ` — one
+        entry per flag, each with its continuations — so its end is derived from
+        that shape rather than a line number: `print_header` prints the whole
+        header, and a range that stopped short silently dropped whatever was
+        appended (SpatialEngine-2hf).
+        """
+        result = subprocess.run(["bash", str(VERIFY), "--help"], check=True,
+                                capture_output=True, text=True)
+        return [line for line in result.stdout.splitlines()
+                if line.startswith("#   ")]
+
+    def test_the_usage_block_documents_skip_tests(self):
+        """`--skip-tests` was documented only in the in-script comment that
+        `--help` strips, and in a passing mention in the skip-counts paragraph
+        — so a reader who ran `--help` to find the opt-out for a contended
+        container suite found no usage line for it at all, while
+        `test_the_space_separated_form_the_help_documents_is_accepted` asserted
+        against a help that never printed the spelling (SpatialEngine-abj)."""
+        usage = self.help_usage_block()
+
+        entries = [line for line in usage
+                   if line.lstrip("# ").startswith("eng/verify.sh --skip-tests")]
+
+        self.assertTrue(
+            entries,
+            "the usage block has no --skip-tests entry:\n" + "\n".join(usage))
+        self.assertTrue(any("<substring>" in line for line in entries),
+                        f"the entry does not show the value's form:\n{entries[0]}")
+
+        # The entry's own paragraph has to say the rule, not leave it in the
+        # comment `--help` strips: a value that normalises to no pattern — a
+        # space, a comma, `", ,"` — is rejected by name rather than accepted
+        # and dropped on the floor (SpatialEngine-drb). The paragraph runs to
+        # the next entry's first line, which is the next usage line that opens
+        # with a flag or its synonym column.
+        start = usage.index(entries[0])
+        paragraph = [entries[0]]
+        for line in usage[start + 1:]:
+            stripped = line.lstrip("# ").lstrip()
+            if stripped.startswith(("eng/", "(or:")):
+                break
+            paragraph.append(line)
+
+        self.assertIn("rejected by name", "\n".join(paragraph),
+                      "the --skip-tests entry does not say a value that "
+                      "normalises to no pattern is rejected by name")
+
+
 class LaneExitCodeTests(unittest.TestCase):
     """`eng/verify.sh` with a stubbed `dotnet`: the acceptance is the exit code.
 
