@@ -36,13 +36,14 @@ namespace Spatial.PostGIS.Tests;
 /// read it fell back to ran the decoder over every row.
 /// </para>
 /// </summary>
-public sealed class PostgisKeylessReductionPushdownTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisKeylessReductionPushdownTests : IClassFixture<PostgisDatabaseFixture>
 {
     private const int Rows = 5_000;
 
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisKeylessReductionPushdownTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisKeylessReductionPushdownTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [

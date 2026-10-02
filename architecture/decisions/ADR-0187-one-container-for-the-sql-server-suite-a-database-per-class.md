@@ -110,9 +110,10 @@ database inside it, retrying a failed start before degrading.**
 ## Not decided
 
 - **The PostGIS suite has the same per-class shape and the same 60-second wait
-  strategy.** It is left alone here; the seam is `PostgisContainerFixture` and
-  the same two changes would apply. Whether the two suites should share one
-  collection of their own is a separate question.
+  strategy.** ADR-0189 took this seam: one container for the assembly, a
+  database per class, and a retried start. Whether the two suites should share
+  one collection of their own is still a separate question, and both records
+  leave it open.
 - **Whether `tools/skip_gate.py` should read a suite's skip *reasons*.** It
   counts; distinguishing a container that could not start from a suite that
   broke would need the reasons in the trx, which is ADR-0139's own surface.

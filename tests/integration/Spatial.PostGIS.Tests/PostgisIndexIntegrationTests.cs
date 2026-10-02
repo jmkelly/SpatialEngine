@@ -22,11 +22,12 @@ namespace Spatial.PostGIS.Tests;
 /// <c>EXPLAIN</c> against a real PostGIS container. Skips with an explicit
 /// reason without Docker.
 /// </summary>
-public sealed class PostgisIndexIntegrationTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisIndexIntegrationTests : IClassFixture<PostgisDatabaseFixture>
 {
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisIndexIntegrationTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisIndexIntegrationTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     private static string Unique(string prefix) => $"public.{prefix}_{Guid.NewGuid().ToString("N")[..8]}";
 

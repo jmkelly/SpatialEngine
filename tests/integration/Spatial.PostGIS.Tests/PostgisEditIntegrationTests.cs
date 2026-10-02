@@ -11,11 +11,12 @@ namespace Spatial.PostGIS.Tests;
 /// <c>ApplyFeatureAsync</c> and <c>DeleteFeatureAsync</c>. Every test skips
 /// with an explicit reason when no Docker daemon is available.
 /// </summary>
-public sealed class PostgisEditIntegrationTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisEditIntegrationTests : IClassFixture<PostgisDatabaseFixture>
 {
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisEditIntegrationTests(PostgisContainerFixture fixture)
+    public PostgisEditIntegrationTests(PostgisDatabaseFixture fixture)
     {
         _fixture = fixture;
     }

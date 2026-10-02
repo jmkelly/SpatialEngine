@@ -17,11 +17,12 @@ namespace Spatial.PostGIS.Tests;
 /// the rows a dialect is tempted to get wrong (ties, nulls, single-row groups
 /// and the empty set). Skips with an explicit reason without Docker.
 /// </summary>
-public sealed class PostgisQueryConformanceTests : IClassFixture<PostgisContainerFixture>
+[Collection(PostgisContainerDefinition.Name)]
+public sealed class PostgisQueryConformanceTests : IClassFixture<PostgisDatabaseFixture>
 {
-    private readonly PostgisContainerFixture _fixture;
+    private readonly PostgisDatabaseFixture _fixture;
 
-    public PostgisQueryConformanceTests(PostgisContainerFixture fixture) => _fixture = fixture;
+    public PostgisQueryConformanceTests(PostgisDatabaseFixture fixture) => _fixture = fixture;
 
     [SkippableFact]
     public async Task The_pushed_down_answers_match_the_reference_over_the_conformance_fixture()
