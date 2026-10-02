@@ -31,17 +31,22 @@ into an accumulation; a second script, wired the same way, is the shape the
 repository already uses for every other repository check
 (`tools/conflict_markers.py`, ADR-0146).
 
-**Which files it reads is measured, not assumed.** `FINALNEWLINE` is a Roslyn
-diagnostic, so it is the C# sources the formatter reads and nothing else:
+**Which files it reads is the `.editorconfig` claim, `[*]`, and nothing less.**
+It began as `.cs` only, because `FINALNEWLINE` is a Roslyn diagnostic:
 `dotnet format clients/dotnet/Spatial.Client/Spatial.Client.csproj
 --verify-no-changes` exits **0** on a project file with no final newline, while
 the same violation in a `.cs` file is `error FINALNEWLINE: Fix final newline.
-Insert '\n'` and exit 2 (SpatialEngine-744). So this check reads `.cs` and
-leaves the rest of `[*]` to the broader question, which is a separate bead
-(SpatialEngine-744's own finding: 14 C# violations against ~190 files git ships
-with no final newline, most of them captured fixtures and prose that nothing
-formats). Reading the whole repository here would be a second project, and a
-red gate nobody can land in one commit is a gate that gets switched off.
+Insert '\n'` and exit 2 (SpatialEngine-744). That left the rest of `[*]` claimed
+in configuration and enforced by nothing (ADR-0186 §2, which filed the gap as
+SpatialEngine-3rz). The gap is closed here (ADR-0188): a `.md`, `.json`, `.py`,
+`.sh` or `.csproj` file with no final newline is as unformatted as a `.cs` one,
+so the check reads every file the claim names, and the *scope* is where captured
+and generated artefacts are exempted — through `.editorconfig`, ADR-0143's
+`psql` precedent, rather than by a file-type table here.
+
+So there is no suffix list to grow: a file is read when it is text (no NUL byte
+in its first 8 KiB), non-empty and small enough to open, and the `.editorconfig`
+section matching it does not set `insert_final_newline = false`.
 
 **What it reads from `.editorconfig`** is the *scope* of the rule, not the rule:
 a file whose most specific matching section sets `insert_final_newline = false`
@@ -50,9 +55,12 @@ rather than assumed, so a file exempted later is honoured rather than deleted
 back into compliance (the same rule `tools/trailing_whitespace.py` applies to
 `trim_trailing_whitespace`, and the reason `[*.md]` is load-bearing there).
 
-Two shapes are not findings, and both are pinned in
-`tools/test_final_newline.py`: an **empty** file, which has nothing to end, and
-a **binary** file, whose last byte is not a line.
+Three shapes are not findings, and all are pinned in
+`tools/test_final_newline.py`: an **empty** file, which has nothing to end; a
+**binary** file, whose last byte is not a line; and a file whose matching
+`.editorconfig` section turns the rule off, which is where the captured
+`research/compat/ground-truth` and `tests/fixtures` corpora, the recorded Esri
+OpenAPI snapshot and the vendored MapLibre bundles live.
 
 Files come from the command line, or — with no arguments — from
 `git ls-files --cached --others --exclude-standard`: everything the repository
@@ -70,12 +78,6 @@ DEFAULT_REPO = Path(__file__).resolve().parent.parent
 
 #: The rule, when no `.editorconfig` says otherwise.
 INSERT_BY_DEFAULT = True
-
-#: The files `FINALNEWLINE` is a diagnostic over, and therefore the files this
-#: check reads: C# source. Not the project files, not the solution — a
-#: `.csproj` with no final newline is exit 0 from the formatter, measured in the
-#: docstring above.
-FORMATTER_SUFFIXES = (".cs",)
 
 #: How much of a file is read looking for a NUL byte before it is called
 #: binary. Enough for every text format the repository holds.
@@ -202,8 +204,6 @@ def report(root: Path, path: Path, rules: list[tuple[str, bool]], out) -> int:
         relative = path.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
         relative = path.as_posix()
-    if not relative.endswith(FORMATTER_SUFFIXES):
-        return 0
     if not inserts(root, relative, rules):
         return 0
     if not missing_final_newline(path):

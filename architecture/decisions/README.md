@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**174 records on disk.** `status` is the record's own word;
+**175 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -189,6 +189,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md) | Map a row once, and order a page rather than the read | accepted | 2026-10-07 | ADR-0184, ADR-0074, ADR-0097, ADR-0116, ADR-0127, ADR-0131 |
 | [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md) | the final-newline rule is a check every lane runs | accepted | 2026-10-01 | ADR-0134, ADR-0143, ADR-0109, ADR-0146 |
 | [0187](ADR-0187-one-container-for-the-sql-server-suite-a-database-per-class.md) | one container for the SQL Server suite, a database per class | accepted | 2026-10-02 | ADR-0073, ADR-0139 |
+| [0188](ADR-0188-the-final-newline-rule-is-enforced-over-all-of-the-editorconfig-star-scope.md) | the final-newline rule covers all of `[*]`, and captures are exempt through `.editorconfig` | accepted | 2026-10-02 | ADR-0186, ADR-0143, ADR-0134, ADR-0146 |
 | [0189](ADR-0189-one-postgis-container-a-database-per-class.md) | one container for the PostGIS suite, a database per class | accepted | 2026-10-02 | ADR-0010, ADR-0139, ADR-0187 |
 
 ## Reading order
@@ -228,7 +229,7 @@ out: the "Amended by" row already says everything about a pair.
 20. [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) *(narrowed by 0185)*
 21. [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md)
 
-### ADR-0109: the verification lanes, implemented — 8 records, 14,885 words (7% of the corpus)
+### ADR-0109: the verification lanes, implemented — 9 records, 16,491 words (8% of the corpus)
 
 1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
 2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148, 0186)*
@@ -237,7 +238,8 @@ out: the "Amended by" row already says everything about a pair.
 5. [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md)
 6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
 7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
-8. [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md)
+8. [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md) *(narrowed by 0188)*
+9. [0188](ADR-0188-the-final-newline-rule-is-enforced-over-all-of-the-editorconfig-star-scope.md)
 
 ### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 7 records, 10,973 words (5% of the corpus)
 
@@ -368,6 +370,7 @@ believed.
 - **0175** is amended by 0178, 0182, 0183
 - **0182** is amended by 0183
 - **0184** is amended by 0185
+- **0186** is amended by 0188
 
 ## Superseded, by superseder
 
