@@ -41,7 +41,7 @@ public sealed class ContainerSkipGuardTests
     public static TheoryData<string, string> Suites => new()
     {
         { "Spatial.PostGIS.Tests", "IClassFixture<PostgisContainerFixture>" },
-        { "Spatial.SqlServer.Tests", "IClassFixture<SqlServerContainerFixture>" },
+        { "Spatial.SqlServer.Tests", "IClassFixture<SqlServerDatabaseFixture>" },
     };
 
     [Theory]

@@ -18,7 +18,8 @@ namespace Spatial.SqlServer.Tests;
 /// and they cannot be measured by a statement test alone.
 /// </para>
 /// </summary>
-public sealed class SqlServerIdentityCollationIntegrationTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerIdentityCollationIntegrationTests : IClassFixture<SqlServerDatabaseFixture>
 {
     private const string Dataset = "dbo.identity_ci";
     private const string BinaryKeyDataset = "dbo.identity_bin";
@@ -30,9 +31,9 @@ public sealed class SqlServerIdentityCollationIntegrationTests : IClassFixture<S
         new FieldDefinition("geometry", AttributeKind.Geometry, nullable: true),
     ]);
 
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerIdentityCollationIntegrationTests(SqlServerContainerFixture fixture)
+    public SqlServerIdentityCollationIntegrationTests(SqlServerDatabaseFixture fixture)
     {
         _fixture = fixture;
     }

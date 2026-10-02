@@ -11,13 +11,14 @@ namespace Spatial.SqlServer.Tests;
 /// held to one answer. Skips with an explicit reason when Docker is
 /// unavailable.
 /// </summary>
-public sealed class SqlServerPredicateConformanceTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerPredicateConformanceTests : IClassFixture<SqlServerDatabaseFixture>
 {
     private const string Dataset = "dbo.predicates";
 
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerPredicateConformanceTests(SqlServerContainerFixture fixture)
+    public SqlServerPredicateConformanceTests(SqlServerDatabaseFixture fixture)
     {
         _fixture = fixture;
     }

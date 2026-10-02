@@ -19,11 +19,12 @@ namespace Spatial.SqlServer.Tests;
 /// (<see cref="SqlServerPredicateSql"/> + <see cref="SqlServerQueries"/>) against a
 /// real SQL Server container. Skips with an explicit reason without Docker.
 /// </summary>
-public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerIndexIntegrationTests : IClassFixture<SqlServerDatabaseFixture>
 {
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerIndexIntegrationTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerIndexIntegrationTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     private static string Unique(string prefix) => $"dbo.{prefix}_{Guid.NewGuid().ToString("N")[..8]}";
 

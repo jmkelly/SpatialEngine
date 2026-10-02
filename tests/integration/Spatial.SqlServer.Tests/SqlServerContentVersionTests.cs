@@ -14,11 +14,12 @@ namespace Spatial.SqlServer.Tests;
 /// tests drive the real container: the token before a write, after each kind of
 /// write, after a rollback, and as a second store sees it.
 /// </summary>
-public sealed class SqlServerContentVersionTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerContentVersionTests : IClassFixture<SqlServerDatabaseFixture>
 {
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerContentVersionTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerContentVersionTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [

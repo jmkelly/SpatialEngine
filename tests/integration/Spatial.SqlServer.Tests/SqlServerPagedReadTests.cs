@@ -29,14 +29,15 @@ namespace Spatial.SqlServer.Tests;
 /// <c>Spatial.SqlServer.Tests.SqlServerDescriptionCacheTests</c>.
 /// </para>
 /// </summary>
-public sealed class SqlServerPagedReadTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerPagedReadTests : IClassFixture<SqlServerDatabaseFixture>
 {
     private const int Rows = 2_000;
     private const int PageSize = 100;
 
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerPagedReadTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerPagedReadTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [

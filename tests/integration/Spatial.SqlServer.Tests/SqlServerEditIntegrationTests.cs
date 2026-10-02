@@ -12,11 +12,12 @@ namespace Spatial.SqlServer.Tests;
 /// <c>DeleteFeatureAsync</c>. Every test skips with an explicit reason when no
 /// Docker daemon is available.
 /// </summary>
-public sealed class SqlServerEditIntegrationTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerEditIntegrationTests : IClassFixture<SqlServerDatabaseFixture>
 {
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerEditIntegrationTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerEditIntegrationTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     [SkippableFact]
     public async Task Add_inserts_each_feature_and_reports_success()

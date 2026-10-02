@@ -13,11 +13,12 @@ namespace Spatial.SqlServer.Tests;
 /// refused rather than flattened. Skips with an explicit reason without
 /// Docker.
 /// </summary>
-public sealed class SqlServerIngestIntegrationTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerIngestIntegrationTests : IClassFixture<SqlServerDatabaseFixture>
 {
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerIngestIntegrationTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerIngestIntegrationTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     private static string Unique(string prefix) => $"dbo.{prefix}_{Guid.NewGuid().ToString("N")[..8]}";
 

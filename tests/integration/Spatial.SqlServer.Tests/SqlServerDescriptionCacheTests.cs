@@ -26,14 +26,15 @@ namespace Spatial.SqlServer.Tests;
 /// <em>outside</em> the store is picked up when the entry expires.
 /// </para>
 /// </summary>
-public sealed class SqlServerDescriptionCacheTests : IClassFixture<SqlServerContainerFixture>
+[Collection(SqlServerContainerDefinition.Name)]
+public sealed class SqlServerDescriptionCacheTests : IClassFixture<SqlServerDatabaseFixture>
 {
     private const int Rows = 40;
     private const int PageSize = 4;
 
-    private readonly SqlServerContainerFixture _fixture;
+    private readonly SqlServerDatabaseFixture _fixture;
 
-    public SqlServerDescriptionCacheTests(SqlServerContainerFixture fixture) => _fixture = fixture;
+    public SqlServerDescriptionCacheTests(SqlServerDatabaseFixture fixture) => _fixture = fixture;
 
     private static readonly FeatureSchema Schema = new(
     [
