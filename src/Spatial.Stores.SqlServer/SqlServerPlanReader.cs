@@ -412,6 +412,10 @@ internal sealed class SqlServerPlanReader(SqlServerStorage storage, SqlServerCat
     /// </summary>
     private static Shape Columns(DatasetDescription description, IReadOnlyList<string>? projection)
     {
+        // The projection is decided once per read, not once per row: a read
+        // that appended nothing to drop returns each row's own feature
+        // (FeatureRowProjection), which is what a whole read of a keyless layer
+        // does on every row it reads (SpatialEngine-yup).
         var fields = (projection is null or { Count: 0 }
             ? description.Schema.Fields
             : projection
@@ -430,7 +434,7 @@ internal sealed class SqlServerPlanReader(SqlServerStorage storage, SqlServerCat
         // appended ones as the identity would name every feature by its row
         // ordinal instead of its key.
         var indexes = description.IdColumns.Select(column => read.IndexOf(column)).Where(index => index >= 0).ToArray();
-        return new Shape(SqlServerPlanQueries.Columns(read, null), read, result, indexes);
+        return new Shape(SqlServerPlanQueries.Columns(read, null), read, new FeatureRowProjection(read, result), indexes);
     }
 
     private async Task<FeatureBatch[]> BatchesAsync(
@@ -448,8 +452,7 @@ internal sealed class SqlServerPlanReader(SqlServerStorage storage, SqlServerCat
         while (await reader.ReadAsync(cancellationToken))
         {
             var row = SqlServerDataStore.ReadRow(reader, reader.FieldCount);
-            features.Add(shape.Project(
-                shape.Read,
+            features.Add(shape.Projection.Apply(
                 SqlServerRowMapper.MapRow(shape.Read, shape.Identity, row, ordinal++, description.Srid)));
         }
 
@@ -472,19 +475,10 @@ internal sealed class SqlServerPlanReader(SqlServerStorage storage, SqlServerCat
     private sealed record Shape(
         IReadOnlyList<string> Columns,
         FeatureSchema Read,
-        FeatureSchema Result,
+        FeatureRowProjection Projection,
         IReadOnlyList<int> Identity)
     {
-        /// <summary>Drops the identity columns a read needed and keeps the plan's projection.</summary>
-        public Feature Project(FeatureSchema read, Feature feature)
-        {
-            var values = new AttributeValue[Result.Count];
-            for (var i = 0; i < values.Length; i++)
-            {
-                values[i] = ReferenceEquals(read, Result) ? feature[i] : feature[read.IndexOf(Result[i].Name)];
-            }
-
-            return new Feature(feature.Id, Result, values);
-        }
+        /// <summary>The schema the page is answered with: the plan's projection.</summary>
+        public FeatureSchema Result => Projection.Result;
     }
 }

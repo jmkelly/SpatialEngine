@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**171 records on disk.** `status` is the record's own word;
+**172 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -185,7 +185,8 @@ front matter, so a record's reach is a row rather than a search.
 | [0181](ADR-0181-nadcon-states-its-longitudes-positive-west.md) | A NADCON deployment states its longitudes positive west, and the reader is where that is answered | accepted | 2026-10-08 | ADR-0168, ADR-0105, ADR-0180 |
 | [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md) | Serve the contains and within relations on a designated layer | accepted | 2026-10-04 | ADR-0100, ADR-0175, ADR-0081 |
 | [0183](ADR-0183-the-designation-is-authored-on-the-published-map-layer.md) | The designation is authored on the published map layer | accepted | 2026-10-05 | ADR-0175, ADR-0182, ADR-0053, ADR-0077 |
-| [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) | A reduction pushes its restriction on a dataset with no identity column | accepted | 2026-10-06 | ADR-0097, ADR-0116, ADR-0131, ADR-0133, ADR-0140, ADR-0147, ADR-0149 |
+| [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) | A reduction pushes its restriction on a dataset with no identity column | accepted | 2026-10-06 | ADR-0097, ADR-0185, ADR-0116, ADR-0131, ADR-0133, ADR-0140, ADR-0147, ADR-0149 |
+| [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md) | Map a row once, and order a page rather than the read | accepted | 2026-10-07 | ADR-0184, ADR-0074, ADR-0097, ADR-0116, ADR-0127, ADR-0131 |
 | [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md) | the final-newline rule is a check every lane runs | accepted | 2026-10-01 | ADR-0134, ADR-0143, ADR-0109, ADR-0146 |
 
 ## Reading order
@@ -201,7 +202,7 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 20 records, 37,895 words (19% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 21 records, 39,837 words (20% of the corpus)
 
 1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158, 0167)*
 2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md) *(narrowed by 0184)*
@@ -222,7 +223,8 @@ out: the "Amended by" row already says everything about a pair.
 17. [0158](ADR-0158-json-query-plan-on-the-http-query-route.md)
 18. [0164](ADR-0164-discovery-reads-the-geometry-type-only-from-a-valid-value.md)
 19. [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md)
-20. [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md)
+20. [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) *(narrowed by 0185)*
+21. [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md)
 
 ### ADR-0109: the verification lanes, implemented — 8 records, 14,700 words (7% of the corpus)
 
@@ -235,7 +237,7 @@ out: the "Amended by" row already says everything about a pair.
 7. [0159](ADR-0159-the-family-is-a-reading-order-derived-from-the-amends-links.md)
 8. [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md)
 
-### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 7 records, 10,973 words (6% of the corpus)
+### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 7 records, 10,973 words (5% of the corpus)
 
 1. [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) *(narrowed by 0106, 0156, 0166)*
 2. [0106](ADR-0106-served-spatialrel-reading-is-the-ogc-de9im-pattern-table.md) *(narrowed by 0169, 0171)*
@@ -255,7 +257,7 @@ out: the "Amended by" row already says everything about a pair.
 6. [0172](ADR-0172-a-hotine-oblique-mercators-false-offsets-are-applied-at-the-natural-origin.md) *(narrowed by 0174)*
 7. [0174](ADR-0174-the-esri-wkt1-hotine-variant-a-takes-its-skew-angle-from-its-azimuth.md)
 
-### ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback — 6 records, 11,035 words (6% of the corpus)
+### ADR-0105: Datum shift grids are deployed, not embedded, and the classic Helmert stays the stated fallback — 6 records, 11,035 words (5% of the corpus)
 
 1. [0105](ADR-0105-datum-shift-grids-are-deployed-not-embedded.md) *(narrowed by 0107, 0168, 0179, 0180)*
 2. [0107](ADR-0107-the-transform-verb-applies-a-deployed-grid-per-coordinate.md)
@@ -361,6 +363,7 @@ believed.
 - **0172** is amended by 0174
 - **0175** is amended by 0178, 0182, 0183
 - **0182** is amended by 0183
+- **0184** is amended by 0185
 
 ## Superseded, by superseder
 
