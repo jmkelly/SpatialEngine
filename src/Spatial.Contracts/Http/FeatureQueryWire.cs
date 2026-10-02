@@ -362,12 +362,12 @@ public static class FeatureQueryWire
     private static void Extra(LiteralKind kind, string member, object? value)
     {
         if (value is not null && kind switch
-            {
-                LiteralKind.String or LiteralKind.Integer => member != "text",
-                LiteralKind.Decimal or LiteralKind.DateTime => member != "number",
-                LiteralKind.Boolean => member != "boolean",
-                _ => false,
-            })
+        {
+            LiteralKind.String or LiteralKind.Integer => member != "text",
+            LiteralKind.Decimal or LiteralKind.DateTime => member != "number",
+            LiteralKind.Boolean => member != "boolean",
+            _ => false,
+        })
         {
             throw Bad($"A literal of kind '{kind}' does not take '{member}'.");
         }

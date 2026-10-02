@@ -88,7 +88,8 @@ public sealed class AuthEndpointTests : IClassFixture<AuthEndpointTests.AuthHost
         Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
 
         var bearer = new HttpRequestMessage(
-            HttpMethod.Put, "/api/maps/x") { Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json") };
+            HttpMethod.Put, "/api/maps/x")
+        { Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json") };
         bearer.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         var allowed = await client.SendAsync(bearer);
         Assert.NotEqual(HttpStatusCode.Unauthorized, allowed.StatusCode);

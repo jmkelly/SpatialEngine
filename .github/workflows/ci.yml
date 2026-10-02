@@ -72,6 +72,16 @@ jobs:
       - name: Trailing whitespace
         run: python3 tools/trailing_whitespace.py
 
+      # `dotnet format` enforces `insert_final_newline` on C# source, but since
+      # ADR-0134 it is not on the merge path, so nothing between an edit and
+      # `main` reads that rule — a clean `origin/main` failed the formatter with
+      # 22 violations on 2026-10-01 and this step is where they were found
+      # (ADR-0186). The lanes call `tools/final_newline.py` directly; this job
+      # spells its steps out rather than calling `eng/verify.sh`, so it carries
+      # the step too.
+      - name: Final newline
+        run: python3 tools/final_newline.py
+
       # The rule used to be a `tools/test_*.py`, which only ran when the change
       # set touched `tools/**`, so the fast merge gate never read it and a
       # `<<<<<<< HEAD` line reached `CHANGELOG.md` on main through a docs merge

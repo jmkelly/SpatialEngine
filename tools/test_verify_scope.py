@@ -66,6 +66,11 @@ DOC_GATE = "python3 tools/arch-index.py --check"
 # The conflict-marker check: every lane calls it directly rather than finding
 # it through the tools/**-only tooling suite, which is the hole ADR-0146 closes.
 CONFLICT_MARKER_GATE = "python3 tools/conflict_markers.py"
+# The final-newline check: `dotnet format` is not on the merge path since
+# ADR-0134, so the `insert_final_newline` the .editorconfig claims for [*] is
+# checked here on C# source instead (ADR-0186). It follows the
+# trailing-whitespace check for the reason that check is first.
+FINAL_NEWLINE_GATE = "python3 tools/final_newline.py"
 # The repository-root check: the root carries no document answering "what is
 # happening now" and the changelog is at `docs/CHANGELOG.md` (ADR-0148). It
 # follows the conflict-marker check, for the same reason it is not in the
@@ -775,6 +780,7 @@ class ScriptLaneTests(unittest.TestCase):
         """
         self.assertEqual(self.plan(), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
+            "python3 tools/final_newline.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
@@ -831,6 +837,8 @@ class ScriptLaneTests(unittest.TestCase):
         self.assertEqual(self.plan(), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs "
             "tools/seed/fetch.py",
+            "python3 tools/final_newline.py src/Spatial.Maps/Map.cs "
+            "tools/seed/fetch.py",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
@@ -847,6 +855,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_the_format_lane_is_scoped_to_the_changed_projects(self):
         self.assertEqual(self.plan("--format"), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
+            "python3 tools/final_newline.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
@@ -864,6 +873,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_the_full_lane_is_the_old_flat_gate(self):
         self.assertEqual(self.plan("--full"), [
             "python3 tools/trailing_whitespace.py",
+            FINAL_NEWLINE_GATE,
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
@@ -897,6 +907,7 @@ class ScriptLaneTests(unittest.TestCase):
         """
         self.assertEqual(self.plan(ci="true"), [
             "python3 tools/trailing_whitespace.py",
+            FINAL_NEWLINE_GATE,
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
@@ -915,6 +926,7 @@ class ScriptLaneTests(unittest.TestCase):
         """The split CI jobs each own half of --full, so --format stays --format."""
         self.assertEqual(self.plan("--format", ci="true"), [
             "python3 tools/trailing_whitespace.py src/Spatial.Maps/Map.cs",
+            "python3 tools/final_newline.py src/Spatial.Maps/Map.cs",
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
@@ -933,6 +945,7 @@ class ScriptLaneTests(unittest.TestCase):
         """A scoping failure costs time; a silent under-run costs a defect."""
         self.assertEqual(self.plan(base="origin/does-not-exist"), [
             "python3 tools/trailing_whitespace.py",
+            FINAL_NEWLINE_GATE,
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
@@ -948,6 +961,7 @@ class ScriptLaneTests(unittest.TestCase):
     def test_an_unresolvable_base_falls_back_to_the_whole_formatter(self):
         self.assertEqual(self.plan("--format", base="origin/does-not-exist"), [
             "python3 tools/trailing_whitespace.py",
+            FINAL_NEWLINE_GATE,
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,

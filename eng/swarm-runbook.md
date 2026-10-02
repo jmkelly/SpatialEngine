@@ -329,9 +329,12 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    Every lane starts with `tools/trailing_whitespace.py` — a check, not a
    formatter, and there because `dotnet format` does not enforce the
    `trim_trailing_whitespace` the `.editorconfig` claims for `[*]` on a
-   comment-only line (ADR-0143), and with `tools/conflict_markers.py`, which
+   comment-only line (ADR-0143), then `tools/final_newline.py`, which is there
+   because `dotnet format` is not on the merge path at all (ADR-0134) and the
+   only other reader of `insert_final_newline` is CI, after `main` (ADR-0186),
+   and with `tools/conflict_markers.py`, which
    reads every tracked file for an unresolved merge-conflict marker (ADR-0146).
-   Both are checks the lanes call directly rather than tests a tooling lane
+   All three are checks the lanes call directly rather than tests a tooling lane
    happens to discover — a rule that runs only when `tools/**` changed is not a
    gate, which is how a `<<<<<<< HEAD` line reached `CHANGELOG.md` on main
    through a docs merge the fast gate passed.

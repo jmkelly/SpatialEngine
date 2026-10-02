@@ -55,7 +55,10 @@ Take this as the answer whenever another file or another agent offers another.
 - `eng/verify.sh --plan` prints what a lane would run and runs nothing. Every
   lane also runs the repository's own checks, and the record named after each
   one is where the reason it exists is written down: `trailing_whitespace.py`
-  (ADR-0143), `conflict_markers.py` (ADR-0146), `doc_surface.py` (ADR-0148),
+  (ADR-0143), `final_newline.py` (ADR-0186 — the formatter is off the merge
+  path, so a C# file with no final newline would otherwise be found by CI
+  *after* `main`), `conflict_markers.py` (ADR-0146), `doc_surface.py`
+  (ADR-0148),
   `package_agents.py`, `skip_gate.py` (ADR-0139 — `VERIFY_SKIP_RATIO` 0.5 and
   `VERIFY_MIN_SKIPPED` 10 fail a suite that ran but skipped most of what it was
   asked to, and a suite dropped by `--skip-tests` is out of the count rather

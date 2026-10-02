@@ -62,7 +62,7 @@ internal static class GridShiftCandidate
             return null;
         }
 
-        var legs = Legs(from, to, fromGrid, toGrid, fromTarget, toTarget);        return new CrsTransformation(
+        var legs = Legs(from, to, fromGrid, toGrid, fromTarget, toTarget); return new CrsTransformation(
             $"{from.Code}_To_{to.Code}_Grid_{fromGrid?.Name ?? toGrid!.Name}",
             Method(legs),
             [.. legs.Select(leg => leg.Step)],

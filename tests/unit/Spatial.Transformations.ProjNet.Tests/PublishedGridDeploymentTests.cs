@@ -249,7 +249,8 @@ public sealed class PublishedGridDeploymentTests : IDisposable
     }
 
     [Fact]
-    public void No_grid_bundle_is_vendored_anywhere_in_the_repository()    {
+    public void No_grid_bundle_is_vendored_anywhere_in_the_repository()
+    {
         // ADR-0105 §licence, as an assertion rather than as a note: the whole
         // position is that no published bundle is embedded, so a file with a
         // grid's extension in the tree is a licence problem, not a fixture.

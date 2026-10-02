@@ -327,8 +327,9 @@ class LaneExitCodeTests(unittest.TestCase):
             "<Solution>\n" + "".join(f'  <Project Path="{p}" />\n' for p in paths)
             + "</Solution>\n", encoding="utf-8")
         # The lane runs repo-wide checks before anything scoped: the
-        # trailing-whitespace check (ADR-0143), the conflict-marker check
-        # (ADR-0146), the repository-root check (ADR-0148) and the doc gate
+        # trailing-whitespace check (ADR-0143), the final-newline check
+        # (ADR-0186), the conflict-marker check (ADR-0146), the
+        # repository-root check (ADR-0148) and the doc gate
         # (ADR-0141), then the reporting-only documentation-freshness audit
         # (`eng/quality-audit.sh --report`, SpatialEngine-imz.2). The fixture
         # therefore carries all of those tools, the bead-protocol gate among
@@ -339,6 +340,7 @@ class LaneExitCodeTests(unittest.TestCase):
         # lane would go red for a reason that has nothing to do with skips.
         for name in ("eng/verify.sh", "eng/quality-audit.sh", "tools/verify_scope.py",
                      "tools/skip_gate.py", "tools/trailing_whitespace.py",
+                     "tools/final_newline.py",
                      "tools/conflict_markers.py", "tools/doc_surface.py",
                      "tools/arch-index.py", "tools/doc-freshness.py",
                      "tools/beads_gate.py", "tools/package_agents.py"):
