@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**172 records on disk.** `status` is the record's own word;
+**173 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -248,7 +248,7 @@ out: the "Amended by" row already says everything about a pair.
 6. [0169](ADR-0169-the-mixed-dimension-crosses-row-stays-the-ogc-alternation.md)
 7. [0171](ADR-0171-spatialrel-is-the-features-relation-to-the-input-geometry.md)
 
-### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 7 records, 11,165 words (6% of the corpus)
+### ADR-0086: The CRS catalogue is WKT-defined, and a datum's operation data is not part of its definition — 7 records, 11,165 words (5% of the corpus)
 
 1. [0086](ADR-0086-crs-catalogue-definitions-and-datum-operations.md) *(narrowed by 0111, 0153, 0170, 0172)*
 2. [0111](ADR-0111-a-wrapped-area-of-use-is-a-set-of-rectangles.md) *(narrowed by 0163)*

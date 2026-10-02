@@ -265,7 +265,7 @@ date and cross-reference)
 | 0186 | The `insert_final_newline` the `.editorconfig` claims for `[*]` is **checked by `tools/final_newline.py`, and every lane runs that check** — a sibling of `tools/trailing_whitespace.py`, not a second rule inside it, because ADR-0143 closed that door deliberately ("no growth into a second formatter nobody measured") and the repository's shape for a *new* repository rule is a second script wired the same way (ADR-0146). The check exists because ADR-0134 took `dotnet format` off the merge path and left a C# file with no final newline with no detector between the edit and `main`: measured at `origin/main` `eb909b5c` on 2026-10-01, a clean tree exited 2 from `dotnet format SpatialEngine.slnx --verify-no-changes` with 22 violations in 16 files, 14 of them this rule, and CI was the only reader — on the far side of the merge. It reads `.cs` only, because `FINALNEWLINE` is a Roslyn diagnostic and a `.csproj` with no final newline is measured exit 0; the rest of `[*]` (about 190 files git ships, mostly captured fixtures and prose nothing formats) is a separate bead. About 2 s, no .NET SDK, no `--fix`. |
 | 0187 | The SQL Server integration suite starts one container for the assembly, shared by a collection, with a database per test class; the start is retried with a generous budget and a skip reason that says whether it was refused or ran out of time. |
 
-172 records on disk. The full index — status, date and every
+173 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->
