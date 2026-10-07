@@ -26,6 +26,7 @@
   <Folder Name="/tests/conformance/">
     <Project Path="tests/conformance/Spatial.PredicateConformance/Spatial.PredicateConformance.csproj" />
     <Project Path="tests/conformance/Spatial.QueryConformance/Spatial.QueryConformance.csproj" />
+    <Project Path="tests/conformance/Spatial.WriteConformance/Spatial.WriteConformance.csproj" />
   </Folder>
   <Folder Name="/tests/unit/">
     <Project Path="tests/unit/Spatial.Adapter.GeoServices.Tests/Spatial.Adapter.GeoServices.Tests.csproj" />

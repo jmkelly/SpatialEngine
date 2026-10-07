@@ -20,6 +20,7 @@
     <ProjectReference Include="..\..\conformance\Spatial.PredicateConformance\Spatial.PredicateConformance.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Querying\Spatial.Querying.csproj" />
     <ProjectReference Include="..\..\conformance\Spatial.QueryConformance\Spatial.QueryConformance.csproj" />
+    <ProjectReference Include="..\..\conformance\Spatial.WriteConformance\Spatial.WriteConformance.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Spatial.Stores.Memory\Spatial.Stores.Memory.csproj" />
   </ItemGroup>
