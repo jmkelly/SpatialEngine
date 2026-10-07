@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The write-path conformance suite (ADR-0037, ADR-0041, ADR-0065): one
+    suite, run against every writable store, asserting the contract facts a
+    write is expected to honour — the identity an ingest assigns, the outcome
+    an add/update/delete reports, and the attachment round trip — over the
+    same fixture. The read path has QueryConformance; this is its write
+    sibling, so a store that loses an attribute, assigns the wrong identity or
+    forgets a delete is a failing test rather than a reading.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.WriteConformance</AssemblyName>
+    <RootNamespace>Spatial.WriteConformance</RootNamespace>
+    <!-- Test support, not a test project: the suite is run by each store's own
+         tests, and the runner must not try to execute the library itself. -->
+    <IsTestProject>false</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Spatial.Contracts\Spatial.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

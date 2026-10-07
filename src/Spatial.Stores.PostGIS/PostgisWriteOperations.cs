@@ -44,7 +44,10 @@ internal static class PostgisWriteOperations
         PostgisDatasetName name, DatasetDescription description, Feature feature, PostgisTextOrder text)
     {
         var kinds = PostgisIdentity.Kinds(description);
-        var values = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid)
+        // The SET list is the batch's schema (ADR-0126), so the values are the
+        // batch's fields in the batch's own order; the identity predicate is
+        // resolved against the dataset and appended after them.
+        var values = PostgisRowMapper.Parameters(feature.Schema, feature, description.Srid)
             .Concat(PostgisDiagnostics.ParseFeatureIdentity(kinds, feature.Id))
             .ToArray();
         return (
@@ -58,18 +61,23 @@ internal static class PostgisWriteOperations
         feature.Id.Equals(FeatureId.Unassigned)
             ? PlanAddWithoutIdentity(name, description, feature)
             : (
-                PostgisQueries.InsertReturning(name, description.Schema, description.Srid, description.IdColumns),
-                PostgisRowMapper.Parameters(description.Schema, feature, description.Srid));
+                PostgisQueries.InsertReturning(name, feature.Schema, description.Srid, description.IdColumns),
+                PostgisRowMapper.Parameters(feature.Schema, feature, description.Srid));
 
     private static (string Sql, object?[] Values) PlanAddWithoutIdentity(
         PostgisDatasetName name, DatasetDescription description, Feature feature)
     {
-        var indexes = Enumerable.Range(0, description.Schema.Count)
-            .Where(index => !description.IdColumns.Contains(description.Schema[index].Name, StringComparer.Ordinal))
+        // A batch need not carry the identity column, nor every column of the
+        // dataset (ADR-0126): the statement and its values are both shaped by
+        // the batch's schema, with the identity column omitted so the database
+        // assigns it (ADR-0043). Mapping the values by the dataset's schema
+        // instead would read past the feature when the two differ.
+        var indexes = Enumerable.Range(0, feature.Schema.Count)
+            .Where(index => !description.IdColumns.Contains(feature.Schema[index].Name, StringComparer.Ordinal))
             .ToArray();
-        var all = PostgisRowMapper.Parameters(description.Schema, feature, description.Srid);
+        var all = PostgisRowMapper.Parameters(feature.Schema, feature, description.Srid);
         return (
-            PostgisQueries.InsertWithoutIdentity(name, description.Schema, description.Srid, description.IdColumns),
+            PostgisQueries.InsertWithoutIdentity(name, feature.Schema, description.Srid, description.IdColumns),
             indexes.Select(index => all[index]).ToArray());
     }
 
