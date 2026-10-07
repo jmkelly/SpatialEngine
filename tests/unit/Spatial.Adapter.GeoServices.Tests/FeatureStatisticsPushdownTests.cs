@@ -571,17 +571,80 @@ public sealed class FeatureStatisticsPushdownTests
     }
 
     /// <summary>
-    /// A group order the plan cannot state is not a reduction to push: the
-    /// groups would come back in a store's own order, where the served response
-    /// is the first-seen order of a match set. The request keeps the match path.
+    /// An unordered grouped reduction is the store's to answer (ADR-0194). The
+    /// plan asks for no group order — no <c>orderByFields</c> — and the
+    /// contract's answer for a reduction the plan did not order is the store's
+    /// own order (ADR-0098 §3, ADR-0128 §8): a store that reduces over the rows
+    /// it read keeps the reference's first-seen order, so the answer is the
+    /// match path's answer and the whole layer never has to be scanned. This is
+    /// the natural client request — <c>outStatistics</c> +
+    /// <c>groupByFieldsForStatistics</c> and nothing else — and it is the one
+    /// SpatialEngine-d0q found routing to the match path.
     /// </summary>
     [Fact]
-    public async Task A_grouped_reduction_the_plan_cannot_order_keeps_the_match_path()
+    public async Task A_grouped_reduction_with_no_order_is_asked_of_the_store()
+    {
+        var store = new AggregatingStore(Rows);
+        var query = await ParseAsync(
+            ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"},{"statisticType":"count","onStatisticField":"*","outStatisticFieldName":"n"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("f", "json"));
+
+        var body = await BodyAsync(Layer(), store, query);
+
+        Assert.Equal(1, store.Aggregates);
+        Assert.Equal(0, store.Scans);
+        Assert.Null(Assert.IsType<FeatureQuery>(store.LastPlan).Order);
+        Assert.Equal(["name"], Assert.IsType<AggregateQuery>(store.LastReduction).GroupBy);
+        Assert.Equal(await BodyAsync(Layer(), new MatchStore(Rows), query), body);
+    }
+
+    /// <summary>
+    /// The <c>having</c> clause and the group page ride on the unordered
+    /// reduction the same way they do on an ordered one (ADR-0128): the
+    /// store filters and pages the groups it reduced, and the served response
+    /// is the match path's answer for the same request.
+    /// </summary>
+    [Fact]
+    public async Task An_unordered_grouped_reduction_carries_the_having_clause_and_the_page()
+    {
+        var parameters = new (string Key, string Value)[]
+        {
+            ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
+            ("groupByFieldsForStatistics", "name"),
+            ("having", "total > 150"),
+            ("resultRecordCount", "1"),
+            ("f", "json"),
+        };
+
+        await AssertSameAsTheMatchPathAsync(parameters);
+
+        var store = new AggregatingStore(Rows);
+        await BodyAsync(Layer(), store, await ParseAsync(parameters));
+
+        var reduction = Assert.IsType<AggregateQuery>(store.LastReduction);
+        Assert.Equal(1, reduction.Limit);
+        Assert.NotNull(reduction.Having);
+        Assert.Equal(1, store.Aggregates);
+        Assert.Equal(0, store.Scans);
+    }
+
+    /// <summary>
+    /// A group order the plan <em>is</em> asked for but cannot state is still
+    /// not a reduction to push: the served response would be an order SQL
+    /// chose over a match set it never assembled, where the response owes the
+    /// order the request asked for (ADR-0098 §3). An order over one group field
+    /// of a two-field group is not a total order over the groups, so the
+    /// request keeps the match path.
+    /// </summary>
+    [Fact]
+    public async Task A_grouped_reduction_ordered_by_something_else_keeps_the_match_path()
     {
         var store = new AggregatingStore(Rows);
         var query = await ParseAsync(
             ("outStatistics", """[{"statisticType":"sum","onStatisticField":"population","outStatisticFieldName":"total"}]"""),
-            ("groupByFieldsForStatistics", "name"),
+            ("groupByFieldsForStatistics", "name,population"),
+            ("orderByFields", "name ASC"),
             ("f", "json"));
 
         var body = await BodyAsync(Layer(), store, query);

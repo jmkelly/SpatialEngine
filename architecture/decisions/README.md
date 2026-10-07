@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**177 records on disk.** `status` is the record's own word;
+**178 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -193,6 +193,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0189](ADR-0189-one-postgis-container-a-database-per-class.md) | one container for the PostGIS suite, a database per class | accepted | 2026-10-02 | ADR-0010, ADR-0139, ADR-0187 |
 | [0190](ADR-0190-harness-build-gate.md) | a harness outside the solution is still compiled by every lane | accepted | 2026-10-02 | ADR-0118, ADR-0134, ADR-0143 |
 | [0192](ADR-0192-the-register-marks-a-proposal-and-an-accepted-decision-cannot-rest-on-one.md) | The register marks a proposal, and an accepted decision may not rest on one | accepted | 2026-10-07 | ADR-0141 |
+| [0194](ADR-0194-an-unordered-grouped-reduction-is-the-stores-to-answer.md) | An unordered grouped reduction is the store's to answer | accepted | 2026-10-07 | ADR-0098, ADR-0184, ADR-0128, ADR-0133, ADR-0097 |
 
 ## Reading order
 
@@ -207,11 +208,11 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 21 records, 40,069 words (19% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 22 records, 41,835 words (20% of the corpus)
 
 1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158, 0167)*
 2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md) *(narrowed by 0184)*
-3. [0098](ADR-0098-store-query-surface.md) *(narrowed by 0121, 0127, 0128, 0131, 0132, 0133)*
+3. [0098](ADR-0098-store-query-surface.md) *(narrowed by 0121, 0127, 0128, 0131, 0132, 0133, 0194)*
 4. [0121](ADR-0121-ordinal-string-comparisons-in-pushdown.md) *(narrowed by 0123, 0124, 0136)*
 5. [0123](ADR-0123-a-pushed-comparison-states-the-order-it-wants.md) *(narrowed by 0126, 0132, 0136)*
 6. [0124](ADR-0124-sql-server-pushes-the-plans-order-and-page.md) *(narrowed by 0127, 0131, 0133)*
@@ -230,6 +231,7 @@ out: the "Amended by" row already says everything about a pair.
 19. [0167](ADR-0167-the-plans-spatial-component-stays-the-envelope-pre-filter.md)
 20. [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) *(narrowed by 0185)*
 21. [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md)
+22. [0194](ADR-0194-an-unordered-grouped-reduction-is-the-stores-to-answer.md)
 
 ### ADR-0109: the verification lanes, implemented — 11 records, 18,877 words (9% of the corpus)
 
@@ -338,7 +340,7 @@ believed.
 - **0087** is amended by 0111, 0163
 - **0092** is amended by 0147
 - **0097** is amended by 0184
-- **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133
+- **0098** is amended by 0121, 0127, 0128, 0131, 0132, 0133, 0194
 - **0100** is amended by 0182
 - **0105** is amended by 0107, 0168, 0179, 0180
 - **0106** is amended by 0169, 0171
