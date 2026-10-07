@@ -164,9 +164,10 @@ public sealed class MemoryStore
                 throw SpatialException.BadArguments($"Unknown transaction '{transaction}'.");
             }
 
-            foreach (var feature in batch.Features)
+            var stored = BuildStored(found, batch);
+            foreach (var feature in stored)
             {
-                found.Features.Add(MemorySchema.BuildStored(found, feature, assignedId: null));
+                found.Features.Add(feature);
             }
 
             if (batch.Count > 0)
@@ -176,6 +177,48 @@ public sealed class MemoryStore
 
             return batch.Count;
         }));
+    }
+
+    /// <summary>
+    /// Builds the batch's stored features, refusing an identity the dataset
+    /// already holds before anything is appended, so a colliding write leaves
+    /// the dataset as it was — the keyed stores write the batch in one
+    /// transaction and roll it back (ADR-0038, ADR-0112). A dataset that
+    /// declares no identity column has no key for a <see cref="FeatureId"/> to
+    /// collide with (ADR-0140, ADR-0147), so the check is the keyed one only.
+    /// </summary>
+    private static List<Feature> BuildStored(MemoryDataset dataset, FeatureBatch batch)
+    {
+        var built = new List<Feature>(batch.Count);
+        if (dataset.IdColumns.Count == 0)
+        {
+            foreach (var feature in batch.Features)
+            {
+                built.Add(MemorySchema.BuildStored(dataset, feature, assignedId: null));
+            }
+
+            return built;
+        }
+
+        // A store keys its features by the identity column (ADR-0038,
+        // ADR-0112), so a bulk write of an identity the dataset already holds
+        // is the primary-key collision the keyed stores raise, not a second
+        // row under one key. The set also catches a batch that repeats an
+        // identity within itself.
+        var held = dataset.Features.Select(feature => feature.Id).ToHashSet();
+        foreach (var feature in batch.Features)
+        {
+            var candidate = MemorySchema.BuildStored(dataset, feature, assignedId: null);
+            if (!held.Add(candidate.Id))
+            {
+                throw SpatialException.BadArguments(
+                    $"A feature with identity '{candidate.Id}' already exists in dataset '{dataset.Id}'.");
+            }
+
+            built.Add(candidate);
+        }
+
+        return built;
     }
 
     /// <summary>
