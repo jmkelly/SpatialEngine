@@ -9,6 +9,16 @@ namespace Spatial.Architecture.Tests;
 /// image pulled.
 ///
 /// <para>
+/// The rule is structural since ADR-0193: the database fixture's
+/// <c>ConnectionString</c> refuses to answer while <c>DockerAvailable</c> is
+/// false, so a fact that forgets <c>Skip.If</c> fails at the first access with
+/// a message naming the guard it forgot. What follows is the backstop — a
+/// source audit that catches the omission on a lane that never starts a
+/// container. It fails loudly when its fixture literal stops matching, because
+/// a backstop that matches nothing is not a backstop.
+/// </para>
+///
+/// <para>
 /// The rule is a source rule, so the guard reads the suites' sources. It is
 /// scoped to the two containerised provider suites, whose classes either take
 /// the fixture or are pure planning (<c>PostgisIndexPlanTests</c>, which builds
@@ -44,6 +54,14 @@ public sealed class ContainerSkipGuardTests
         { "Spatial.SqlServer.Tests", "IClassFixture<SqlServerDatabaseFixture>" },
     };
 
+    /// <summary>
+    /// The fewest container-backed classes either suite has ever had. A scan
+    /// that comes back with fewer has stopped matching — the fixture literal
+    /// has drifted, or a suite moved — and a backstop that matches nothing
+    /// guards nothing while staying green (SpatialEngine-x8a).
+    /// </summary>
+    private const int ContainerBackedFloor = 10;
+
     [Theory]
     [MemberData(nameof(Suites))]
     public void Every_container_backed_fact_skips_without_a_docker_daemon(string suite, string fixture)
@@ -55,10 +73,44 @@ public sealed class ContainerSkipGuardTests
         Assert.Empty(unguarded);
     }
 
-    private static IEnumerable<string> ContainerBackedClasses(string suite, string fixture) =>
-        Directory
+    [Fact]
+    public void The_backstop_fails_loudly_when_its_fixture_literal_matches_nothing()
+    {
+        // The failure mode this exists for: a guard whose scan silently
+        // matches nothing stays green while the invariant it was written to
+        // hold is no longer held. A literal that names no fixture must be a
+        // loud refusal, not an empty list (SpatialEngine-x8a).
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => _ = ContainerBackedClasses("Spatial.PostGIS.Tests", "IClassFixture<NoSuchFixture>"));
+
+        Assert.Contains("no longer guarding", exception.Message);
+    }
+
+    /// <summary>
+    /// The source files of <paramref name="suite"/> that take
+    /// <paramref name="fixture"/>, refusing to return a scan that matched fewer
+    /// than <see cref="ContainerBackedFloor"/> of them: the guard's whole
+    /// failure mode is a literal that stops matching, which leaves every fact
+    /// it would have flagged unread and the suite green.
+    /// </summary>
+    private static List<string> ContainerBackedClasses(string suite, string fixture)
+    {
+        var classes = Directory
             .EnumerateFiles(Path.Combine(RepositoryRoot, "tests", "integration", suite), "*.cs", SearchOption.TopDirectoryOnly)
-            .Where(path => File.ReadAllText(path).Contains(fixture, StringComparison.Ordinal));
+            .Where(path => File.ReadAllText(path).Contains(fixture, StringComparison.Ordinal))
+            .ToList();
+
+        if (classes.Count < ContainerBackedFloor)
+        {
+            throw new InvalidOperationException(
+                $"The container-skip guard scanned {classes.Count} class(es) in {suite} for "
+                + $"'{fixture}', fewer than the {ContainerBackedFloor} the suite has. The literal "
+                + "has stopped matching, so the guard is no longer guarding anything: update it "
+                + "with the fixture the classes actually take (ADR-0193).");
+        }
+
+        return classes;
+    }
 
     /// <summary>
     /// One message per <c>[SkippableFact]</c> that reads the fixture and never

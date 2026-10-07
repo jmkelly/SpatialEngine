@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**178 records on disk.** `status` is the record's own word;
+**179 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -188,11 +188,12 @@ front matter, so a record's reach is a row rather than a search.
 | [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) | A reduction pushes its restriction on a dataset with no identity column | accepted | 2026-10-06 | ADR-0097, ADR-0185, ADR-0116, ADR-0131, ADR-0133, ADR-0140, ADR-0147, ADR-0149 |
 | [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md) | Map a row once, and order a page rather than the read | accepted | 2026-10-07 | ADR-0184, ADR-0074, ADR-0097, ADR-0116, ADR-0127, ADR-0131 |
 | [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md) | the final-newline rule is a check every lane runs | accepted | 2026-10-01 | ADR-0134, ADR-0143, ADR-0109, ADR-0146 |
-| [0187](ADR-0187-one-container-for-the-sql-server-suite-a-database-per-class.md) | one container for the SQL Server suite, a database per class | accepted | 2026-10-02 | ADR-0073, ADR-0139 |
+| [0187](ADR-0187-one-container-for-the-sql-server-suite-a-database-per-class.md) | one container for the SQL Server suite, a database per class | accepted | 2026-10-02 | ADR-0073, ADR-0193, ADR-0139 |
 | [0188](ADR-0188-the-final-newline-rule-is-enforced-over-all-of-the-editorconfig-star-scope.md) | the final-newline rule covers all of `[*]`, and captures are exempt through `.editorconfig` | accepted | 2026-10-02 | ADR-0186, ADR-0143, ADR-0134, ADR-0146 |
-| [0189](ADR-0189-one-postgis-container-a-database-per-class.md) | one container for the PostGIS suite, a database per class | accepted | 2026-10-02 | ADR-0010, ADR-0139, ADR-0187 |
+| [0189](ADR-0189-one-postgis-container-a-database-per-class.md) | one container for the PostGIS suite, a database per class | accepted | 2026-10-02 | ADR-0010, ADR-0193, ADR-0139, ADR-0187 |
 | [0190](ADR-0190-harness-build-gate.md) | a harness outside the solution is still compiled by every lane | accepted | 2026-10-02 | ADR-0118, ADR-0134, ADR-0143 |
 | [0192](ADR-0192-the-register-marks-a-proposal-and-an-accepted-decision-cannot-rest-on-one.md) | The register marks a proposal, and an accepted decision may not rest on one | accepted | 2026-10-07 | ADR-0141 |
+| [0193](ADR-0193-the-container-fixtures-refuse-an-unguarded-access.md) | the container fixtures refuse an unguarded access, and the skip guard fails when it matches nothing | accepted | 2026-10-07 | ADR-0187, ADR-0189, ADR-0139 |
 | [0194](ADR-0194-an-unordered-grouped-reduction-is-the-stores-to-answer.md) | An unordered grouped reduction is the store's to answer | accepted | 2026-10-07 | ADR-0098, ADR-0184, ADR-0128, ADR-0133, ADR-0097 |
 
 ## Reading order
@@ -291,6 +292,12 @@ out: the "Amended by" row already says everything about a pair.
 3. [0182](ADR-0182-serve-the-contains-and-within-relations-on-a-designated-layer.md) *(narrowed by 0183)*
 4. [0183](ADR-0183-the-designation-is-authored-on-the-published-map-layer.md)
 
+### ADR-0010: Initial backing provider is PostGIS — 3 records, 3,218 words (2% of the corpus)
+
+1. [0010](ADR-0010-postgis-initial-provider.md) *(narrowed by 0189)*
+2. [0189](ADR-0189-one-postgis-container-a-database-per-class.md) *(narrowed by 0193)*
+3. [0193](ADR-0193-the-container-fixtures-refuse-an-unguarded-access.md)
+
 ### ADR-0038: Read-by-identity is an additive store capability — 3 records, 3,423 words (2% of the corpus)
 
 1. [0038](ADR-0038-read-by-identity-store-capability.md) *(narrowed by 0140)*
@@ -377,6 +384,8 @@ believed.
 - **0182** is amended by 0183
 - **0184** is amended by 0185
 - **0186** is amended by 0188
+- **0187** is amended by 0193
+- **0189** is amended by 0193
 
 ## Superseded, by superseder
 
