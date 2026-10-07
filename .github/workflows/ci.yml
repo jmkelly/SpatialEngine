@@ -114,6 +114,17 @@ jobs:
       - name: Bead protocol and ADR wall
         run: python3 tools/beads_gate.py --root . --base origin/main --no-queue
 
+      # The measurement harnesses under `eng/` are deliberately not in
+      # `SpatialEngine.slnx` — which is also why nothing compiled them, because
+      # `tools/verify_scope.py` walks the reference graph from the solution's
+      # own project list. `eng/spike-u2x-query-baseline` had stopped compiling
+      # entirely on 2026-10-02 and SpatialEngine-58d had to port it by hand
+      # (ADR-0190). The lanes call `tools/spike_harnesses.py` directly; this
+      # job spells its steps out rather than calling `eng/verify.sh`, so it
+      # carries the step too.
+      - name: Spike harnesses
+        run: python3 tools/spike_harnesses.py
+
       - name: Build
         run: dotnet build SpatialEngine.slnx
 

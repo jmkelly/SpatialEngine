@@ -67,6 +67,21 @@
 # to open the script to know which half of the doc gate gates and which only
 # reports.
 #
+# After those, every lane builds the harnesses under `eng/` that no solution
+# names. `tools/spike_harnesses.py` derives that set — every `*.csproj` under
+# `eng/` that `SpatialEngine.slnx` does not list — and builds each, because
+# nothing else compiles them: `tools/verify_scope.py` walks the
+# `ProjectReference` graph from the solution's own project list, so a project
+# the solution omits is in no lane's build, and the harnesses are
+# `<IsTestProject>false</IsTestProject>`, so `dotnet test` ignores them too.
+# `eng/spike-u2x-query-baseline` had stopped compiling entirely on 2026-10-02
+# and SpatialEngine-58d had to port it by hand before it could re-measure
+# anything (ADR-0190). The set is derived rather than listed so a harness added
+# tomorrow is gated without anybody remembering a list. It is a check the
+# lanes call directly rather than a `tools/test_*.py`, because the change that
+# breaks a harness is a `src` change and the tooling suite only runs when
+# `tools/**` changed (ADR-0143, ADR-0146).
+#
 # After those, every lane runs the bead-protocol gate
 # (`tools/beads_gate.py`): a closed bead's merge records the bead it merged —
 # a `Task: <id>` trailer naming it, on the merge or on the work it brought in —
@@ -586,6 +601,27 @@ beads_gate_step() {
   fi
 }
 
+# --- the harnesses no solution builds ---------------------------------------
+# The measurement spikes under `eng/` are deliberately outside
+# SpatialEngine.slnx, so the coverage and metrics gates stay exactly as they
+# were — and, for the same reason, no lane compiled them. The fast lane builds
+# a scoped solution derived from `tools/verify_scope.py`, whose graph starts at
+# the solution's own project list, and the harnesses declare
+# `<IsTestProject>false</IsTestProject>`, so `dotnet test` skips them as well.
+# `tools/spike_harnesses.py` is the answer: every `*.csproj` under `eng/` the
+# solution does not name, built here. It is a repository check over what the
+# repository ships rather than one over the change set, so — like
+# `doc_surface_step` and `beads_gate_step` — it is not scoped and has no
+# fallback: there is nothing to narrow, and narrowing it is the defect.
+#
+# It costs a `dotnet build` per harness on a warm tree (measured: 5.5 s and
+# 4.7 s for the two of them once their dependencies are built, against ~30 s
+# cold), and `--plan` prints it beside the rest.
+spike_harness_step() {
+  echo "== harnesses under eng/ that no solution builds =="
+  step python3 tools/spike_harnesses.py
+}
+
 # --- the format lane -------------------------------------------------------
 if [[ "$LANE" == "format" ]]; then
   echo "== format check (scoped to the changed projects) =="
@@ -596,6 +632,7 @@ if [[ "$LANE" == "format" ]]; then
   package_agents_step
   doc_gate
   beads_gate_step
+  spike_harness_step
   if [[ "$EXHAUSTIVE" == "1" ]]; then
     echo "the change set is unscoped against $BASE, so this is the whole solution"
   fi
@@ -617,6 +654,7 @@ if [[ "$LANE" == "full" ]]; then
   package_agents_step
   doc_gate
   beads_gate_step
+  spike_harness_step
 
   echo "== format check =="
   # No --no-restore: a clean checkout has no project.assets.json yet, and the
@@ -647,6 +685,7 @@ doc_surface_step
 package_agents_step
 doc_gate
 beads_gate_step
+spike_harness_step
 
 if [[ "$EXHAUSTIVE" == "1" ]]; then
   echo "== the change set is unscoped against $BASE: whole solution, every test =="

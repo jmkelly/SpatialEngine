@@ -396,7 +396,11 @@ class LaneExitCodeTests(unittest.TestCase):
         # therefore carries all of those tools, the bead-protocol gate among
         # them (ADR-0152), and — because the doc gate
         # regenerates the ADR register and index and fails on a stale one — a
-        # decision corpus and its generated register. A fixture without any of
+        # decision corpus and its generated register. The harness build
+        # (ADR-0190) is in that list too: every lane builds the `*.csproj`
+        # under `eng/` the solution does not name, so a fixture without the
+        # tool would be red on a gate that has nothing to do with skips. The
+        # stub `dotnet` on PATH answers it. A fixture without any of
         # them would be measuring the gates rather than the skip gate, and the
         # lane would go red for a reason that has nothing to do with skips.
         for name in ("eng/verify.sh", "eng/quality-audit.sh", "tools/verify_scope.py",
@@ -404,7 +408,8 @@ class LaneExitCodeTests(unittest.TestCase):
                      "tools/final_newline.py",
                      "tools/conflict_markers.py", "tools/doc_surface.py",
                      "tools/arch-index.py", "tools/doc-freshness.py",
-                     "tools/beads_gate.py", "tools/package_agents.py"):
+                     "tools/beads_gate.py", "tools/package_agents.py",
+                     "tools/spike_harnesses.py"):
             (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(
                 (REPO / name).read_text(encoding="utf-8"), encoding="utf-8")

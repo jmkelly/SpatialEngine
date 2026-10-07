@@ -7,7 +7,10 @@
     those tiles takes. It is a spike harness, not a product project: it lives
     under eng/ and is deliberately NOT in SpatialEngine.slnx, so the build,
     coverage and metrics gates stay exactly as they were. Run it with
-    eng/spike-u2x-tile-cache.sh.
+    eng/spike-u2x-tile-cache.sh. Being outside the solution does not mean
+    nothing compiles it: every lane builds it through
+    tools/spike_harnesses.py, which derives this project from the set the
+    solution does not name (ADR-0190).
 
     It references implementation projects directly (like
     eng/spike-u2x-query-baseline does), because the point of the spike is to

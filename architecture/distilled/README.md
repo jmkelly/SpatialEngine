@@ -31,6 +31,10 @@ agent would have followed anyway (`SpatialEngine-rzq`).
   be wrong about is fixed by an edit, and one that only an edit manufactured to
   move a counter could clear is a census — report it as a signal and leave the
   queue empty rather than churning a document (SpatialEngine-3kk)
+- A `*.csproj` under `eng/` is in no lane's build: `tools/verify_scope.py`
+  walks the reference graph from the solution's own project list, so an
+  ungated harness rots out of compilation unread — `tools/spike_harnesses.py`
+  builds each in every lane. (SpatialEngine-b60)
 <!-- orientation:end -->
 
 ## Route by task
@@ -266,8 +270,9 @@ date and cross-reference)
 | 0187 | The SQL Server integration suite starts one container for the assembly, shared by a collection, with a database per test class; the start is retried with a generous budget and a skip reason that says whether it was refused or ran out of time. |
 | 0188 | The `insert_final_newline` the `.editorconfig` claims for `[*]` is enforced over **every text file the repository ships**, not C# alone — `tools/final_newline.py` loses its file-type table and reads whatever the claim names, and the exemptions are **captured and vendored artefacts, expressed as `insert_final_newline = false` sections in `.editorconfig`** the way ADR-0143 exempted `psql` captures, not a suffix list inside the check. The 166 files git shipped without a final newline are one byte each; the 52 captures and bundles that are exempt are exempt because appending a byte to them stops them being the record of what the tool or upstream shipped. |
 | 0189 | The PostGIS integration suite starts one container for the assembly, shared by a collection, with a database per test class; the start is retried with a generous budget and a skip reason that says whether it was refused or ran out of time. |
+| 0190 | Every measurement harness under `eng/` — the `*.csproj` files `SpatialEngine.slnx` deliberately does not name — is **derived and built by `tools/spike_harnesses.py`, and every lane and the CI `verify` job call it**, because being outside the solution is what keeps a harness out of the coverage and metrics gates and is also what kept it out of every build: `tools/verify_scope.py` walks the `ProjectReference` graph from the solution's own project list and the harnesses are `<IsTestProject>false</IsTestProject>`, so `eng/spike-u2x-query-baseline` had stopped compiling entirely by 2026-10-02 and SpatialEngine-58d had to port it by hand before it could re-measure anything. The set is derived rather than listed, so a harness added tomorrow is gated without anybody remembering a list; the check is called directly rather than left to the `tools/**`-only tooling suite, because the change that breaks a harness is a `src` change (ADR-0143, ADR-0146). It costs ~15 s warm for the two of them. |
 
-175 records on disk. The full index — status, date and every
+176 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->
