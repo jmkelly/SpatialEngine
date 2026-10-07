@@ -184,7 +184,27 @@ measurement harness already prints the note.
 | What | How | Result | Date |
 | --- | --- | --- | --- |
 | The cost being removed | `eng/spike-u2x-query-baseline.sh --store=postgis --iterations=10 --warmup=3` on the 34k-row keyless world-cities layer, with a `GC.GetTotalAllocatedBytes` bisection around each stage of `PostgisStore.QueryAsync` | `returnCountOnly` and `outStatistics` cost what a full scan costs (31.1 MB); the same `SELECT COUNT(*)` through raw Npgsql allocates 0.01 MB | 2026-10-05 |
+| **The cost, after this record** | the same harness and layer on 2026-10-07, its `countOnly`/`statistics` cells re-run through `IFeatureAggregateStore` (SpatialEngine-8dm) | `returnCountOnly` **2.4–5.9 ms / 0.01 MB** and `outStatistics` **2.8–8.8 ms / 0.02–0.08 MB**, **0 rows** materialised, against a `page25` still 136–178 ms / ~31 MB (the whole read a keyless page keeps, §3) | 2026-10-07 |
 | The pushdown happens | `PostgisKeylessReductionTests` (unit) — the restriction, the count SQL, the declined `Ids`, the empty id list, and the read's unchanged decline | pinned | 2026-10-06 |
 | The pushdown happens, against a live PostGIS | `PostgisKeylessReductionPushdownTests` — a 5,000-row table with no primary key, counted and grouped through the store | the count, the four groups and the distinct set are the reference reduction's, value for value | 2026-10-06 |
 | The table is not read | the same fixture, seeded so one row holds a `CIRCULARSTRING` — a geometry the EWKB reader refuses. A scan of that table fails with `store.unavailable`; a count and a grouped reduction over it are answered, because neither decodes a geometry. Before this record the count failed the same way the scan does | 10 rows counted, 4 groups | 2026-10-06 |
 | A counter that does not work | `pg_stat_database.tup_returned` was tried first as the row witness and abandoned: the pooled backends report their counters on their own schedule, so a whole read of 20,000 rows measured 5,186 | discarded | 2026-10-06 |
+
+The 2026-10-07 figures are the harness's, and the harness had to be taught
+the distinction this record makes before it could measure it: its `B`/`Bp`
+paths reduced in the adapter over a `QueryAsync` read, which measured the read
+rather than this record's face. They now route a reduction through
+`FeatureReductionFallback`, exactly as the served surface does
+(SpatialEngine-8dm, `eng/spike-u2x-query-baseline/RESULTS.md`). Two limits on
+reading them as "the served path":
+
+- a grouped reduction is a `GROUP BY` only when the plan's order is over the
+group key itself (ADR-0133 §6), and the harness's statistics plan states it;
+without that order the store still pushes the restriction and groups the
+restricted rows in managed code (0.34 MB europe / 7.22 MB global, against the
+0.02–0.08 MB above);
+- the served GeoServices `outStatistics` face only reaches the reduction when
+the request names the group field in `orderByFields`; a plain
+`outStatistics` + `groupByFieldsForStatistics` keeps the scan-and-match path
+(SpatialEngine-d0q). The store face this record decided is what the harness
+measures; the adapter's route to it is a separate record's question.

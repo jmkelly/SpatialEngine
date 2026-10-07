@@ -1,0 +1,35 @@
+# SpatialEngine-u2x.1 query baseline — store=postgis label=postgis/no-index
+# layer public.spike_world_cities rows=34135 srid=4326 geometry=geometry idColumns=[] iterations=10 warmup=3
+# A=ScanAsync+in-adapter  B=store pushdown (a reduction uses the store's reduction face)  Bp=B with order+limit  C=IFeatureLookup by identity  D=emulated full pushdown (ceiling, not shipped)
+
+path     scenario variant     cold_ms     p50_ms     p95_ms    mean_ms      alloc_MB    peak_MB       rows    result
+# path C (IFeatureLookup by identity) is unavailable here: dataset 'public.spike_world_cities' declares no integer identity column, so the per-feature read face refuses it (ADR-0140).
+# the feature read (page25) is not a pushdown on this layer: dataset 'public.spike_world_cities' declares no identity column, so a page on it is answered by the whole-layer read plus the reference executor, and rows and alloc_MB follow the whole read. The reductions are: a count and a grouped reduction return values and no feature, so B and Bp on the countOnly and statistics variants are the store's own reduction face with rows=0 (ADR-0184 §1). Measure a feature-read pushdown on a layer that declares an identity column.
+# europe: bbox BoundingBox { MinX = -10, MinY = 36, MaxX = 5, MaxY = 55 } where 'population > 100000' → attribute pushdown supported
+# global: bbox BoundingBox { MinX = -180, MinY = -90, MaxX = 180, MaxY = 90 } where 'population > 100000' → attribute pushdown supported
+A-scan   europe  page25        145.873    172.270    237.477    180.419      31.11      17.73      34135         25
+B-push   europe  page25        148.508    176.141    220.439    177.094      31.40      18.02        283         25
+Bp-page  europe  page25        121.618    129.677    147.376    131.135      31.34      17.96         25         25
+D-emul   europe  page25          5.936      6.272     15.449      7.325       0.81       0.82         25         25
+A-scan   europe  countOnly     113.938    123.388    158.020    125.639      31.11      17.72      34135        283
+B-push   europe  countOnly       1.960      2.034      2.123      2.028       0.01       0.03          0        283
+Bp-page  europe  countOnly       1.874      1.976      2.104      1.992       0.01       0.02          0        283
+D-emul   europe  countOnly       5.640      8.921      9.839      8.046       0.78       0.79          0        283
+A-scan   europe  statistics    111.536    128.618    184.397    132.797      31.09      17.71      34135          8
+B-push   europe  statistics      2.254      2.353      2.846      2.457       0.02       0.03          0          8
+Bp-page  europe  statistics      2.306      2.483      2.691      2.496       0.02       0.03          0          8
+D-emul   europe  statistics      6.852      7.019      7.494      7.154       0.78       0.80          8          8
+A-scan   global  page25        118.953    134.064    148.359    132.615      31.91      18.58      34135         25
+B-push   global  page25        125.460    139.808    162.113    141.989      32.69      19.86       6253         25
+Bp-page  global  page25        127.081    144.335    167.734    146.490      31.46      18.10         25         25
+D-emul   global  page25         13.137     13.633     13.898     13.593       1.31       1.33         25         25
+A-scan   global  countOnly     124.349    138.494    176.295    141.219      31.91      18.58      34135       6253
+B-push   global  countOnly       6.405      7.032      9.711      7.491       0.01       0.03          0       6253
+Bp-page  global  countOnly       5.303      5.734      6.928      5.904       0.01       0.03          0       6253
+D-emul   global  countOnly       5.584      5.758      5.952      5.751       0.78       0.79          0       6253
+A-scan   global  statistics    122.839    142.756    186.871    151.385      31.58      18.25      34135        171
+B-push   global  statistics     10.982     12.278     45.810     16.489       0.08       0.09          0        171
+Bp-page  global  statistics     10.376     11.115     37.023     15.098       0.08       0.09          0        171
+D-emul   global  statistics      8.402      8.439     12.568      8.877       0.79       0.80        171        171
+
+# json written to artifacts/spike-u2x.1/postgis-no-index.json

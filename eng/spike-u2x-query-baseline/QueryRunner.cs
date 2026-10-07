@@ -2,14 +2,17 @@ using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Core.Features;
 using Spatial.Core.Features.Query;
+using Spatial.Querying;
 
 namespace Spatial.Spike.QueryBaseline;
 
 /// <summary>
-/// The four measured paths for one request, over one store. A and B are store
-/// calls plus the in-adapter mirror; C is the per-feature read face; D is the
-/// emulated ceiling (see <see cref="EmulatedPushdown"/>) — it is labelled as an
-/// emulation in the report so it is never read as a shipped path.
+/// The four measured paths for one request, over one store. A is a scan plus
+/// the in-adapter mirror; B is the store's own plan — a plan read for a feature
+/// page, the reduction face for a count or a grouped reduction; C is the
+/// per-feature read face; D is the emulated ceiling (see
+/// <see cref="EmulatedPushdown"/>) — it is labelled as an emulation in the
+/// report so it is never read as a shipped path.
 /// </summary>
 internal sealed class QueryRunner
 {
@@ -42,11 +45,14 @@ internal sealed class QueryRunner
     }
 
     /// <summary>
-    /// Path B — the same request with the predicate pushed into the store. The
-    /// store applies bbox and where, but its readers have no row cap or
-    /// cursor, so every <em>matching</em> row still arrives as a batch page.
-    /// The adapter pipeline is left exactly as it is, so the delta against A
-    /// is the pushdown and nothing else.
+    /// Path B — the same request with the predicate pushed into the store. For
+    /// a feature page the store applies bbox and where, but its readers have no
+    /// row cap or cursor on a layer that cannot carry one, so every
+    /// <em>matching</em> row still arrives as a batch page. For a reduction the
+    /// store's own reduction face answers: a count is a <c>SELECT COUNT(*)</c>
+    /// and a grouped statistics request a <c>GROUP BY</c>, and no feature is
+    /// materialised at all (ADR-0184 §1). The adapter pipeline is left exactly
+    /// as it is, so the delta against A is the pushdown and nothing else.
     /// </summary>
     internal async Task<Outcome> PushdownAsync(
         QueryRequest request,
@@ -56,9 +62,48 @@ internal sealed class QueryRunner
         bool paged,
         CancellationToken cancellationToken)
     {
+        if (QueryRequest.IsReduction(variant))
+        {
+            return await ReductionAsync(request, variant, cancellationToken);
+        }
+
         var page = await _store.QueryAsync(Dataset, request.Plan(paged, variant), cancellationToken);
         var matched = AdapterMirror.Match(page.Batches, _model, where, request.Envelope, cancellationToken);
         return Shape(request, variant, matched, Materialised(page.Batches), cancellationToken);
+    }
+
+    /// <summary>
+    /// A reduction's store path: the store's reduction face, probed exactly as
+    /// the served surface probes it (<c>FeatureReductionFallback</c>), so a
+    /// store that has the face pushes and one that does not reduces over the
+    /// plan read. Nothing is materialised — the rows column is zero — which is
+    /// what the reduction face is for: a count and a grouped reduction return
+    /// values and no feature, so their restriction is pushed even on a dataset
+    /// that declares no identity column (ADR-0184 §1). <paramref name="paged"/>
+    /// does not apply: a number and a group set have no page.
+    /// </summary>
+    private async Task<Outcome> ReductionAsync(
+        QueryRequest request,
+        string variant,
+        CancellationToken cancellationToken)
+    {
+        var plan = request.Plan(paged: false, variant);
+        if (QueryRequest.IsCountOnly(variant))
+        {
+            var count = await FeatureReductionFallback.CountAsync(_store, Dataset, plan, cancellationToken);
+            return new Outcome(0, count);
+        }
+
+        // A grouped reduction is pushed only when the plan's order is over the
+        // group key itself: a GROUP BY returns rows in no defined order, and a
+        // key is a total order over the groups. So the statistics plan asks for
+        // its group key ascending — the order the served surface asks for when
+        // orderByFields names the group field — and the reduction is a
+        // GROUP BY rather than a read reduced in managed code.
+        var grouped = plan with { Order = [new OrderTerm(request.GroupByField!, SortDirection.Ascending)] };
+        var page = await FeatureReductionFallback.AggregateAsync(
+            _store, Dataset, grouped, request.StatisticsQuery(), cancellationToken);
+        return new Outcome(0, page.Groups.Count);
     }
 
     /// <summary>

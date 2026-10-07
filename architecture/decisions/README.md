@@ -207,7 +207,7 @@ the family of the earliest record it refines, so no record is listed
 twice, and a family of fewer than 3 records is left
 out: the "Amended by" row already says everything about a pair.
 
-### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 21 records, 39,837 words (19% of the corpus)
+### ADR-0074: The feature-query contract is a core-typed query plan, not a filter string — 21 records, 40,069 words (19% of the corpus)
 
 1. [0074](ADR-0074-feature-query-plan-contract.md) *(narrowed by 0097, 0098, 0132, 0158, 0167)*
 2. [0097](ADR-0097-pushdown-identity-and-literal-binding.md) *(narrowed by 0184)*
