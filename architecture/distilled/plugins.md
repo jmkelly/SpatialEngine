@@ -33,6 +33,11 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
   it: ADR-0097's rule is about the ordinal a feature is named by, and a count,
   a distinct set and a grouped reduction return values, so they push on a
   keyless layer where the feature read cannot. (SpatialEngine-xg5)
+- Measure a store reduction through the store's reduction face
+  (`IFeatureAggregateStore`, probed as `FeatureReductionFallback` does), not a
+  `QueryAsync` plan read: the spike's `B`/`Bp` cells reduced a read in the
+  adapter and so measured the read, not the face ADR-0184 pushes.
+  (SpatialEngine-8dm)
 - Measure where an allocation is before naming the class that owns the feature:
   the 15 MB was two SQL stores' row mapping building a second feature per row,
   not `FeaturePlanExecutor` — decide the projection once per read, and order a

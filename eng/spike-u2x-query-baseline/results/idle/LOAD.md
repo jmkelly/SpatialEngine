@@ -20,3 +20,22 @@ run started.
 
 `postgis-indexed-plan.txt` is the plan PostgreSQL chose over the indexed table
 for the europe request (a `BitmapAnd` of the GiST and the `population` btree).
+
+## 2026-10-07 re-run — the reduction cells (SpatialEngine-8dm)
+
+Re-measured because the harness now routes a reduction through the store's own
+reduction face (`IFeatureAggregateStore`) rather than reducing a `QueryAsync`
+read in the adapter, so the `countOnly` and `statistics` cells moved. Same box,
+same estimator (minimum p50 of three repeats). The PostGIS runs use
+`--iterations=10 --warmup=3` (the command the bead names) and the memory runs
+keep `--iterations=30 --warmup=5`.
+
+| file | command | load1 before |
+|---|---|---|
+| `postgis-0184-r1-indexed.txt` | `SKIP_TEARDOWN=1 eng/spike-u2x-query-baseline.sh --store=postgis --iterations=10 --warmup=3` (loads the table, indexes it, measures both phases) | 5.01 |
+| `postgis-0184-r{2,3}-indexed.txt` | `dotnet run -c Release --project eng/spike-u2x-query-baseline -- --store=postgis --connection=… --reuse --iterations=10 --warmup=3` | 9.41, then 5.55 |
+| `memory-0184-r{1,2,3}.txt` | `eng/spike-u2x-query-baseline.sh --store=memory --iterations=30 --warmup=5` | 5.81, then 6.05, then 4.73 |
+| `postgis-0184-r1-noindex.txt` | the no-index phase of the `postgis-0184-r1` run | as above |
+
+`postgis-0184-r1-indexed-plan.txt` is that run's indexed-table plan, the same
+`BitmapAnd` as the 2026-10-02 run.

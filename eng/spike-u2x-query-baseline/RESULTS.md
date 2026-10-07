@@ -2,7 +2,11 @@
 
 Re-measured on **2026-10-01/02** (the original run was 2026-09-28; its
 load-contaminated figures are kept in the [appendix](#appendix-the-2026-09-28-run)
-so the two can be compared).
+so the two can be compared). The PostGIS and in-memory tables were re-measured
+again on **2026-10-07** (SpatialEngine-8dm): their `countOnly` and `statistics`
+cells were the pre-ADR-0184 figures, and the harness now routes a reduction
+through the store's own reduction face rather than reducing a read in the
+adapter.
 
 Layer: the committed GeoNames world-cities snapshot, **34,135 rows**
 (`demo.world_cities`, CC-BY 4.0), loaded through the store's own create/write
@@ -25,7 +29,8 @@ ranged **1.4 to 12.4** on 12 cores across these runs (the 2026-09-28 run sat at
 - **minimum p50 of three independent repeats**, not the p50 of one run. A
   neighbour's load can only ever add time, so the minimum is the estimator that
   survives it, and the spread of the three is reported next to it.
-- 30 iterations and 5 warmup for the in-process paths, 20 and 3 over HTTP.
+- 30 iterations and 5 warmup for the in-process paths, 10 and 3 for the
+  2026-10-07 PostGIS re-run, 20 and 3 over HTTP.
 - the `rows`, `result` and `alloc_MB` columns are exact and identical in every
   run of every repeat, as before.
 
@@ -46,148 +51,176 @@ anything was measured. Two consequences for reading the tables:
   (ADR-0074/ADR-0116 did not exist). `B` below is the same intent — the bbox
   and the attribute predicate pushed into the store, no page cap — and the
   **rows** column is the same measurement. Its wall time is not comparable with
-  the old `B` cell for cell.
+  the old `B` cell for cell. It changed once more on 2026-10-07
+  (SpatialEngine-8dm): a **reduction** (`countOnly`, `statistics`) now measures
+  the store's own reduction face (`IFeatureAggregateStore`, through
+  `FeatureReductionFallback`), which is the shipped path for those shapes, so
+  their `rows` is 0 and their allocation is the reduction's rather than a whole
+  read's. A **page** (`page25`) is still `IFeatureStore.QueryAsync`.
 - **`Bp` is new**: the plan a served request actually issues today, with the
   ordering and the row cap in it (ADR-0074 §5, ADR-0116). It is the old `D`
   ceiling as a shipped path, not an emulation, so it is reported separately and
-  `D` is kept beside it for continuity. On the PostGIS rows it is *not* a
-  ceiling, because this layer cannot carry the plan: see
-  [below](#the-postgis-rows-column-is-not-what-the-database-read).
+  `D` is kept beside it for continuity. On a PostGIS **feature page** it is
+  *not* a ceiling, because this layer cannot carry the plan; a reduction has no
+  page, so `B` and `Bp` are the same call on the `countOnly` and `statistics`
+  rows. See [below](#the-postgis-rows-column-is-not-what-the-database-read).
 - `C` is reported as **unavailable** rather than as a number: a dataset that
   declares no identity column is refused with `invalid.arguments` by name
   (ADR-0140), where on 2026-09-28 it answered empty.
 
 ## PostGIS, in-process — the store a real deployment uses
 
-p50 ms and MB/call over 30 iterations, indexed table (GiST geometry + btree on
-`population` and `country`, `ANALYZE`), minimum p50 of
-`results/idle/postgis-r{1,2,3}-indexed.txt`. The plan PostgreSQL chose is in
-[`results/idle/postgis-indexed-plan.txt`](results/idle/postgis-indexed-plan.txt)
+p50 ms and MB/call over **10 iterations** (`--iterations=10 --warmup=3`),
+indexed table (GiST geometry + btree on `population` and `country`,
+`ANALYZE`), minimum p50 of three repeats in
+`results/idle/postgis-0184-r{1,2,3}-indexed.txt`. The table was re-measured on
+**2026-10-07** (SpatialEngine-8dm) because its reduction cells were the
+pre-ADR-0184 figures; the plan PostgreSQL chose is in
+[`results/idle/postgis-0184-r1-indexed-plan.txt`](results/idle/postgis-0184-r1-indexed-plan.txt)
 (a `BitmapAnd` of the GiST scan and the `population` btree).
 
-> The `rows` column on the SQL stores counts what the call **returned**. On
-> this layer the database read the whole table to answer every one of them,
-> because the layer declares no identity column and a plan on such a dataset
-> is answered by the whole read (ADR-0097 §1, ADR-0116 §1). Read
+> The `rows` column counts what the call **returned**. On this layer a
+> **feature page** (`page25`) is answered by a whole-layer read, because the
+> layer declares no identity column (ADR-0097 §1, ADR-0116 §1): its `alloc_MB`
+> follows the whole read whatever the page size. A **reduction** (`countOnly`,
+> `statistics`) is not a read — a count and a grouped reduction return values
+> and no feature, so their restriction is pushed on this same keyless layer and
+> their `rows` is **0** (ADR-0184 §1). Read
 > [the section on it](#the-postgis-rows-column-is-not-what-the-database-read)
 > before quoting these cells as a pushdown.
 
-| scenario / variant | A `ScanAsync`+filter | B plan pushdown | Bp paged plan | D emulated ceiling | rows A / B / Bp |
+| scenario / variant | A `ScanAsync`+filter | B store pushdown | Bp `B` + order/cap | D emulated ceiling | rows A / B / Bp |
 |---|---|---|---|---|---|
-| europe / page25 | 147 ms / 31.11 MB | 179 ms / 46.82 MB | 149 ms / 46.76 MB | 5.8 ms / 0.81 MB | 34135 / 283 / 25 |
-| europe / countOnly | 151 ms / 31.10 MB | 162 ms / 46.80 MB | 160 ms / 46.81 MB | 5.9 ms / 0.78 MB | 34135 / 283 / 283 |
-| europe / statistics | 159 ms / 31.09 MB | 164 ms / 46.82 MB | 161 ms / 46.78 MB | 6.8 ms / 0.78 MB | 34135 / 283 / 283 |
-| global / page25 | 156 ms / 31.91 MB | 180 ms / 48.02 MB | 202 ms / 47.56 MB | 18.1 ms / 1.31 MB | 34135 / 6253 / 25 |
-| global / countOnly | 155 ms / 31.91 MB | 158 ms / 48.02 MB | 180 ms / 48.72 MB | 6.5 ms / 0.78 MB | 34135 / 6253 / 6253 |
-| global / statistics | 155 ms / 31.58 MB | 147 ms / 47.71 MB | 151 ms / 48.37 MB | 6.1 ms / 0.79 MB | 34135 / 6253 / 6253 |
+| europe / page25 | 176 ms / 31.11 MB | 156 ms / 31.45 MB | 178 ms / 31.39 MB | 9.1 ms / 0.81 MB | 34135 / 283 / 25 |
+| europe / countOnly | 131 ms / 31.10 MB | **2.4 ms / 0.01 MB** | **2.5 ms / 0.01 MB** | 7.1 ms / 0.78 MB | 34135 / 0 / 0 |
+| europe / statistics | 136 ms / 31.09 MB | **2.8 ms / 0.02 MB** | **2.8 ms / 0.02 MB** | 6.4 ms / 0.78 MB | 34135 / 0 / 0 |
+| global / page25 | 147 ms / 31.91 MB | 136 ms / 32.69 MB | 142 ms / 31.51 MB | 13.2 ms / 1.31 MB | 34135 / 6253 / 25 |
+| global / countOnly | 132 ms / 31.91 MB | **5.9 ms / 0.01 MB** | **5.9 ms / 0.01 MB** | 5.2 ms / 0.78 MB | 34135 / 0 / 0 |
+| global / statistics | 127 ms / 31.58 MB | **8.8 ms / 0.08 MB** | **8.6 ms / 0.08 MB** | 6.6 ms / 0.79 MB | 34135 / 0 / 0 |
 
-Repeat spread on the p50: 147–202 ms (europe page25 A), 179–201 ms (europe
-page25 B), 149–214 ms (europe page25 Bp).
+Repeat spread on the p50: 176–403 ms (europe page25 A), 156–368 ms (europe
+page25 B), 178–589 ms (europe page25 Bp). The box carried load **4.7–9.4** on
+12 cores during the re-run (recorded in
+[`results/idle/LOAD.md`](results/idle/LOAD.md)); the minimum of the three is
+the estimator that survives it.
 
 **What this says, and what it revises.**
 
-1. **The rows argument stands and is stronger than the wall time.** The scan
-   builds 34,135 rows and ~31 MB for a 25-row page, every request, and again
-   for every page of a walk. The paged plan builds **25 rows** for the same
-   request. That is exact and load-independent — as a count of rows
-   *returned*. See the next section for what the PostGIS store actually read to
-   produce those 25.
-2. **On PostGIS the wall time is now a wash, and that is new.** On 2026-09-28
-   pushdown was a 3–6× wall-time win (europe page25 222 → 73 ms). Today A, B
-   and Bp all land in the same 150–200 ms band. The database is no longer the
-   bottleneck: ~150 ms of every cell is row mapping and `FeatureBatch`
-   construction, which the scan also pays. The honest summary is that the
-   **materialisation** argument is what the tier-1 work was justified by, and
-   the wall-clock argument on this layer no longer supports it on its own.
-3. **Allocation does not follow the rows, and the reason is the layer, not the
-   match set.** `Bp` builds 25 rows and still allocates **46–48 MB**, more than
-   the full scan's 31 MB, and the figure does not move with the page size. That
-   was unexplained when this table was written (it is filed as its own bead,
-   SpatialEngine-d20) and is now answered: **on PostGIS these two columns are
-   not measuring a pushdown at all.** See
-   [the next section](#the-postgis-rows-column-is-not-what-the-database-read).
+1. **The rows argument stands for the page, and the reductions now walk away
+   from it.** The scan builds 34,135 rows and ~31 MB for a 25-row page, every
+   request, and again for every page of a walk; the paged plan builds **25
+   rows**. That is exact and load-independent, as a count of rows *returned*.
+   A reduction is the case where the argument was always going to lose: it
+   returns no feature at all, so both the rows and the whole read behind them
+   disappear — `countOnly` and `statistics` are **2–9 ms and 0.01–0.08 MB**,
+   against a `page25` still in the 136–178 ms / ~31 MB band.
+2. **On the feature page the wall time is a wash, and that is unchanged.** A, B
+   and Bp all land in the same ~140–180 ms band (the load-contended europe
+   cells aside). The database is not the bottleneck for a page: most of every
+   cell is row mapping and `FeatureBatch` construction, which the scan also
+   pays. The honest summary is still that **materialisation** — not wall-clock —
+   is what the page's pushdown work was justified by.
+3. **Allocation now follows the work, not the layer.** Before ADR-0185 a 25-row
+   page allocated **46–48 MB**, more than the full scan's 31 MB, because the
+   keyless read mapped every row into a second feature and sorted the whole
+   read to name the page. The `page25` cells are now **31.4–32.7 MB**, within a
+   few per cent of `A`, and the reduction cells are two orders of magnitude
+   below that. The whole read is still the price of a keyless *page*
+   (ADR-0184 §2); it is no longer the price of a count (ADR-0184 §1).
 
 ## The PostGIS `rows` column is not what the database read
 
 The world-cities snapshot carries no integer identity field, so a table the
 store's own `CreateAsync` builds from it declares no primary key
 (`idColumns=[]` in the header of every PostGIS run above). A dataset like that
-names its features by **the ordinal of the read**, and two rules follow from
-that, both deliberate:
+names its features by **the ordinal of the read**, and that rule reaches the
+*read* faces, not the *reduction* faces:
 
-- a pushdown is allowed only where it is identity-preserving, so a `WHERE`
-  that reached SQL would renumber every feature after the first match
-  (ADR-0097 §1, and its consequence for both SQL stores);
-- a page is addressable in SQL only when the plan's order is an `ORDER BY` the
-  table can make total, identity tie-break included, so a plan on such a table
-  is read whole and finished by the reference executor (ADR-0116 §1).
+- a **feature read** may only be pushed where the push is identity-preserving,
+  so a `WHERE` that reached SQL would renumber every feature after the first
+  match (ADR-0097 §1, and its consequence for both SQL stores), and a page is
+  addressable only when the plan's order is an `ORDER BY` the table can make
+  total, identity tie-break included (ADR-0116 §1). So a page on this layer is
+  a **whole-layer read plus an in-memory select, sort and page** — the same
+  34,135 rows `A` reads, narrowed after the fact. That is why `page25`'s
+  `alloc_MB` is ~31 MB (the whole read) while its `rows` is 25 (rows
+  *returned*), and why the two do not move together;
+- a **reduction** is not a feature read. A count, a distinct set and a grouped
+  reduction return values and no feature, so there is no ordinal for a `WHERE`
+  to renumber, and the restriction is pushed on the same keyless layer
+  (ADR-0184 §1). `returnCountOnly` is a `SELECT COUNT(*)`, `outStatistics` a
+  `GROUP BY`, and nothing is read into a feature. That is why the reduction
+  cells above are **0 rows and 0.01–0.08 MB**: the store's own reduction face
+  (`IFeatureAggregateStore`, probed through `FeatureReductionFallback` exactly
+  as the served surface probes it) answered them, and path `B` is that face.
+  One restriction still stays in the caller — an identity restriction a dataset
+  cannot state — and the feature read's own decline is untouched, page and all
+  (ADR-0184 §2). The grouped reduction is a `GROUP BY` only when the plan's
+  order is over the **group key itself** — a `GROUP BY` returns rows in no
+  defined order (ADR-0133 §6) — and the harness's statistics plan states it;
+  without that order the store still pushes the restriction and groups the
+  restricted rows in managed code (0.34 MB europe / 7.22 MB global). A served
+  `outStatistics` request states the group order by naming the group field in
+  `orderByFields`, and a plain `outStatistics` + `groupByFieldsForStatistics`
+  with no `orderByFields` keeps the match path entirely — a routing gap filed
+  as SpatialEngine-d0q, not fixed here;
+- the in-process `MemoryStore` numbers below *do* follow the rows for a page
+  (Bp 0.80 MB for 25 rows): an in-process store evaluates the plan over rows it
+  already holds and names them by the ordinal of that same set, so nothing it
+  does renumbers anything. Its reduction face is the same reference executor,
+  so its reduction cells fall too, but only as far as scanning every row in
+  memory allows — `global statistics` still allocates 2.40 MB.
 
-So `B` and `Bp` on this layer are answered by **a whole-layer read plus an
-in-memory select, sort and page** — the same 34,135 rows `A` reads, mapped a
-second time into features and then narrowed. That is why:
+Before ADR-0184 and ADR-0185 the same cells read differently: on 2026-10-05
+(SpatialEngine-d20, `--iterations=10 --warmup=3`) **every** `B`/`Bp` cell on
+this layer allocated 46.74–48.75 MB, `countOnly` and `statistics` included,
+because each was a whole read that mapped every row into a second feature and
+then reduced or paged it in managed code. Bisecting one call with
+`GC.GetTotalAllocatedBytes` around each stage put the whole figure in the
+fallback read: the description is cached (0.00 MB), the predicate compiles in
+0.00 MB, and the same statement through raw Npgsql allocates 0.01 MB. That read
+is still the documented answer for a keyless **page**, not a leak in the plan;
+for a **reduction** it is now removed, which is what the 0.01–0.08 MB cells
+measure.
 
-- `rows` is 25 for `Bp` (rows *returned* to the adapter) while `alloc_MB` is
-  46–48 (rows *read*, plus the second materialisation), and why the two do not
-  move together;
-- `countOnly` and `statistics` cost the same as `page25` — the plan has no
-  cap on those variants and nothing is reduced in SQL either, because the
-  count and the grouped aggregate were pushed under the same identity rule.
-  **This is no longer true of the store** (ADR-0184 §1, 2026-10-06): a count,
-  a distinct set and a grouped reduction return values and no feature, so their
-  restriction is now pushed on a keyless layer too. The `countOnly` and
-  `statistics` cells in the tables above are the *measured* figures from
-  before that record and have not been re-run; expect them to fall to the
-  `D`-shaped allocation for a plan that returns one number. The `B`/`Bp`
-  feature reads are unchanged, and the whole read behind them is still the
-  documented answer for a keyless dataset (ADR-0184 §2), not a leak in the
-  plan;
-- the in-process `MemoryStore` numbers below *do* follow the rows (Bp 0.83 MB
-  for 25 rows): an in-process store evaluates the plan over rows it already
-  holds and names them by the ordinal of that same set, so nothing it does
-  renumbers anything, and there is no database read to be spared.
-
-The measurements were reproduced on 2026-10-05 (SpatialEngine-d20,
-`eng/spike-u2x-query-baseline.sh --store=postgis --iterations=10 --warmup=3`):
-46.74–48.75 MB on every `B`/`Bp` cell, 31.11–31.91 MB on every `A` cell — the
-figures above, unchanged. Bisecting one call with `GC.GetTotalAllocatedBytes`
-around each stage put the whole figure in the fallback read: the description is
-cached (0.00 MB), the predicate compiles in 0.00 MB, and the same statement
-through raw Npgsql allocates 0.01 MB. The cost is the store reading the table,
-which is the documented answer for a keyless dataset, not a leak in the plan.
-
-**What would measure a real pushdown:** a PostGIS layer that declares an
+**What would measure a feature-read pushdown:** a PostGIS layer that declares an
 identity column. Nothing in the store needs to change for that — the same plan
 on such a layer takes the `ORDER BY`/`LIMIT` path (`PostgisPlanPagingTests`
-pins which plans those are). The harness now says this in the report itself,
-so the number cannot be read the wrong way again.
+pins which plans those are). The harness now says this in the report itself, so
+the number cannot be read the wrong way again. The **reductions** no longer wait
+for that layer: they are pushed on the keyless one, and the table above is that
+measurement.
 
 ## In-memory store (what `eng/seed.sh` and CI use)
 
-Minimum p50 of `results/idle/memory-r{1,2,3}.txt`, 30 iterations.
+Minimum p50 of `results/idle/memory-0184-r{1,2,3}.txt`, 30 iterations,
+re-measured 2026-10-07 (SpatialEngine-8dm) because the reduction cells moved
+with the store pushdown.
 
-| scenario / variant | A `ScanAsync`+filter | B plan pushdown | Bp paged plan | D emulated ceiling | rows A / B / Bp |
+| scenario / variant | A `ScanAsync`+filter | B store pushdown | Bp `B` + order/cap | D emulated ceiling | rows A / B / Bp |
 |---|---|---|---|---|---|
-| europe / page25 | 11.8 ms / 1.36 MB | 7.5 ms / 0.86 MB | 7.6 ms / 0.83 MB | 6.6 ms / 0.81 MB | 34135 / 283 / 25 |
-| europe / countOnly | 9.4 ms / 1.36 MB | 7.3 ms / 0.86 MB | 7.5 ms / 0.89 MB | 6.6 ms / 0.78 MB | 34135 / 283 / 283 |
-| europe / statistics | 9.5 ms / 1.35 MB | 7.2 ms / 0.84 MB | 7.2 ms / 0.88 MB | 6.5 ms / 0.78 MB | 34135 / 283 / 283 |
-| global / page25 | 18.2 ms / 2.17 MB | 17.5 ms / 2.10 MB | 16.4 ms / 1.66 MB | 20.3 ms / 1.31 MB | 34135 / 6253 / 25 |
-| global / countOnly | 16.3 ms / 2.17 MB | 16.1 ms / 2.10 MB | 22.6 ms / 2.79 MB | 6.4 ms / 0.78 MB | 34135 / 6253 / 6253 |
-| global / statistics | 12.0 ms / 1.83 MB | 12.2 ms / 1.77 MB | 22.0 ms / 2.46 MB | 6.8 ms / 0.79 MB | 34135 / 6253 / 6253 |
+| europe / page25 | 11.1 ms / 1.36 MB | 7.9 ms / 0.86 MB | 8.1 ms / 0.80 MB | 7.7 ms / 0.81 MB | 34135 / 283 / 25 |
+| europe / countOnly | 10.7 ms / 1.36 MB | 7.4 ms / 0.79 MB | 6.7 ms / 0.79 MB | 6.6 ms / 0.78 MB | 34135 / 0 / 0 |
+| europe / statistics | 10.2 ms / 1.35 MB | 7.2 ms / 0.86 MB | 7.1 ms / 0.86 MB | 7.2 ms / 0.78 MB | 34135 / 0 / 0 |
+| global / page25 | 21.1 ms / 2.17 MB | 18.3 ms / 2.05 MB | 8.7 ms / 0.92 MB | 15.7 ms / 1.31 MB | 34135 / 6253 / 25 |
+| global / countOnly | 18.6 ms / 2.17 MB | 7.6 ms / 0.91 MB | 7.0 ms / 0.91 MB | 6.6 ms / 0.78 MB | 34135 / 0 / 0 |
+| global / statistics | 12.2 ms / 1.83 MB | 11.6 ms / 2.40 MB | 9.1 ms / 2.40 MB | 6.1 ms / 0.79 MB | 34135 / 0 / 0 |
 
-Two findings, both of which revise the 2026-09-28 story:
+Two findings:
 
 - **"No in-process store accepts an attribute filter at all" is no longer
   true.** `MemoryStore` answers the `FeatureQuery` plan itself and pushes the
   predicate: the harness's probe reports attribute pushdown *supported* on the
-  memory store now, and `B` materialises 283 / 6,253 rows rather than the whole
-  table. The 2026-09-28 finding was true of the filter-string contract that
-  ADR-0074 replaced.
-- **The paged plan is a loss on the two shapes that reduce.** `Bp` for
-  `countOnly` and `statistics` is *unbounded* — the plan has no count and no
-  aggregate face yet — so it materialises every matching row and then the
-  adapter reduces it, which is slower than the scan (global `countOnly` 16 →
-  23 ms, `statistics` 12 → 22 ms). The ceiling those two shapes could reach is
-  the D column (6–8 ms), and nothing reaches it today.
+  memory store now, and `B` materialises 283 / 6,253 rows for a page rather
+  than the whole table. The 2026-09-28 finding was true of the filter-string
+  contract that ADR-0074 replaced.
+- **A reduction is no longer a read the adapter reduces.** `B`/`Bp` on
+  `countOnly` and `statistics` go through `MemoryStore`'s own reduction face
+  and materialise **no** `FeatureBatch`, so `rows` is 0 and `countOnly` falls
+  from 2.10 MB to 0.91 MB. Grouping every matching row in managed code is
+  still not free — `global statistics` allocates 2.40 MB, *above* the emulated
+  ceiling's 0.79 MB — but it is the store's reduction, not a page the adapter
+  re-reduces.
 
 ## End-to-end over HTTP — a host serving PostGIS
 
@@ -196,7 +229,10 @@ loaded through the store's own write face, the deployment indexes, a host whose
 `postgis` store is that database, and the dataset published through the admin
 publish flow (`PUT /api/maps/spike`) as the FeatureServer layer
 `world_cities`. Same requests, same layer, 20 iterations, minimum p50 of
-`results/idle/e2e-r{1,2,3}.txt`.
+`results/idle/e2e-r{1,2,3}.txt`, measured **2026-10-01/02** — so these are the
+pre-ADR-0184 figures too. The store half has since been re-measured in process
+(the tables above); this HTTP table was not re-run, and its `statistics` route
+still carries SpatialEngine-d0q.
 
 | scenario / variant | p50 | p95 | response bytes | rows returned |
 |---|---|---|---|---|
@@ -217,8 +253,12 @@ Walking the whole matched set with `resultOffset` at the layer's
 
 **Mirror fidelity: MATCH on both scenarios** — the in-adapter mirror's
 `returnCountOnly` answer equals the PostGIS host's, which is served by
-`FeatureSpatialMatcher`. So the decomposed path numbers above and the HTTP
-numbers below are the same request the facade runs, on the same store.
+`FeatureSpatialMatcher`. So the decomposed `countOnly` numbers above are the
+same request the facade runs, on the same store. The `statistics` route is not
+the same today: the harness's HTTP request carries no `orderByFields`, and the
+served statistics face keeps the match path without one (SpatialEngine-d0q), so
+the in-process `B` cell measures the reduction face as the route reaches it when
+the group order is stated, not the request as this table sends it.
 
 ### The same host shape on the in-memory demo store
 
@@ -251,27 +291,31 @@ Kept for comparison; load 100–120 on 12 cores, run-to-run p50 spread 2–5×, 
 path B was a different call. Its PostGIS p50s were A 222 / B 73 / D 7 ms
 (europe page25) and A 1,049 / B 170 / D 54 ms (global page25), and its
 end-to-end numbers were 155 ms (europe page25) and 1,165 ms for the 7-page
-global walk, on the in-memory demo store. The rows and allocation columns there
-are the ones that still hold and are reproduced above.
+global walk, on the in-memory demo store. Its `rows` column is the measurement
+that has held all along; its allocation column has not — the 2026-09-28 run
+predates ADR-0185's row-mapping and page-window fixes, so the 31 MB scan and the
+46–48 MB whole read are the later figures.
 
 ## Caveats and gaps
 
 - The box is shared; every number here is a **minimum of three runs**, and the
   load averages are recorded. Treat the milliseconds as ±20%, not as exact.
-- `Bp`'s 46–48 MB per call on PostGIS was unexplained when this file was
-  written; it is now explained (the whole read a keyless layer's feature page
-  still takes, ADR-0184 §2) and all of it is fixed: the reduction variants by
-  ADR-0184 §1, and the residual the whole read was paying over its own scan —
-  a second feature per row in both SQL stores' row mapping, and a sort of every
-  row to name a page (ADR-0185). A re-run of these tables should show `B`/`Bp`
-  within a few per cent of `A`. The cells above still show the pre-fix figures.
-- Path `D` remains an emulation over the rows the store holds. It is the only
-  column that reaches the count and grouped-aggregate shapes, and no store face
-  reaches it today (`IFeatureStore` has no count or aggregate plan;
-  `IFeatureAggregateStore` is the face that would).
+- The PostGIS table and the memory table were re-measured on 2026-10-07
+  (SpatialEngine-8dm), at `--iterations=10 --warmup=3` and
+  `--iterations=30 --warmup=5` respectively. The figures they replace were the
+  pre-ADR-0184/ADR-0185 ones: `B`/`Bp` on PostGIS were 46–48 MB per call,
+  because every plan was a whole read that mapped each row twice. The reduction
+  cells are what ADR-0184 §1 and the harness change moved; the `page25` cells
+  moved with ADR-0185's row-mapping and page-window fixes.
+- Path `D` remains an emulation over the rows the store holds, and is now the
+  reference *beside* a shipped answer for both reduction shapes: path `B` is
+  the store's own reduction face (`IFeatureAggregateStore`), which is what
+  ADR-0184 §1 pushed on a keyless layer. The two differ only in where the
+  reduction runs — `D` over resident features, `B` in SQL for PostGIS — and `B`
+  is the faster of the two on PostGIS.
 - The world-cities layer declares no identity column, so the per-feature read
   face is unreachable on it on every store (ADR-0140). Path `C` cannot be
   measured here at all.
-- The harness lives under `eng/` and is outside the solution and every gate,
-  which is how it drifted out of compilation unnoticed. See the bead filed with
-  this change.
+- The harness lives under `eng/` and is outside the solution. It is no longer
+  outside every gate: `tools/spike_harnesses.py` builds each ungated harness in
+  every lane (ADR-0190), so it cannot drift out of compilation unnoticed again.

@@ -72,4 +72,24 @@ internal sealed record QueryRequest(
     internal static bool IsCountOnly(string variant) => variant == "countOnly";
 
     internal static bool IsStatistics(string variant) => variant == "statistics";
+
+    /// <summary>
+    /// Whether the variant asks for a reduction rather than a feature page. A
+    /// reduction returns a value and no feature, so it is answered by the
+    /// store's reduction face (<c>IFeatureAggregateStore</c>) rather than by
+    /// the feature read — the distinction ADR-0184 §1 turns on.
+    /// </summary>
+    internal static bool IsReduction(string variant) => IsCountOnly(variant) || IsStatistics(variant);
+
+    /// <summary>
+    /// The <c>outStatistics</c> request as the store's reduction face takes it:
+    /// count of every row and the average population, grouped by country, under
+    /// the same result names the harness sends over HTTP.
+    /// </summary>
+    internal AggregateQuery StatisticsQuery() => new(
+        [
+            new AggregateSpec(AggregateStatistic.Count, AggregateSpec.AllFields, "n"),
+            new AggregateSpec(AggregateStatistic.Average, PopulationField, $"avg_{PopulationField}"),
+        ],
+        GroupByField is { } group ? [group] : null);
 }
