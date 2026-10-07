@@ -165,7 +165,7 @@ date and cross-reference)
 | 0068 | Authored metadata is XML on the publication and on the catalog item, and is served verbatim as `application/xml` at both levels. |
 | 0069 | Namespace rigidity is advisory again and the architecture suite is out of the mutation gate; `.dependably` fails on `high`. |
 | 0070 | Vector tiles (MVT) and OGC API Tiles are in scope; live MVT, TileJSON and collection tile resources are implemented; `.vtpk` packaging still needs its own ADR. |
-| 0071 | Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. (proposed) |
+| 0071 | Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. |
 | 0072 | The host integration suite starts its own PostGIS container and configures the store from it, so no `SPATIAL_POSTGIS_CONNECTION` is needed to run the tests. |
 | 0073 | SQL Server store provider (`sqlserver@1` on Microsoft.Data.SqlClient): WKB interchange, SRID discovered from data then provider metadata, XY-only writes, containerised tests. |
 | 0074 | The feature-query contract is a core-typed `FeatureQuery` plan (ids, predicate tree, bbox, projection, order, limit/offset, cursor) returning a `FeatureQueryPage`; pushdown is per-conjunct and best-effort with residual in-memory evaluation; reductions are an additive `IFeatureAggregateStore` face; the published `filter` text is parsed once at the boundary and the per-provider filter languages are retired. |
@@ -271,8 +271,9 @@ date and cross-reference)
 | 0188 | The `insert_final_newline` the `.editorconfig` claims for `[*]` is enforced over **every text file the repository ships**, not C# alone — `tools/final_newline.py` loses its file-type table and reads whatever the claim names, and the exemptions are **captured and vendored artefacts, expressed as `insert_final_newline = false` sections in `.editorconfig`** the way ADR-0143 exempted `psql` captures, not a suffix list inside the check. The 166 files git shipped without a final newline are one byte each; the 52 captures and bundles that are exempt are exempt because appending a byte to them stops them being the record of what the tool or upstream shipped. |
 | 0189 | The PostGIS integration suite starts one container for the assembly, shared by a collection, with a database per test class; the start is retried with a generous budget and a skip reason that says whether it was refused or ran out of time. |
 | 0190 | Every measurement harness under `eng/` — the `*.csproj` files `SpatialEngine.slnx` deliberately does not name — is **derived and built by `tools/spike_harnesses.py`, and every lane and the CI `verify` job call it**, because being outside the solution is what keeps a harness out of the coverage and metrics gates and is also what kept it out of every build: `tools/verify_scope.py` walks the `ProjectReference` graph from the solution's own project list and the harnesses are `<IsTestProject>false</IsTestProject>`, so `eng/spike-u2x-query-baseline` had stopped compiling entirely by 2026-10-02 and SpatialEngine-58d had to port it by hand before it could re-measure anything. The set is derived rather than listed, so a harness added tomorrow is gated without anybody remembering a list; the check is called directly rather than left to the `tools/**`-only tooling suite, because the change that breaks a harness is a `src` change (ADR-0143, ADR-0146). It costs ~15 s warm for the two of them. |
+| 0192 | The register marks a `status: proposed` row, the gate refuses an accepted record that amends a proposal, and seven load-bearing proposals are ratified. |
 
-176 records on disk. The full index — status, date and every
+177 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->

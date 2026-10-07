@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-13
 deciders: maintainer + agent
 summary: Geometry measurement, processing and relation verbs are separate SDK interfaces.

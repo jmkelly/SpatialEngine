@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**176 records on disk.** `status` is the record's own word;
+**177 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -50,10 +50,10 @@ front matter, so a record's reach is a row rather than a search.
 | [0032](ADR-0032-geometry-contract-faces-and-codec-namespace.md) | Geometry contract faces and the geometry codec namespace | accepted | 2026-08-31 | — |
 | [0033](ADR-0033-in-process-interfaces.md) | Replace worker plugins with in-process interfaces and DI | accepted | 2026-09-10 | — |
 | [0034](ADR-0034-aspire-local-development-composition.md) | Aspire AppHost for local development composition | accepted | 2026-09-13 | — |
-| [0035](ADR-0035-geoservices-rest-boundary-adapter.md) | Esri GeoServices REST is a boundary adapter; ArcGIS REST is consumed as a provider | proposed | 2026-09-13 | — |
-| [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) | Geometry measurement, processing and relation verbs are separate SDK interfaces | proposed | 2026-09-13 | — |
-| [0037](ADR-0037-feature-editing-gated-capability.md) | Feature editing is a gated, per-feature store capability | proposed | 2026-09-13 | — |
-| [0038](ADR-0038-read-by-identity-store-capability.md) | Read-by-identity is an additive store capability | proposed | 2026-09-13 | — |
+| [0035](ADR-0035-geoservices-rest-boundary-adapter.md) | Esri GeoServices REST is a boundary adapter; ArcGIS REST is consumed as a provider | accepted | 2026-09-13 | — |
+| [0036](ADR-0036-geometry-measure-processing-relation-verbs.md) | Geometry measurement, processing and relation verbs are separate SDK interfaces | accepted | 2026-09-13 | — |
+| [0037](ADR-0037-feature-editing-gated-capability.md) | Feature editing is a gated, per-feature store capability | accepted | 2026-09-13 | — |
+| [0038](ADR-0038-read-by-identity-store-capability.md) | Read-by-identity is an additive store capability | accepted | 2026-09-13 | — |
 | [0039](ADR-0039-desktop-packaging-abandoned.md) | Desktop (Tauri) packaging is abandoned | accepted | 2026-09-12 | — |
 | [0040](ADR-0040-metrics-gate-thresholds.md) | Metrics gate thresholds are evidence-based, and LCOM4 gates through guarded diagnoses | accepted | 2026-09-12 | — |
 | [0041](ADR-0041-ingest-and-publications-are-protocol-neutral.md) | Ingest and publications are protocol-neutral capabilities | accepted | 2026-09-13 | — |
@@ -86,15 +86,15 @@ front matter, so a record's reach is a row rather than a search.
 | [0068](ADR-0068-image-authored-metadata-xml.md) | ImageServer authored metadata — service XML on the map, per-item XML on the catalog item | accepted | 2026-09-14 | — |
 | [0069](ADR-0069-metrics-rigidity-advisory.md) | Quality gates — namespace rigidity is advisory; architecture suite out of the mutation gate | accepted | 2026-09-15 | — |
 | [0070](ADR-0070-vector-tiles-in-scope.md) | Vector tiles and OGC API Tiles are in scope (ADR-0062 superseded) | accepted | 2026-09-16 | ADR-0062 |
-| [0071](ADR-0071-token-auth-with-oauth-path.md) | Token auth from username/password, with an OAuth2/OIDC path | proposed | 2026-09-16 | — |
+| [0071](ADR-0071-token-auth-with-oauth-path.md) | Token auth from username/password, with an OAuth2/OIDC path | accepted | 2026-09-16 | — |
 | [0072](ADR-0072-containerised-postgis-in-the-host-suite.md) | The host integration suite supplies its own PostGIS | accepted | 2026-09-26 | — |
 | [0073](ADR-0073-sqlserver-store-provider.md) | SQL Server data store provider | accepted | 2026-09-13 | ADR-0187 |
 | [0074](ADR-0074-feature-query-plan-contract.md) | The feature-query contract is a core-typed query plan, not a filter string | accepted | 2026-09-28 | — |
-| [0075](ADR-0075-ground-distance-buffering-reproject-and-buffer.md) | Ground-distance buffering is reproject-and-buffer, within a stated tolerance | proposed | 2026-09-27 | — |
+| [0075](ADR-0075-ground-distance-buffering-reproject-and-buffer.md) | Ground-distance buffering is reproject-and-buffer, within a stated tolerance | accepted | 2026-09-27 | — |
 | [0076](ADR-0076-maplibre-expression-dialect.md) | The MapLibre style dialect is a compiled expression tree with a per-feature scope | accepted | 2026-09-27 | — |
 | [0077](ADR-0077-relationship-declarations-on-the-map.md) | Relationships are declared on the map, traversed with the query engine | accepted | 2026-09-27 | — |
 | [0078](ADR-0078-development-only-seed-endpoint.md) | A development-only seed endpoint | accepted | 2026-09-20 | — |
-| [0079](ADR-0079-deviation-allowance-geometry-verb.md) | A deviation allowance is its own geometry verb, not a simplify tolerance | proposed | 2026-09-27 | — |
+| [0079](ADR-0079-deviation-allowance-geometry-verb.md) | A deviation allowance is its own geometry verb, not a simplify tolerance | accepted | 2026-09-27 | — |
 | [0080](ADR-0080-label-placement-candidates-priority-fonts-and-sprites.md) | Label placement is candidate-based, priority-ordered, and draws from a multi-face font registry | accepted | 2026-09-28 | — |
 | [0081](ADR-0081-advertised-query-capability-flags.md) | Advertise the capability flags the served query surface earns | accepted | 2026-09-28 | — |
 | [0082](ADR-0082-ingest-honours-the-source-crs-reports-and-streams.md) | Ingest honours the source CRS, reports the decode, and streams | accepted | 2026-09-27 | ADR-0041 |
@@ -144,7 +144,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0137](ADR-0137-a-tsql-percentile-is-a-window-over-the-partition-a-group-is.md) | A T-SQL percentile is a window over the partition a group is, and a boolean extreme is an extreme over its integers | accepted | 2026-09-30 | ADR-0133, ADR-0157 |
 | [0139](ADR-0139-a-mass-skipped-suite-is-a-red-lane-not-a-green-one.md) | a mass-skipped suite is a red lane, not a green one | accepted | 2026-09-30 | — |
 | [0140](ADR-0140-a-read-by-identity-needs-a-declared-identity-column.md) | A read-by-identity needs a declared identity column | accepted | 2026-09-30 | ADR-0038 |
-| [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) | The ADR register, the ADR index and the ADR metadata are generated, and every lane gates them | accepted | 2026-09-30 | ADR-0109, ADR-0118, ADR-0145, ADR-0159 |
+| [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) | The ADR register, the ADR index and the ADR metadata are generated, and every lane gates them | accepted | 2026-09-30 | ADR-0109, ADR-0118, ADR-0145, ADR-0159, ADR-0192 |
 | [0142](ADR-0142-a-remote-response-geometry-is-read-by-the-ordinates-its-layer-declares.md) | A remote response geometry is read by the ordinates its layer declares | accepted | 2026-09-30 | — |
 | [0143](ADR-0143-the-trailing-whitespace-rule-is-checked-not-formatted.md) | the trailing-whitespace rule is checked, not formatted | accepted | 2026-09-30 | — |
 | [0144](ADR-0144-a-sub-two-point-linestring-is-a-position-not-a-segment.md) | A sub-2-point LineString is a position, not a segment | accepted | 2026-10-01 | — |
@@ -192,6 +192,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0188](ADR-0188-the-final-newline-rule-is-enforced-over-all-of-the-editorconfig-star-scope.md) | the final-newline rule covers all of `[*]`, and captures are exempt through `.editorconfig` | accepted | 2026-10-02 | ADR-0186, ADR-0143, ADR-0134, ADR-0146 |
 | [0189](ADR-0189-one-postgis-container-a-database-per-class.md) | one container for the PostGIS suite, a database per class | accepted | 2026-10-02 | ADR-0010, ADR-0139, ADR-0187 |
 | [0190](ADR-0190-harness-build-gate.md) | a harness outside the solution is still compiled by every lane | accepted | 2026-10-02 | ADR-0118, ADR-0134, ADR-0143 |
+| [0192](ADR-0192-the-register-marks-a-proposal-and-an-accepted-decision-cannot-rest-on-one.md) | The register marks a proposal, and an accepted decision may not rest on one | accepted | 2026-10-07 | ADR-0141 |
 
 ## Reading order
 
@@ -230,11 +231,11 @@ out: the "Amended by" row already says everything about a pair.
 20. [0184](ADR-0184-reduction-pushdown-without-an-identity-column.md) *(narrowed by 0185)*
 21. [0185](ADR-0185-map-a-row-once-and-order-a-page-rather-than-the-read.md)
 
-### ADR-0109: the verification lanes, implemented — 10 records, 18,115 words (9% of the corpus)
+### ADR-0109: the verification lanes, implemented — 11 records, 18,877 words (9% of the corpus)
 
 1. [0109](ADR-0109-the-verification-lanes-implemented.md) *(narrowed by 0134, 0141)*
 2. [0134](ADR-0134-the-merge-gate-is-the-fast-lane-not-the-full-suite.md) *(narrowed by 0146, 0148, 0186, 0190)*
-3. [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) *(narrowed by 0145, 0159)*
+3. [0141](ADR-0141-the-adr-register-and-index-are-generated-and-gated.md) *(narrowed by 0145, 0159, 0192)*
 4. [0145](ADR-0145-the-register-is-generated-wholesale-and-a-hand-enriched-row-survives-in-the-record.md)
 5. [0146](ADR-0146-the-conflict-marker-rule-is-a-check-every-lane-runs.md)
 6. [0148](ADR-0148-the-repository-root-carries-no-in-flight-state.md)
@@ -242,6 +243,7 @@ out: the "Amended by" row already says everything about a pair.
 8. [0186](ADR-0186-the-final-newline-rule-is-a-check-every-lane-runs.md) *(narrowed by 0188)*
 9. [0188](ADR-0188-the-final-newline-rule-is-enforced-over-all-of-the-editorconfig-star-scope.md)
 10. [0190](ADR-0190-harness-build-gate.md)
+11. [0192](ADR-0192-the-register-marks-a-proposal-and-an-accepted-decision-cannot-rest-on-one.md)
 
 ### ADR-0036: Geometry measurement, processing and relation verbs are separate SDK interfaces — 7 records, 10,973 words (5% of the corpus)
 
@@ -357,7 +359,7 @@ believed.
 - **0135** is amended by 0154
 - **0137** is amended by 0157
 - **0140** is amended by 0149
-- **0141** is amended by 0145, 0159
+- **0141** is amended by 0145, 0159, 0192
 - **0143** is amended by 0146, 0186, 0190
 - **0150** is amended by 0159
 - **0151** is amended by 0164
