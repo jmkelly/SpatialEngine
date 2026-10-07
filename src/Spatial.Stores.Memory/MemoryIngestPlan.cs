@@ -60,13 +60,26 @@ internal sealed record MemoryIngestPlan(
         long nextId = 1;
         var template = MemoryDataset.Create(Dataset, Srid, StoredSchema, idColumns: [], features: [], nextId: 1);
         var identityIndex = StoredSchema.IndexOf(IdentityColumn);
+        // A stored feature is keyed by its identity column (ADR-0038, ADR-0149),
+        // so two features carrying one value are a primary-key collision. PostGIS
+        // and SQL Server declare that column PRIMARY KEY, so the second insert
+        // rolls the whole ingest back; refusing it here keeps the reference store
+        // from building a dataset a read-by-identity cannot address unambiguously.
+        var identities = new HashSet<FeatureId>();
         foreach (var page in Pages)
         {
             foreach (var feature in page.Features)
             {
                 long? assigned = Identity == IngestIdentity.Auto ? nextId++ : null;
                 var stored = MemorySchema.BuildStored(template, feature, assigned);
-                features.Add(Identity == IngestIdentity.Source ? MemorySchema.Rekey(stored, identityIndex) : stored);
+                var keyed = Identity == IngestIdentity.Source ? MemorySchema.Rekey(stored, identityIndex) : stored;
+                if (!identities.Add(keyed.Id))
+                {
+                    throw SpatialException.BadArguments(
+                        $"The ingest carries more than one feature with identity '{keyed.Id}' in dataset '{Dataset}'; an ingested dataset is keyed by '{IdentityColumn}' (ADR-0149).");
+                }
+
+                features.Add(keyed);
             }
         }
 
