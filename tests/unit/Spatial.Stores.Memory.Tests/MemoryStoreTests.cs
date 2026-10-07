@@ -394,6 +394,68 @@ public sealed class MemoryStoreTests
         Assert.Equal(["1", "2"], batches.SelectMany(batch => batch.Features).Select(feature => feature.Id.Value).ToArray());
     }
 
+    // A store keys its features by the identity column (ADR-0038, ADR-0112),
+    // so a bulk write of an identity the dataset already holds is the
+    // primary-key collision the keyed stores raise — not a second row under
+    // one key, which a read-by-identity would then return twice.
+    [Fact]
+    public async Task Write_rejects_an_identity_the_dataset_already_holds()
+    {
+        var store = await IngestedAsync();
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            store.WriteAsync("memory.cities", Batch(Point("1", "Berlin again", 13.4, 52.5))));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Single(await store.GetAsync("memory.cities", [new FeatureId("1")]));
+        Assert.Equal(2, (await store.ScanAsync("memory.cities")).SelectMany(page => page.Features).Count());
+    }
+
+    [Fact]
+    public async Task Write_rejects_a_batch_that_repeats_an_identity()
+    {
+        var store = await IngestedAsync();
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => store.WriteAsync(
+            "memory.cities", Batch(Point("9", "Rome", 12.5, 41.9), Point("9", "Rome twice", 12.5, 41.9))));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Equal(2, (await store.ScanAsync("memory.cities")).SelectMany(page => page.Features).Count());
+    }
+
+    // The keyed stores write a colliding batch in one transaction and roll it
+    // back, so the memory reference must refuse the batch before it appends
+    // any of it rather than leaving the earlier features stored.
+    [Fact]
+    public async Task Write_rejects_the_whole_batch_when_one_identity_collides()
+    {
+        var store = await IngestedAsync();
+
+        await Assert.ThrowsAsync<SpatialException>(() => store.WriteAsync(
+            "memory.cities", Batch(Point("9", "Rome", 12.5, 41.9), Point("1", "Berlin again", 13.4, 52.5))));
+
+        var ids = (await store.ScanAsync("memory.cities"))
+            .SelectMany(page => page.Features).Select(feature => feature.Id.Value).ToArray();
+        Assert.Equal(["1", "2"], ids);
+    }
+
+    // A create-built dataset declares no identity column (ADR-0140,
+    // ADR-0147), so its Feature.Id is not a key and a primary-key collision is
+    // not the question: the keyless table PostGIS creates accepts both rows,
+    // and the reference store must not make a key of a value the contract says
+    // is not one.
+    [Fact]
+    public async Task Write_into_a_keyless_dataset_does_not_police_the_feature_identity()
+    {
+        var store = new MemoryStore();
+        await store.CreateAsync("memory.places", Batch(Point("1", "Berlin", 13.4, 52.5)), 4326);
+
+        var appended = await store.WriteAsync("memory.places", Batch(Point("1", "Berlin again", 13.4, 52.5)));
+
+        Assert.Equal(1, appended);
+        Assert.Single((await store.ScanAsync("memory.places")).SelectMany(page => page.Features));
+    }
+
     // ADR-0140: a create-built dataset declares no identity column, so it has
     // no durable key to read a feature by. The lookup face says so rather than
     // answering from whatever identity the rows happen to carry — the refusal
