@@ -335,14 +335,16 @@ internal static class StoreQueryPath
     /// </para>
     ///
     /// <para>
-    /// A request the plan cannot carry keeps the match path, and so does one
-    /// whose group order the plan cannot state: a grouped reduction returns
-    /// groups in the order the plan asked for (ADR-0098 §3), which is the order
-    /// <c>orderByFields</c> gives only when it names exactly the group fields —
-    /// then the group keys are a total order the store can return and the
-    /// writer's statistic order is that same order. Anything else would be the
-    /// first-seen order of a match set SQL never assembled, which is not an
-    /// answer a store can be asked for.
+    /// A request the plan cannot carry keeps the match path, and so does a
+    /// grouped reduction that asks for an order the plan cannot state: a
+    /// grouped reduction returns groups in the order the plan asked for
+    /// (ADR-0098 §3), which <c>orderByFields</c> gives only when it names
+    /// exactly the group fields — then the group keys are a total order the
+    /// store can return and the writer's statistic order is that same order.
+    /// A request that asks for no order is not that case: the plan asks for
+    /// nothing, the store reduces over the rows it read and keeps the
+    /// reference's first-seen order, so the reduction is still its to answer
+    /// (ADR-0194).
     /// </para>
     /// </summary>
     private static async Task<IResult?> StatisticsAsync(
@@ -368,9 +370,13 @@ internal static class StoreQueryPath
 
     /// <summary>
     /// The order the group rows are asked for: the group fields themselves, in
-    /// the request's direction, or no order at all for an ungrouped reduction
-    /// (there is a single group, so its order cannot differ). <c>false</c> — and
-    /// therefore the match path — when the request ordered something else.
+    /// the request's direction, or no order at all — for an ungrouped reduction
+    /// (there is a single group, so its order cannot differ) or for a grouped
+    /// one that named no <c>orderByFields</c> (the plan asks for no order, and
+    /// the store's own order is what an unordered reduction answers with,
+    /// ADR-0098 §3, ADR-0194). <c>false</c> — and therefore the match path —
+    /// when the request ordered something a group row cannot be totalled by:
+    /// a subset of the group fields, or a value the plan cannot name.
     /// </summary>
     private static bool TryGroupOrder(
         DatasetDescription dataset,
@@ -387,7 +393,16 @@ internal static class StoreQueryPath
         // Compiled here so an order naming an unknown or geometry field is
         // rejected exactly as the match path rejects it.
         var keys = FeatureOrdering.Compile(dataset, query);
-        if (keys is null || keys.Length != spec.GroupFields.Count)
+        if (keys is null)
+        {
+            // An absent orderByFields leaves the plan's order null: the
+            // reduction is asked of the store with no group order, and the
+            // store answers the reference's first-seen order over the rows it
+            // read (ADR-0098 §3, ADR-0128 §8, ADR-0194).
+            return true;
+        }
+
+        if (keys.Length != spec.GroupFields.Count)
         {
             return false;
         }

@@ -161,9 +161,11 @@ names its features by **the ordinal of the read**, and that rule reaches the
   without that order the store still pushes the restriction and groups the
   restricted rows in managed code (0.34 MB europe / 7.22 MB global). A served
   `outStatistics` request states the group order by naming the group field in
-  `orderByFields`, and a plain `outStatistics` + `groupByFieldsForStatistics`
-  with no `orderByFields` keeps the match path entirely — a routing gap filed
-  as SpatialEngine-d0q, not fixed here;
+  `orderByFields`; a plain `outStatistics` + `groupByFieldsForStatistics` with
+  no `orderByFields` now reaches the same face with a null plan order, the
+  reduction finishing over the restricted read — the routing gap SpatialEngine-d0q
+  closed (ADR-0194). The figures above are the stated-order cells; the
+  no-order request was not re-measured here;
 - the in-process `MemoryStore` numbers below *do* follow the rows for a page
   (Bp 0.80 MB for 25 rows): an in-process store evaluates the plan over rows it
   already holds and names them by the ordinal of that same set, so nothing it
@@ -231,8 +233,11 @@ publish flow (`PUT /api/maps/spike`) as the FeatureServer layer
 `world_cities`. Same requests, same layer, 20 iterations, minimum p50 of
 `results/idle/e2e-r{1,2,3}.txt`, measured **2026-10-01/02** — so these are the
 pre-ADR-0184 figures too. The store half has since been re-measured in process
-(the tables above); this HTTP table was not re-run, and its `statistics` route
-still carries SpatialEngine-d0q.
+(the tables above); this HTTP table was not re-run, so its `statistics` cells
+are the pre-ADR-0184 whole-read figures. SpatialEngine-d0q has since routed the
+`orderByFields`-free statistics request the harness sends to the store's
+reduction face (ADR-0194), so those cells would now measure the reduction; they
+are not re-measured here.
 
 | scenario / variant | p50 | p95 | response bytes | rows returned |
 |---|---|---|---|---|
@@ -254,11 +259,12 @@ Walking the whole matched set with `resultOffset` at the layer's
 **Mirror fidelity: MATCH on both scenarios** — the in-adapter mirror's
 `returnCountOnly` answer equals the PostGIS host's, which is served by
 `FeatureSpatialMatcher`. So the decomposed `countOnly` numbers above are the
-same request the facade runs, on the same store. The `statistics` route is not
-the same today: the harness's HTTP request carries no `orderByFields`, and the
-served statistics face keeps the match path without one (SpatialEngine-d0q), so
-the in-process `B` cell measures the reduction face as the route reaches it when
-the group order is stated, not the request as this table sends it.
+same request the facade runs, on the same store. The `statistics` route is the
+same route today: the harness's HTTP request carries no `orderByFields`, and the
+served statistics face now reaches the reduction face with a null group order
+(SpatialEngine-d0q, ADR-0194), as the in-process `B` cell measures it. The
+`statistics` cells in the table above, however, were measured before that fix
+and are the whole-read figures it replaces.
 
 ### The same host shape on the in-memory demo store
 

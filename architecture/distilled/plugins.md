@@ -38,6 +38,11 @@ One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
   `QueryAsync` plan read: the spike's `B`/`Bp` cells reduced a read in the
   adapter and so measured the read, not the face ADR-0184 pushes.
   (SpatialEngine-8dm)
+- Read an absent `orderByFields` on a grouped `outStatistics` request as the
+  plan asking for no order, not as an order the store cannot return: the
+  `keys is null` branch of `StoreQueryPath.TryGroupOrder` is the whole route
+  from the served statistics face to `IFeatureAggregateStore`.
+  (SpatialEngine-d0q)
 - Measure where an allocation is before naming the class that owns the feature:
   the 15 MB was two SQL stores' row mapping building a second feature per row,
   not `FeaturePlanExecutor` — decide the projection once per read, and order a
