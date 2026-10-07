@@ -4,6 +4,7 @@ date: 2026-10-02
 deciders: maintainer + agent
 summary: The SQL Server integration suite starts one container for the assembly, shared by a collection, with a database per test class; the start is retried with a generous budget and a skip reason that says whether it was refused or ran out of time.
 amends: ADR-0073
+amended-by: ADR-0193
 related: ADR-0139
 ---
 

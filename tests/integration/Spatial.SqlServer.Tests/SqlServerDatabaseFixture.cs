@@ -15,6 +15,7 @@ public sealed class SqlServerDatabaseFixture : IAsyncLifetime
 {
     private readonly SqlServerContainerFixture _container;
     private string? _database;
+    private string _connectionString = string.Empty;
 
     public SqlServerDatabaseFixture(SqlServerContainerFixture container) => _container = container;
 
@@ -22,7 +23,35 @@ public sealed class SqlServerDatabaseFixture : IAsyncLifetime
 
     public string? SkipReason { get; private set; }
 
-    public string ConnectionString { get; private set; } = string.Empty;
+    /// <summary>
+    /// The connection string a container-backed fact reaches the store
+    /// through. It refuses to answer while the container is not available
+    /// (ADR-0193): a fact that forgot <c>Skip.If(!DockerAvailable, …)</c> then
+    /// fails here with a message naming the guard, rather than opening a
+    /// connection to an empty string and reporting a green run that tested
+    /// nothing. The refusal is what makes the container-skip invariant
+    /// structural; the source-reading backstop in
+    /// <c>Spatial.Architecture.Tests</c> only audits it.
+    /// </summary>
+    public string ConnectionString
+    {
+        get
+        {
+            if (DockerAvailable)
+            {
+                return _connectionString;
+            }
+
+            var reason = SkipReason ?? "no reason recorded";
+            throw new InvalidOperationException(
+                $"This fact reached {nameof(SqlServerDatabaseFixture)}.{nameof(ConnectionString)} "
+                + $"while {nameof(DockerAvailable)} was false, so it never guarded on the "
+                + $"container. Call Skip.If(!_fixture.{nameof(DockerAvailable)}, "
+                + $"_fixture.{nameof(SkipReason)} ?? \"no reason\") before the first access. "
+                + $"Recorded reason: {reason}");
+        }
+        private set => _connectionString = value;
+    }
 
     public async Task InitializeAsync()
     {
