@@ -82,6 +82,11 @@ DOC_SURFACE_GATE = "python3 tools/doc_surface.py"
 # than a `tools/test_*.py` the tooling suite discovers, because a nested
 # `AGENTS.md` is a `src/**` change -- the same hole ADR-0148 closes.
 PACKAGE_AGENTS_GATE = "python3 tools/package_agents.py"
+# The harness build: every `*.csproj` under `eng/` that the solution does not
+# name is compiled by every lane, because being outside the solution is also
+# what kept a harness out of every build (ADR-0190). A repository check called
+# directly, in the same place as the others.
+SPIKE_HARNESS_GATE = "python3 tools/spike_harnesses.py"
 
 
 def beads_gate_gate(base="main"):
@@ -803,6 +808,7 @@ class ScriptLaneTests(unittest.TestCase):
             PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
+            SPIKE_HARNESS_GATE,
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -861,6 +867,7 @@ class ScriptLaneTests(unittest.TestCase):
             PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
+            SPIKE_HARNESS_GATE,
             "dotnet build .verify-scoped.slnx",
             "dotnet test .verify-scoped.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -878,6 +885,7 @@ class ScriptLaneTests(unittest.TestCase):
             PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
+            SPIKE_HARNESS_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
         ])
 
@@ -896,6 +904,7 @@ class ScriptLaneTests(unittest.TestCase):
             PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
+            SPIKE_HARNESS_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -930,6 +939,7 @@ class ScriptLaneTests(unittest.TestCase):
             PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
+            SPIKE_HARNESS_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
@@ -949,6 +959,7 @@ class ScriptLaneTests(unittest.TestCase):
             PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate(),
+            SPIKE_HARNESS_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
         ])
 
@@ -968,6 +979,7 @@ class ScriptLaneTests(unittest.TestCase):
             PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate("origin/does-not-exist"),
+            SPIKE_HARNESS_GATE,
             "dotnet build SpatialEngine.slnx",
             "dotnet test SpatialEngine.slnx --no-build --logger trx "
             "--results-directory .verify-test-results",
@@ -984,6 +996,7 @@ class ScriptLaneTests(unittest.TestCase):
             PACKAGE_AGENTS_GATE,
             DOC_GATE,
             beads_gate_gate("origin/does-not-exist"),
+            SPIKE_HARNESS_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
         ])
 
