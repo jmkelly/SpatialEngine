@@ -1,8 +1,8 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-16
 deciders: maintainer + agent
-summary: Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved. (proposed)
+summary: Token auth from username/password (opaque bearers, config users, SDK/CLI/workbench) with an OAuth2/OIDC issuer path reserved.
 ---
 
 # ADR-0071: Token auth from username/password, with an OAuth2/OIDC path

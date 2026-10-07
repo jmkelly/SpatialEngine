@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-27
 deciders: maintainer + agent
 summary: Ground-distance buffering is its own `IGeodesicBuffering` verb: reproject, buffer, reproject back, within a stated tolerance.

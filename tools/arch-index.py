@@ -405,6 +405,38 @@ def undeclared_refinements(root: Path, corpus: list[Adr]) -> list[str]:
     return findings
 
 
+def load_bearing_proposals(root: Path, corpus: list[Adr]) -> list[str]:
+    """Accepted records that refine a record still at `status: proposed`.
+
+    Marking a proposal in the register is a reader's signal; this is the gate's
+    (SpatialEngine-tp1). An accepted decision that `amends:` a proposal is the
+    case where overturning the proposal is paid for in the accepted record's
+    code, so the edge may not sit in the corpus unremarked. The remedy is to
+    ratify the proposal on its own record — the decision was made when the
+    accepted record landed — not to hide the link.
+    """
+    by_number = {record.number: record for record in corpus}
+    links = amends_links(corpus)
+    findings: list[str] = []
+    for record in corpus:
+        if not record.get("status").strip().lower().startswith("accepted"):
+            continue
+        proposals = [
+            target
+            for target in links.get(record.number, ())
+            if by_number[target].get("status").strip().lower().startswith("proposed")
+        ]
+        if proposals:
+            named = ", ".join(f"ADR-{number}" for number in proposals)
+            findings.append(
+                f"{record.path.relative_to(root)}: accepted and amends {named}, "
+                "which is still `status: proposed`; a ratified decision may not "
+                "rest on an unratified one — ratify the proposal on its own "
+                "record"
+            )
+    return findings
+
+
 def reciprocity_findings(root: Path, corpus: list[Adr]) -> list[str]:
     """A hand-written `amended-by:` that contradicts the derived list of refiners.
 
@@ -493,12 +525,21 @@ def render_reading_order(corpus: list[Adr]) -> str:
 
 
 def register_row(record: Adr) -> str:
-    """One register row: the number, the one-line decision, its standing."""
+    """One register row: the number, the one-line decision, its standing.
+
+    A record whose own `status` is `proposed` carries a `**(proposed)**`
+    marker, because the register is the routing surface an agent reads and a
+    draft rendered like a ratified decision is a decision the reader cannot
+    tell is still open (SpatialEngine-tp1). A superseded record keeps its
+    strikethrough, which is the other standing the row has to show.
+    """
     if record.is_superseded:
         return (
             f"| {record.number} | ~~{record.get('summary')}~~ — superseded by "
             f"{record.superseded_by[-4:]}. |"
         )
+    if record.get("status").strip().lower().startswith("proposed"):
+        return f"| {record.number} | **(proposed)** {record.get('summary')} |"
     return f"| {record.number} | {record.get('summary')} |"
 
 
@@ -743,6 +784,7 @@ def corpus_findings(root: Path, corpus: list[Adr]) -> list[str]:
     for number in sorted(duplicates):
         findings.append(f"ADR-{number}: more than one record carries this number")
     findings.extend(undeclared_refinements(root, corpus))
+    findings.extend(load_bearing_proposals(root, corpus))
     findings.extend(reciprocity_findings(root, corpus))
     return findings
 

@@ -767,6 +767,133 @@ class ReciprocityTests(unittest.TestCase):
             self.assertIn("amended-by", result.stdout + result.stderr)
 
 
+class ProposedRecordTests(unittest.TestCase):
+    """A proposal is not a ratified decision, and the register says which.
+
+    The reproduction for SpatialEngine-tp1: seven records sat at
+    `status: proposed` while their code was landed — ADR-0071's token auth
+    among them — and two of them (ADR-0036 and ADR-0038) were already refined
+    by accepted records. The register in `architecture/distilled/README.md`
+    rendered every row from its own `summary` alone, so the proposed record and
+    the accepted one were the same row to the agent routing through it. The
+    register marks a proposal, and the gate refuses an accepted decision that
+    still rests on one.
+    """
+
+    #: Fixture numbers are assembled from parts for the reason the citation
+    #: fixtures elsewhere in this suite are: a literal `ADR-NNNN` in a tracked
+    #: file is a citation the structural guard (`AdrNumberingTests`) reads, and
+    #: these records do not exist in the real tree.
+    PROPOSAL = "0" + "301"
+    RATIFIED = "0" + "302"
+
+    def adr(self, number, status, summary="A fixture decision."):
+        return arch_index.Adr(
+            number=number,
+            path=Path(f"ADR-{number}-fixture.md"),
+            title="fixture",
+            fields={
+                "status": status,
+                "date": "2026-10-01",
+                "deciders": "nobody",
+                "summary": summary,
+            },
+        )
+
+    def record(self, number, status, amends=""):
+        return (
+            "---\n"
+            f"status: {status}\n"
+            "date: 2026-10-01\n"
+            "deciders: nobody\n"
+            f"summary: Fixture {number}.\n"
+            + (f"amends: ADR-{amends}\n" if amends else "")
+            + "---\n\n"
+            f"# ADR-{number}: fixture\n\n"
+            "## Context\n\nProse.\n\n"
+            "## Decision\n\n**The thing.**\n\n"
+            "## Consequences\n\nProse.\n"
+        )
+
+    def test_a_proposed_record_is_marked_in_the_register(self):
+        row = arch_index.register_row(self.adr(self.PROPOSAL, "proposed"))
+        self.assertIn(
+            "proposed", row.lower(),
+            "a proposed record's register row is indistinguishable from an "
+            "accepted one",
+        )
+
+    def test_an_accepted_record_is_not_marked_as_proposed(self):
+        row = arch_index.register_row(self.adr(self.PROPOSAL, "accepted"))
+        self.assertNotIn("proposed", row.lower())
+
+    def test_the_committed_register_marks_every_proposed_record(self):
+        corpus = arch_index.load_corpus(REPO_ROOT)
+        rows = arch_index.register_rows(corpus)
+        unmarked = [
+            record.number
+            for record in corpus
+            if record.get("status").strip().lower().startswith("proposed")
+            and "proposed" not in rows[record.number].lower()
+        ]
+        self.assertEqual(
+            unmarked, [],
+            "proposed records the register renders as decided: " + ", ".join(unmarked),
+        )
+
+    def test_a_regenerated_register_marks_a_proposal(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            (
+                root / "architecture" / "decisions"
+                / f"ADR-{self.PROPOSAL}-the-proposal.md"
+            ).write_text(self.record(self.PROPOSAL, "proposed"), encoding="utf-8")
+            self.assertEqual(run_tool("--write", root=root).returncode, 0)
+            register = (
+                root / "architecture" / "distilled" / "README.md"
+            ).read_text(encoding="utf-8")
+            self.assertIn(
+                "**(proposed)**", register,
+                "the generated register renders a proposal as a ratified decision",
+            )
+
+    def test_an_accepted_record_may_not_rest_on_a_proposal(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = copy_repo(Path(raw) / "repo")
+            decisions = root / "architecture" / "decisions"
+            (decisions / f"ADR-{self.PROPOSAL}-the-proposal.md").write_text(
+                self.record(self.PROPOSAL, "proposed"), encoding="utf-8"
+            )
+            (decisions / f"ADR-{self.RATIFIED}-the-ratified-refiner.md").write_text(
+                self.record(self.RATIFIED, "accepted", amends=self.PROPOSAL),
+                encoding="utf-8",
+            )
+            result = run_tool("--check", root=root)
+            self.assertNotEqual(
+                result.returncode, 0,
+                "an accepted record amending a proposal passed the gate",
+            )
+            self.assertIn(
+                self.PROPOSAL, result.stdout + result.stderr,
+                "the gate failed for some other reason: "
+                + result.stdout + result.stderr,
+            )
+            self.assertIn(
+                "proposed", (result.stdout + result.stderr).lower(),
+                "the gate failed without naming the unratified record: "
+                + result.stdout + result.stderr,
+            )
+
+    def test_the_repository_has_no_accepted_record_resting_on_a_proposal(self):
+        findings = arch_index.load_bearing_proposals(
+            REPO_ROOT, arch_index.load_corpus(REPO_ROOT)
+        )
+        self.assertEqual(
+            findings, [],
+            "an accepted decision rests on a proposal:\n  " + "\n  ".join(findings),
+        )
+
+
 class VerifyWiringTests(unittest.TestCase):
     def test_every_lane_of_verify_runs_the_doc_gate(self):
         script = (REPO_ROOT / "eng" / "verify.sh").read_text(encoding="utf-8")
