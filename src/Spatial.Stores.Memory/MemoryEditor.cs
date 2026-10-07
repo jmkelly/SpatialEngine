@@ -8,9 +8,11 @@ namespace Spatial.Stores.Memory;
 /// The in-memory feature-editing face (ADR-0037, ADR-0042), split from
 /// <see cref="MemoryStore"/> exactly like <c>PostgisEditStore</c> so each type
 /// keeps one cohesive responsibility. A feature whose identity is
-/// <see cref="FeatureId.Unassigned"/> gets the dataset's next generated
+/// <see cref="FeatureId.Unassigned"/> gets the dataset's next free generated
 /// identity (ADR-0043); a data-only dataset rejects every edit per feature,
-/// mirroring the PostGIS contract. Every edit that changes the dataset moves
+/// mirroring the PostGIS contract. An add whose identity the dataset already
+/// holds is a primary-key collision, reported per feature as the keyed stores
+/// do. Every edit that changes the dataset moves
 /// its content version (ADR-0083), which is what invalidates the tiles derived
 /// from it.
 /// </summary>
@@ -117,16 +119,46 @@ public sealed class MemoryEditor : IFeatureEditStore
                     feature.Id, SpatialException.InvalidArguments, "Only an auto-identity dataset can assign a missing identity.");
             }
 
-            var assigned = dataset.NextId++;
-            var stored = MemorySchema.BuildStored(dataset, feature, assigned);
+            // The store owns this identity (ADR-0043), so it picks one the
+            // dataset does not already hold: a value an explicit or source
+            // identity took is skipped rather than stored twice under one
+            // key (ADR-0038).
+            Feature stored;
+            do
+            {
+                stored = MemorySchema.BuildStored(dataset, feature, dataset.NextId++);
+            }
+            while (IdentityExists(dataset, stored.Id));
+
             dataset.Features.Add(stored);
             return FeatureEditOutcome.Success(stored.Id);
         }
 
         var built = MemorySchema.BuildStored(dataset, feature, assignedId: null);
+        if (IdentityExists(dataset, built.Id))
+        {
+            return Duplicate(dataset, built.Id);
+        }
+
         dataset.Features.Add(built);
         return FeatureEditOutcome.Success(built.Id);
     }
+
+    /// <summary>
+    /// Whether the dataset already holds a feature under this identity. A
+    /// store keys its features by the identity column (ADR-0038, ADR-0112),
+    /// so an add of a value already stored is the primary-key collision
+    /// PostGIS and SQL Server report per feature — not a second row under one
+    /// key, which a read-by-identity would then return twice.
+    /// </summary>
+    private static bool IdentityExists(MemoryDataset dataset, FeatureId id) =>
+        dataset.Features.Any(candidate => candidate.Id.Equals(id));
+
+    /// <summary>The add's identity is already a feature of the dataset: a per-feature invalid.arguments, as the keyed stores report it.</summary>
+    private static FeatureEditOutcome Duplicate(MemoryDataset dataset, FeatureId id) =>
+        FeatureEditOutcome.Failure(
+            id, SpatialException.InvalidArguments,
+            $"A feature with identity '{id}' already exists in dataset '{dataset.Id}'.");
 
     private static FeatureEditOutcome Replace(MemoryDataset dataset, Feature feature)
     {

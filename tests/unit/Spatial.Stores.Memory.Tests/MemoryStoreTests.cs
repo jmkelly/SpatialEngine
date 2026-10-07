@@ -143,6 +143,96 @@ public sealed class MemoryStoreTests
         Assert.Single(lookup);
     }
 
+    // A store keys its features by the identity column (ADR-0038), so an add
+    // whose identity already exists is a primary-key collision in PostGIS and
+    // SQL Server, reported per feature. Memory appended to a list and accepted
+    // it, storing two features under one id and making a read-by-identity
+    // return both.
+    [Fact]
+    public async Task Adding_an_identity_that_already_exists_fails_per_feature()
+    {
+        var store = await IngestedAsync();
+
+        var failure = Assert.Single(await new MemoryEditor(store).AddAsync(
+            "memory.cities", Batch(Point("1", "Berlin again", 13.4, 52.5))));
+
+        Assert.False(failure.Succeeded);
+        Assert.Equal(SpatialException.InvalidArguments, failure.ErrorCode);
+        var found = await store.GetAsync("memory.cities", [new FeatureId("1")]);
+        Assert.Equal("Berlin", Assert.Single(found)["name"].StringValue);
+    }
+
+    /// <summary>
+    /// The reported reproduction: a source-identity dataset keys each feature
+    /// by the identity column's value (ADR-0038, ADR-0112), so an add of an
+    /// identity the dataset already holds is the collision the keyed stores
+    /// report, not a second row under the same key.
+    /// </summary>
+    [Fact]
+    public async Task A_source_identity_dataset_refuses_a_duplicate_explicit_identity()
+    {
+        var store = new MemoryStore();
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("code", AttributeKind.Int64),
+            new FieldDefinition("geometry", AttributeKind.Geometry),
+        ]);
+        Feature Row(string id, long code) => new(
+            new FeatureId(id),
+            schema,
+            [
+                AttributeValue.FromInt64(code),
+                AttributeValue.FromGeometry(GeometryFactory.CreatePoint(13.4, 52.5, CoordinateReference.Epsg(4326))),
+            ]);
+
+        await new MemoryIngest(store).IngestAsync(
+            new IngestRequest("memory.children", 4326, IngestIdentity.Source, "code"),
+            [new FeatureBatch(schema, [Row("10", 10)])]);
+
+        var failure = Assert.Single(await new MemoryEditor(store).AddAsync(
+            "memory.children", new FeatureBatch(schema, [Row("10", 10)])));
+
+        Assert.False(failure.Succeeded);
+        Assert.Equal(SpatialException.InvalidArguments, failure.ErrorCode);
+        Assert.Single(await store.GetAsync("memory.children", [new FeatureId("10")]));
+        Assert.Single((await store.ScanAsync("memory.children")).SelectMany(page => page.Features));
+    }
+
+    [Fact]
+    public async Task A_batch_that_repeats_an_identity_fails_only_the_later_feature()
+    {
+        var store = await IngestedAsync();
+
+        var outcomes = await new MemoryEditor(store).AddAsync(
+            "memory.cities", Batch(Point("9", "Rome", 12.5, 41.9), Point("9", "Rome twice", 12.5, 41.9)));
+
+        Assert.True(outcomes[0].Succeeded);
+        Assert.False(outcomes[1].Succeeded);
+        Assert.Equal(SpatialException.InvalidArguments, outcomes[1].ErrorCode);
+        Assert.Single(await store.GetAsync("memory.cities", [new FeatureId("9")]));
+    }
+
+    /// <summary>
+    /// A store-assigned identity is the store's to choose (ADR-0043), so it
+    /// takes the next free one: a value an explicit add already holds is
+    /// skipped rather than stored twice under one key (ADR-0038).
+    /// </summary>
+    [Fact]
+    public async Task An_assigned_identity_skips_one_an_explicit_add_already_took()
+    {
+        var store = await IngestedAsync();
+        var editor = new MemoryEditor(store);
+
+        var taken = await editor.AddAsync("memory.cities", Batch(Point("3", "Rome", 12.5, 41.9)));
+        Assert.True(taken[0].Succeeded);
+
+        var assigned = await editor.AddAsync("memory.cities", Batch(Point("__unassigned__", "Naples", 14.3, 40.85)));
+
+        Assert.True(assigned[0].Succeeded);
+        Assert.Equal("4", assigned[0].Id.Value);
+        Assert.Single(await store.GetAsync("memory.cities", [new FeatureId("4")]));
+    }
+
     [Fact]
     public async Task Update_replaces_and_delete_removes()
     {
