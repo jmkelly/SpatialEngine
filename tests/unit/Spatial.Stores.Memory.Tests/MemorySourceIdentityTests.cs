@@ -148,6 +148,29 @@ public sealed class MemorySourceIdentityTests
     }
 
     /// <summary>
+    /// An ingest whose source identity repeats is the primary-key collision a
+    /// keyed store reports: PostGIS and SQL Server declare the identity column
+    /// PRIMARY KEY (ADR-0149), so the second insert of one value rolls the
+    /// ingest back rather than storing two features under one key. The
+    /// reference store refuses it the same way — a typed
+    /// <c>invalid.arguments</c> before anything is stored, so a
+    /// read-by-identity cannot answer two rows for one key.
+    /// </summary>
+    [Fact]
+    public async Task A_source_identity_ingest_with_a_repeated_identity_stores_nothing()
+    {
+        var store = new MemoryStore();
+        var ingest = new MemoryIngest(store);
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() => ingest.IngestAsync(
+            new IngestRequest("memory.children", 4326, IngestIdentity.Source, "id"),
+            [Batch(City("1", 10, "Mitte"), City("2", 10, "Kreuzberg"))]));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.False(store.Catalog.Contains("memory.children"));
+    }
+
+    /// <summary>
     /// An auto-identity ingest keys its stored features by the identity column
     /// the store assigned, not by the identity the decode read them at
     /// (ADR-0119) — the same rule the source-identity path above follows, now
