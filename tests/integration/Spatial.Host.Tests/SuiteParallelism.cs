@@ -16,10 +16,11 @@ namespace Spatial.Host.Tests;
 /// clock within a minute of the default and takes 37 % of the CPU out of it,
 /// so three or four lanes no longer starve each other.
 ///
-/// The cap is a fixed number because <c>xunit.runner.json</c> is static JSON
-/// with no expression for the machine it lands on. It reads as a cap on any
-/// box, because xunit clamps a thread count to the cores it has: on a four-core
-/// laptop the same file runs two collections at a time rather than four.
+/// The cap is generated, not fixed: a static number cannot sit below nproc on
+/// every box — a shipped 4 passes the ceiling on twelve cores and fails it on
+/// four — so the build writes <c>xunit.runner.json</c> beside the test
+/// assembly with the building machine's own ceiling, and the suite reads back
+/// what the build wrote (ADR-0196).
 /// </remarks>
 public static class SuiteParallelism
 {

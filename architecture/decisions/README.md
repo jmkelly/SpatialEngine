@@ -10,7 +10,7 @@
 The digests in `architecture/distilled/` beat nothing here: an ADR is
 the decision, and this file is the lookup for which one is live.
 
-**181 records on disk.** `status` is the record's own word;
+**182 records on disk.** `status` is the record's own word;
 `supersedes`/`superseded by`/`amends`/`amended by`/`related` are its
 front matter, so a record's reach is a row rather than a search.
 
@@ -197,6 +197,7 @@ front matter, so a record's reach is a row rather than a search.
 | [0192](ADR-0192-the-register-marks-a-proposal-and-an-accepted-decision-cannot-rest-on-one.md) | The register marks a proposal, and an accepted decision may not rest on one | accepted | 2026-10-07 | ADR-0141 |
 | [0193](ADR-0193-the-container-fixtures-refuse-an-unguarded-access.md) | the container fixtures refuse an unguarded access, and the skip guard fails when it matches nothing | accepted | 2026-10-07 | ADR-0187, ADR-0189, ADR-0139 |
 | [0194](ADR-0194-an-unordered-grouped-reduction-is-the-stores-to-answer.md) | An unordered grouped reduction is the store's to answer | accepted | 2026-10-07 | ADR-0098, ADR-0184, ADR-0128, ADR-0133, ADR-0097 |
+| [0196](ADR-0196-generate-the-suite-collection-cap-at-build-time.md) | Generate the suite's collection cap at build time | accepted | 2026-10-08 | ADR-0155 |
 
 ## Reading order
 
@@ -280,13 +281,14 @@ out: the "Amended by" row already says everything about a pair.
 5. [0180](ADR-0180-a-grid-operation-names-the-datum-it-reaches.md)
 6. [0181](ADR-0181-nadcon-states-its-longitudes-positive-west.md)
 
-### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 5 records, 8,654 words (4% of the corpus)
+### ADR-0135: The host integration suite's clients wait five minutes, not one hundred seconds — 6 records, 9,232 words (4% of the corpus)
 
 1. [0135](ADR-0135-the-host-suite-clients-wait-five-minutes.md) *(narrowed by 0154)*
 2. [0154](ADR-0154-the-two-minute-in-process-request-is-cpu-starvation-not-store-contention.md) *(narrowed by 0155)*
-3. [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) *(narrowed by 0160)*
+3. [0155](ADR-0155-cap-the-suite-collection-parallelism-and-leave-the-shared-host-to-a-later-bead.md) *(narrowed by 0160, 0196)*
 4. [0160](ADR-0160-one-host-per-class-and-a-per-test-map-name.md) *(narrowed by 0161)*
 5. [0161](ADR-0161-a-per-class-verdict-on-the-shared-host.md)
+6. [0196](ADR-0196-generate-the-suite-collection-cap-at-build-time.md)
 
 ### ADR-0058: MapServer export parity — time, dynamicLayers, layerOption, cached-root honesty — 4 records, 4,927 words (2% of the corpus)
 
@@ -378,7 +380,7 @@ believed.
 - **0151** is amended by 0164
 - **0152** is amended by 0162
 - **0154** is amended by 0155
-- **0155** is amended by 0160
+- **0155** is amended by 0160, 0196
 - **0156** is amended by 0165
 - **0157** is amended by 0164
 - **0160** is amended by 0161
