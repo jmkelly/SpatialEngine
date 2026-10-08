@@ -99,13 +99,11 @@ class RootHygieneTests(unittest.TestCase):
             self.assertEqual(findings(path), [])
 
     def test_the_durable_documents_at_the_root_are_not_findings(self):
-        # `AGENTS.md`, `README.md`, `RELEASING.md` and the generated
-        # `arch-index.md` answer questions that do not go stale between
-        # sessions. The list is a list, not a shape, precisely so this case is
-        # a case.
+        # `AGENTS.md`, `README.md` and `RELEASING.md` answer questions that
+        # do not go stale between sessions.
         with tempfile.TemporaryDirectory() as root:
             path = make_repo(Path(root))
-            for name in ("AGENTS.md", "README.md", "RELEASING.md", "arch-index.md"):
+            for name in ("AGENTS.md", "README.md", "RELEASING.md"):
                 (path / name).write_text("durable\n", encoding="utf-8")
             self.assertEqual(findings(path), [])
 

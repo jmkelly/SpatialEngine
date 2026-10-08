@@ -4,7 +4,7 @@ The browser workbench: React + TypeScript + MapLibre against the independently
 executable host. It is a **delivered client**, not a second engine: it talks to
 the host only through the generated TypeScript SDK, and the host serves the
 built bundle (ADR-0014; the desktop shell was abandoned in ADR-0039). Route by
-task: `architecture/distilled/host-and-clients.md`.
+task: `architecture/principles.md`.
 
 ## Never
 

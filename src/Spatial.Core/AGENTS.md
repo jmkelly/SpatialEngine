@@ -20,9 +20,9 @@ geometry contract faces `IPoint`, `ILineString`, `IPolygon`, `IMultiPoint`,
 feature model's contract faces, ADR-0029) and the concrete
 `FieldDefinition`, `FeatureId`, `FeatureSchema`, `Feature`, `FeatureBatch`;
 canonical binary encoding (`GeometryCodec` v1 — spec in
-`architecture/distilled/core.md`, living in `Spatial.Core.Geometry.Codec`
+`architecture/principles.md`, living in `Spatial.Core.Geometry.Codec`
 per ADR-0032; `FeatureBatchCodec` v1 — spec in
-`architecture/distilled/core.md`, living in `Spatial.Core.Features.Codec` per
+`architecture/principles.md`, living in `Spatial.Core.Features.Codec` per
 ADR-0029), `GeometryFactory`, `GeometryTraversal`.
 
 ## Never here

@@ -43,11 +43,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "tools" / "orientation.py"
-DISTILLED = REPO_ROOT / "architecture" / "distilled"
+PRINCIPLES = REPO_ROOT / "architecture" / "principles.md"
 WORKBENCH_AGENTS = REPO_ROOT / "apps" / "workbench-web" / "AGENTS.md"
 
 #: The acceptance criterion, as a number: twenty closed beads have produced an
-#: Orientation line in the distilled docs.
+#: Orientation line.
 REQUIRED_BEADS = 20
 
 sys.path.insert(0, str(REPO_ROOT / "tools"))
@@ -150,13 +150,13 @@ class ListTests(unittest.TestCase):
     def test_list_prints_the_block_body(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "architecture" / "distilled").mkdir(parents=True)
-            digest = root / "architecture" / "distilled" / "core.md"
+            (root / "architecture").mkdir(parents=True)
+            digest = root / "architecture" / "principles.md"
             digest.write_text("\n".join([
                 "# Core", "", orientation.BEGIN, "## Orientation", "",
                 "- A line. (SpatialEngine-a74.2)", orientation.END, ""]))
             out = orientation.main(["--root", str(root), "--list",
-                                    "architecture/distilled/core.md"])
+                                    "architecture/principles.md"])
             self.assertEqual(out, 0)
 
     def test_listing_a_path_with_no_block_is_an_error(self):
@@ -176,11 +176,9 @@ class RepositoryTests(unittest.TestCase):
         cls.history = orientation.history_beads(REPO_ROOT)
         cls.report = orientation.coverage(cls.blocks, cls.history)
 
-    def test_every_distilled_digest_has_an_orientation_block(self):
-        paths = {Path(b.path).name for b in self.blocks
-                 if b.path.startswith("architecture/distilled/")}
-        expected = {p.name for p in DISTILLED.glob("*.md")}
-        self.assertEqual(expected - paths, set(), "a digest with no Orientation block")
+    def test_the_principles_doc_has_an_orientation_block(self):
+        paths = {b.path for b in self.blocks}
+        self.assertIn("architecture/principles.md", paths)
 
     def test_the_workbench_has_its_own(self):
         # The largest TypeScript surface had no scoped agent document at all,
@@ -188,8 +186,8 @@ class RepositoryTests(unittest.TestCase):
         self.assertIn("apps/workbench-web/AGENTS.md", {b.path for b in self.blocks})
 
     def test_twenty_closed_beads_have_produced_a_line(self):
-        distilled = [b for b in self.blocks if b.path.startswith("architecture/distilled/")]
-        beads = orientation.coverage(distilled, self.history).beads
+        principles = [b for b in self.blocks if b.path == "architecture/principles.md"]
+        beads = orientation.coverage(principles, self.history).beads
         self.assertGreaterEqual(
             len(beads), REQUIRED_BEADS,
             f"orientation covers {len(beads)} beads, not {REQUIRED_BEADS}")

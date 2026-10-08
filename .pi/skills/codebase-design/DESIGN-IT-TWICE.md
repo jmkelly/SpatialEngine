@@ -27,7 +27,7 @@ Prompt each sub-agent with a separate technical brief (file paths, coupling deta
 - Agent 3: "Optimise for the most common caller: make the default case trivial."
 - Agent 4 (if applicable): "Design around ports & adapters for cross-seam dependencies."
 
-Include both [SKILL.md](SKILL.md) vocabulary and the project's own domain vocabulary in the brief so each sub-agent names things consistently with the architecture language and the domain language. In this repo, the domain language is `architecture/distilled/README.md`.
+Include both [SKILL.md](SKILL.md) vocabulary and the project's own domain vocabulary in the brief so each sub-agent names things consistently with the architecture language and the domain language. In this repo, the domain language is `architecture/principles.md`.
 
 Each sub-agent outputs:
 

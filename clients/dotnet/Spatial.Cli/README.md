@@ -2,13 +2,13 @@
 
 `clients/dotnet/Spatial.Cli` is a dependency-free console client of the
 public host HTTP API. It is the CLI decided by
-[ADR-0052](../../../architecture/decisions/ADR-0052-spatial-cli-is-a-public-api-client.md):
+[ADR-0052](../../../architecture/principles.md):
 a pure client that adds datasets, composes maps with layers and styles,
 stores the workspace as a declarative project file, and reports the
 GeoServices endpoints each map projects to. It holds no spatial algorithm,
 calls no provider directly, and takes no third-party packages, so it can be
 published as one self-contained binary. The distilled command reference is
-[`architecture/distilled/cli.md`](../../../architecture/distilled/cli.md).
+[`architecture/principles.md`](../../../architecture/principles.md).
 
 ## Running
 
@@ -180,6 +180,6 @@ Under `--json` every result is a stable envelope:
 
 ## See also
 
-- [`architecture/distilled/cli.md`](../../../architecture/distilled/cli.md) — the command reference
-- [ADR-0052](../../../architecture/decisions/ADR-0052-spatial-cli-is-a-public-api-client.md) — the CLI as a declarative public-API client
+- [`architecture/principles.md`](../../../architecture/principles.md) — the command reference
+- [ADR-0052](../../../architecture/principles.md) — the CLI as a declarative public-API client
 - [`../Spatial.Client`](../Spatial.Client) — the .NET SDK the CLI builds on

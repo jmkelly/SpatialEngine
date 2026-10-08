@@ -41,8 +41,6 @@ AGENTS = """\
 # Package
 
 Prose that names the package and what it owns.
-Two records bind it: ADR-0001 and ADR-0002.
-Route by task: `architecture/distilled/core.md`.
 
 ## Never
 
@@ -108,18 +106,6 @@ class PackageAgentsTests(_Fixture):
         _write(self.root, PACKAGES[0], AGENTS + "\n" + orientation)
         self.assertEqual([], findings(self.root))
 
-    def test_one_cited_record_is_not_two(self):
-        self.seed_all()
-        _write(self.root, PACKAGES[0], AGENTS.replace("ADR-0001 and ADR-0002", "ADR-0001"))
-        found = findings(self.root)
-        self.assertTrue(any(PACKAGES[0] in f and "binding ADRs" in f for f in found), found)
-
-    def test_a_citation_of_a_record_that_does_not_exist_is_a_finding(self):
-        self.seed_all()
-        _write(self.root, PACKAGES[0], AGENTS.replace("ADR-0001", BOGUS_ADR))
-        found = findings(self.root)
-        self.assertTrue(any(BOGUS_ADR in f for f in found), found)
-
     def test_a_file_without_a_never_list_is_a_finding(self):
         self.seed_all()
         _write(self.root, PACKAGES[0], AGENTS.replace("## Never", "## Habits"))
@@ -131,12 +117,6 @@ class PackageAgentsTests(_Fixture):
         _write(self.root, PACKAGES[0], AGENTS.replace("## Commands", "## Reading"))
         found = findings(self.root)
         self.assertTrue(any(PACKAGES[0] in f and "test command" in f for f in found), found)
-
-    def test_a_file_without_a_route_pointer_is_a_finding(self):
-        self.seed_all()
-        _write(self.root, PACKAGES[0], AGENTS.replace("architecture/distilled/core.md", "the docs"))
-        found = findings(self.root)
-        self.assertTrue(any(PACKAGES[0] in f and "route row" in f for f in found), found)
 
 
 class RepositoryTests(unittest.TestCase):

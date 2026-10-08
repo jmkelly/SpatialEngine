@@ -27,8 +27,8 @@ stopped them landing in the first place. This is the three rules that hold:
 
 1.  **No in-flight document at the root.** The names below are the ones that
     answer "what is happening now". A durable document at the root is fine and
-    is named rather than inferred: `AGENTS.md`, `README.md`, `RELEASING.md` and
-    the generated `arch-index.md` do not go stale between sessions. The rule is
+    is named rather than inferred: `AGENTS.md`, `README.md` and `RELEASING.md`
+    do not go stale between sessions. The rule is
     about the root only — a task's own notes under `research/` is a document
     with a pointer at it, which is the shape the corpus is supposed to have.
 2.  **One changelog, at `docs/CHANGELOG.md`.** A second `CHANGELOG.md` beside
@@ -95,7 +95,7 @@ SESSION_DOC_STEMS = (
 #: sessions. Named rather than inferred, because a shape ("a `.md` file at the
 #: root") would be a rule about every file an agent adds.
 DURABLE_ROOT_DOCS = frozenset({
-    "agents.md", "readme.md", "releasing.md", "arch-index.md", "changelog.md",
+    "agents.md", "readme.md", "releasing.md", "changelog.md",
     "license",
 })
 

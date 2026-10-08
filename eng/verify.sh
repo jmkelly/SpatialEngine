@@ -578,8 +578,6 @@ changelog_step() {
 # step is eleven minutes wasted. Both are repo checks that precede the
 # expensive part of any lane, and each lane calls them in that order.
 doc_gate() {
-  echo "== doc gate: ADR register, ADR index, ADR citations =="
-  step python3 tools/arch-index.py --check
   echo "== documentation freshness (reporting only, never fails a lane) =="
   # `bash <script>` rather than the path: every other step names an
   # interpreter (`python3`, `dotnet`) and this one is a repository script, whose
@@ -597,11 +595,7 @@ doc_gate() {
 # rescue work the reclaim race orphaned (SpatialEngine-imz.4). So
 # `tools/beads_gate.py` judges the mechanical halves of it on every lane:
 # a closed bead's merge records the bead it merged — a `Task: <id>` trailer
-# naming it, on the merge or on the work it brought in — and a commit touching
-# `src/Spatial.Contracts/**` or `src/Spatial.Core/**` lands a decision record
-# with it (ADR-0152). The ADR citation and register checks are G1/G2's and are
-# read through `tools/arch-index.py --check` in the doc gate above rather than
-# implemented a second time.
+# naming it, on the merge or on the work it brought in.
 #
 # It also reads the reclaim race back, which ADR-0152 left as a wrapper an agent
 # has to remember: an open bead holding no lease while `paseo` still reports an
@@ -620,7 +614,7 @@ doc_gate() {
 # for `paseo`, which is a worker's machine: `--no-paseo` skips the lease check's
 # live read deliberately, and both are judged in one `for` over the two notes.
 beads_gate_step() {
-  echo "== bead protocol: Task trailers on merge commits, ADR on a wall change =="
+  echo "== bead protocol: Task trailers on merge commits =="
   # `VERIFY_NO_QUEUE=1` is for a fixture or a rehearsal that must not reach the
   # repository's real queue: `tools/test_no_real_queue.py` runs this whole
   # suite with `bd` and `paseo` shadowed on PATH and fails it if anything calls

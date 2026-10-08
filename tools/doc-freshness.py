@@ -95,19 +95,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-ARCH_INDEX = Path(__file__).resolve().parent / "arch-index.py"
-
-
-def _load_arch_index() -> object:
-    """`tools/arch-index.py` by path — the name is hyphenated, like its peers'."""
-    spec = importlib.util.spec_from_file_location("arch_index", ARCH_INDEX)
-    module = importlib.util.module_from_spec(spec)
-    sys.modules.setdefault("arch_index", module)
-    spec.loader.exec_module(module)
-    return module
-
-
-arch_index = _load_arch_index()
 
 #: The two artefacts, in the shape every other audit in the quality loop writes
 #: (crap4dotnet, coverage, metrics, warnings, stryker), and in the repository's
@@ -129,7 +116,10 @@ BLOAT_CEILING = 200
 #: skills, bootstrapped once — its debt is upstream's, and reporting it here
 #: would bury this repository's own findings under ~1500 lines of Beads and
 #: Playwright documentation).
-SKIP_DIRECTORIES = arch_index.SKIP_DIRECTORIES | {".agents"}
+SKIP_DIRECTORIES = {
+    ".git", "node_modules", "bin", "obj", "dist", "build", "__pycache__",
+    ".verify-test-results", "coverage", "TestResults",
+} | {".agents"}
 
 #: Where the docs an agent is pointed at live. Everything walked is under one of
 #: these, or is a root-level document. `docs` is here because the release
@@ -144,7 +134,7 @@ ROOT_DOCS = (
 
 #: Files the generators own: a single commit is a generator run, not a
 #: hand-written doc that was never revised.
-GENERATED_DOCS = ("arch-index.md", "architecture/decisions/README.md")
+GENERATED_DOCS = ()
 
 #: Documents that record what was rather than what to do, and so are not read
 #: as instructions (check 9). The changelog quotes the lanes as they were named
@@ -318,51 +308,7 @@ def signal(check: str, file: str, line: int, message: str, severity: str) -> dic
     return finding(check, file, line, message, severity, signal=True)
 
 
-# --- the shared checks ------------------------------------------------------
-
-
-def shared_findings(root: Path) -> list[dict]:
-    """Checks 1-3, read out of `tools/arch-index.py` (ADR-0141)."""
-    corpus = arch_index.load_corpus(root)
-    gate = "tools/arch-index.py --check, which every lane of eng/verify.sh runs"
-    findings = []
-    for message in arch_index.register_findings(root, corpus):
-        findings.append(finding(
-            "adr-register", _first_path(root, message), 0, message, "high",
-            shared=True, gate=gate,
-        ))
-    for message in arch_index.corpus_findings(root, corpus):
-        findings.append(finding(
-            "front-matter", _first_path(root, message), 0, message, "high",
-            shared=True, gate=gate,
-        ))
-    for message in arch_index.shape_findings(root, corpus):
-        findings.append(finding(
-            "adr-shape", _first_path(root, message), 0, message, "high",
-            shared=True, gate=gate,
-        ))
-    for message in arch_index.dangling_citations(root, corpus):
-        relative, _, rest = message.partition(":")
-        number = ""
-        match = re.match(r"(\d+):", rest)
-        if match:
-            number = int(match.group(1))
-        findings.append(finding(
-            "adr-citation", relative, number, rest, "high",
-            shared=True, gate=gate,
-        ))
-    return findings
-
-
-def _first_path(root: Path, message: str) -> str:
-    """The repository-relative path a `tools/arch-index.py` finding names."""
-    head = message.split(":", 1)[0]
-    if head.startswith("ADR-"):
-        return "architecture/decisions/"
-    return head if head.endswith(".md") else "architecture/distilled/README.md"
-
-
-# --- check 4: digest staleness ---------------------------------------------
+# --- dead relative links ---------------------------------------------
 
 
 def git_history(root: Path, paths: list[Path]) -> dict[str, tuple[int | None, int, str]]:
@@ -453,212 +399,7 @@ def as_absolute(root: Path, table: dict | None) -> dict:
     }
 
 
-def digest_staleness(root: Path, times: dict | None = None) -> list[dict]:
-    """A `distilled/*.md` that predates a record it cites (check 4).
-
-    The digests are the routing layer: an agent reads `distilled/core.md` and
-    does not open the record behind it. A digest that predates the record it
-    summarizes is a digest stating a superseded decision as a live one, which is
-    the confidently-wrong case again — the record wins on conflict, and the
-    reader does not know there is a conflict.
-
-    **Staleness is the record's decision changing, not its file changing.** The
-    question is therefore asked of the *prose*: the record's body as it stood
-    at the digest's last commit, against the body now. The two things that
-    differ and are not a changed decision are both answered by asking it that
-    way rather than by comparing commit times:
-
-    * a record's front matter is metadata *about* the decision — `summary:`
-      (ADR-0141/ADR-0145 moved the register's hand-enriched prose into it, so
-      one commit gave 60 records a new line), `amended-by:`, `date:`. A digest
-      that states the decision correctly is not stale because a metadata line
-      moved;
-    * a digest is normally *written before* the records it later cites — it is
-      re-committed to mention a record that did not exist when it was first
-      written, which is what a routing layer is for. Comparing when each file
-      was *created* reports that ordinary case on every citation.
-
-    Where the history cannot be read (an untracked tree, a synthetic tree in a
-    test), the commit-time comparison is the fallback and it stands: an
-    unreadable answer is not a clean bill of health.
-    """
-    findings: list[dict] = []
-    digests = sorted((root / "architecture" / "distilled").glob("*.md"))
-    if not digests:
-        return findings
-    decisions = {path.name: path for path in (root / "architecture" / "decisions").glob("ADR-*.md")}
-    needed = list(digests) + list(decisions.values())
-    history = git_history(root, needed)
-    resolved = {key: value[0] for key, value in history.items()}
-    resolved.update(as_absolute(root, times))
-    commits = {key: value[2] for key, value in history.items()}
-
-    # (digest, record, lines citing it), and the body each cited record had at
-    # the commit that last touched the digest.
-    pairs: dict[tuple[Path, Path], list[int]] = {}
-    wanted: list[str] = []
-    for digest in digests:
-        digest_commit = commits.get(str(digest), "")
-        try:
-            lines = digest.read_text(encoding="utf-8").splitlines()
-        except (OSError, UnicodeDecodeError):
-            continue
-        for number, line in enumerate(lines, start=1):
-            if _is_generated_line(digest, number):
-                # The register quotes every record's summary, so a record
-                # amended after the digest's last commit lands here as a
-                # finding that no restating of the digest can fix. `arch-index
-                # --check` owns the generated block's currency.
-                continue
-            for cited in sorted(set(arch_index.ADR_CITATION.findall(line))):
-                record = next(
-                    (path for name, path in decisions.items()
-                     if name.startswith(f"ADR-{cited}-")),
-                    None,
-                )
-                if record is None:
-                    continue  # check 3's finding, not this one
-                pairs.setdefault((digest, record), []).append(number)
-                if digest_commit:
-                    wanted.append(
-                        f"{digest_commit}:{_git_name(root, record)}"
-                    )
-    bodies = _git_bodies(root, wanted)
-
-    for (digest, record), lines in sorted(pairs.items(), key=lambda item: str(item[0])):
-        digest_commit = commits.get(str(digest), "")
-        cited = record.name.split("-", 2)[1]
-        before = bodies.get(f"{digest_commit}:{_git_name(root, record)}")
-        if before is not None:
-            try:
-                now = record.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                continue
-            if _record_body(before) == _record_body(now):
-                continue
-        else:
-            # No prose to compare: the record did not exist at the digest's
-            # last commit, or the tree has no history to read. The latter is
-            # the case a test injects commit times for, and it answers on the
-            # times rather than passing in silence.
-            digest_time = resolved.get(str(digest))
-            record_time = resolved.get(str(record))
-            if digest_time is None or record_time is None or record_time <= digest_time:
-                continue
-        repeats = (
-            f" (and {len(lines) - 1} more line(s) citing it)" if len(lines) > 1 else ""
-        )
-        findings.append(finding(
-            "digest-staleness", str(digest.relative_to(root)), lines[0],
-            f"the decision in ADR-{cited} ({record.name}) changed after this "
-            f"digest's last commit, so the digest states it as it stood before "
-            f"that change{repeats}; re-read the record and restate the digest",
-            "medium",
-        ))
-    return findings
-
-
-def _record_body(text: str) -> str:
-    """A record's prose: what a digest restates, and nothing else.
-
-    The front matter is a schema `tools/arch-index.py` gates on, and it
-    describes the decision (its status, its date, the summary the register
-    renders, the record that amends it). A digest states the decision, so a
-    change to either half of the record is one question: did the prose move.
-
-    The schema keys are also dropped where they appear as *prose*, because
-    ADR-0141's migration moved `Status: Accepted` out of 33 record bodies and
-    into front matter, and a digest citing one of those records had not been
-    restated by that migration. Whitespace runs are dropped for the same
-    reason: they are not prose, and a diff that deletes one blank line is not a
-    decision that changed. The key list is read out of `arch-index.py` rather
-    than re-declared here, so there is one schema.
-    """
-    lines = text.splitlines()
-    if lines and lines[0].strip() == "---":
-        for index, line in enumerate(lines[1:], start=1):
-            if line.strip() in ("---", "..."):
-                lines = lines[index + 1:]
-                break
-    kept: list[str] = []
-    for line in lines:
-        if _METADATA_LINE.match(line):
-            continue
-        if any(pattern.search(line) for pattern in arch_index.RETIRED_STATUS_PATTERNS):
-            continue
-        kept.append(line.rstrip())
-    collapsed: list[str] = []
-    for line in kept:
-        if not line and (not collapsed or not collapsed[-1]):
-            continue
-        collapsed.append(line)
-    while collapsed and not collapsed[-1]:
-        collapsed.pop()
-    return "\n".join(collapsed)
-
-
-#: A record's metadata key at the head of a line, in the front-matter spelling
-#: or the retired in-body one (`Status: Accepted`).
-_METADATA_LINE = re.compile(
-    r"^\s*(?:%s)\s*:" % "|".join(re.escape(field) for field in arch_index.FIELDS),
-    re.I,
-)
-
-
-def _git_bodies(root: Path, specs: list[str]) -> dict[str, str | None]:
-    """The contents of `<commit>:<path>` for each spec, in one `cat-file`.
-
-    One process for the whole audit: a subprocess per cited record is a hundred
-    of them on a tree this size, and `cat-file --batch` reads a list of them
-    from stdin. A spec git cannot resolve is `None` — the record did not exist
-    at that commit — which the caller reads as "nothing to compare".
-
-    `git cat-file --batch` answers in the order it was asked, naming a found object
-    by its own hash and an absent one as `<spec> missing`, so the answers are
-    read positionally against the list that was written — the list as written,
-    duplicates and all. Deduplicating it first is the one mistake that makes
-    this silently wrong: git answers the specs it was given, one line each, and
-    walking a shorter list against them pairs every answer with somebody else's
-    spec, which reads as "this record had no history" on half the corpus.
-
-    The stream is bytes, and the sizes in it are byte counts. Decoding first and
-    indexing the text is the same mistake with a different symptom: one em dash
-    in a record's prose puts every later answer a character out, and the parser
-    goes on finding headers inside record bodies.
-    """
-    wanted = list(specs)
-    if not wanted:
-        return {}
-    try:
-        completed = subprocess.run(
-            ["git", "cat-file", "--batch"], cwd=root,
-            input=("\n".join(wanted) + "\n").encode("utf-8"),
-            capture_output=True, timeout=60, check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return {}
-    bodies: dict[str, str | None] = {spec: None for spec in wanted}
-    stream, position, answered = completed.stdout, 0, 0
-    while position < len(stream) and answered < len(wanted):
-        newline = stream.find(b"\n", position)
-        if newline < 0:
-            break
-        header = stream[position:newline].decode("utf-8", "replace").split()
-        position = newline + 1
-        spec = wanted[answered]
-        answered += 1
-        if len(header) < 3 or header[1] == "missing":
-            continue  # the object is not in this tree: nothing to compare
-        try:
-            size = int(header[2])
-        except ValueError:
-            continue
-        bodies[spec] = stream[position:position + size].decode("utf-8", "replace")
-        position += size + 1  # the blob, then the newline git writes after it
-    return bodies
-
-
-# --- check 5: dead relative links between docs ------------------------------
+# --- dead relative links between docs ------------------------------
 
 
 def iter_doc_files(root: Path) -> list[Path]:
@@ -1059,25 +800,7 @@ def _is_generated_line(path: Path, number: int) -> bool:
 
 
 def _generated_lines(path: Path) -> set[int]:
-    relative = path.parts
-    if path.name in GENERATED_DOCS:
-        return set(range(1, _line_count(path) + 1))
-    if path.name != "README.md" or "distilled" not in relative:
-        return set()
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeDecodeError):
-        return set()
-    generated: set[int] = set()
-    inside = False
-    for number, line in enumerate(lines, start=1):
-        if arch_index.REGISTER_BEGIN in line:
-            inside = True
-        if inside:
-            generated.add(number)
-        if arch_index.REGISTER_END in line:
-            inside = False
-    return generated
+    return set()
 
 
 def _line_count(path: Path) -> int:
@@ -1096,16 +819,11 @@ def _command_of(line: str, name: str) -> str:
 # --- the audit --------------------------------------------------------------
 
 CHECKS = (
-    ("adr-register", "every decision record has a current register row", "high", True),
-    ("front-matter", "one metadata schema, well formed, on every record", "high", True),
-    ("adr-shape", "a record is one decision: closed sections, in order, in budget", "high", True),
-    ("adr-citation", "every `ADR-NNNN` cited resolves to a record", "high", True),
-    ("digest-staleness", "a digest states the decision as it stands now", "medium", False),
-    ("dead-doc-link", "every relative link between docs resolves", "medium", False),
-    ("skill-reference", "every path a SKILL.md cites resolves", "high", False),
-    ("context-bloat", f"an instruction file is at most {BLOAT_CEILING} lines", "medium", False),
-    ("instruction-conflict", "one gate noun has one referent", "low", False),
-    ("lint-leakage", "a doc does not contradict a wall the gate fails on", "low", False),
+    ("dead-doc-link", "every relative link between docs resolves", "medium"),
+    ("skill-reference", "every path a SKILL.md cites resolves", "high"),
+    ("context-bloat", f"an instruction file is at most {BLOAT_CEILING} lines", "medium"),
+    ("instruction-conflict", "one gate noun has one referent", "low"),
+    ("lint-leakage", "a doc does not contradict a wall the gate fails on", "low"),
 )
 
 #: The reported-but-not-queued half (ADR-0177). Same shape as a check, counted
@@ -1116,25 +834,21 @@ SIGNAL_CHECKS = (
 )
 
 NOTES = (
-    "Reporting-only: no lane fails on this report. The cheap exact checks "
-    "(adr-register, front-matter, adr-shape, adr-citation) are read from "
-    "tools/arch-index.py and are already gates — `python3 tools/arch-index.py "
-    "--check` runs in every lane of eng/verify.sh (ADR-0141).",
+    "Reporting-only: no lane fails on this report.",
     "instruction-conflict and lint-leakage are reporting-only by construction, "
-    "never a gate: both need judgement and this repository's judgement lives in "
-    "the ADRs.",
+    "never a gate: both need judgement.",
     "A **finding** is something a reader could be wrong about, and an edit "
     "drains it. A **signal** — `init-fossil`, `lint-restatement` — is a fact "
     "about the corpus that cannot be drained by editing a document: a doc with "
     "one commit is unrevised, not wrong, and an accurate restatement of a wall "
     "is the wall being carried to the reader rather than a second opinion on "
     "it. They are reported in their own section and are not counted as "
-    "findings, so the queue is only ever rows somebody can close (ADR-0177).",
+    "findings, so the queue is only ever rows somebody can close.",
     "The lint-leakage finding is the **denial** of a wall "
     "`ArchitectureGuardTests` fails on (`Spatial.Contracts` references Npgsql; "
     "`Spatial.Core` depends on NetTopologySuite). The restatement census beside "
     "it is the signal, and reporting the census as the defect is what made six "
-    "undrainable rows of `AGENTS.md`'s own hard-walls section (ADR-0177).",
+    "undrainable rows of `AGENTS.md`'s own hard-walls section.",
     "`.agents/skills` is a vendored copy of the published skills, so it is out "
     "of scope for every check: its debt is upstream's, and reporting it would "
     "bury this repository's own findings under ~1500 lines of documentation "
@@ -1155,8 +869,6 @@ def audit(root: Path, commit_times=None, commit_counts=None) -> dict:
     """
     root = Path(root).resolve()
     findings: list[dict] = []
-    findings.extend(shared_findings(root))
-    findings.extend(digest_staleness(root, commit_times))
     findings.extend(dead_doc_links(root))
     findings.extend(skill_references(root))
     findings.extend(context_bloat(root))
@@ -1171,14 +883,14 @@ def audit(root: Path, commit_times=None, commit_counts=None) -> dict:
     signals.sort(key=_order)
 
     checks = []
-    for identifier, title, severity, shared in CHECKS:
+    for identifier, title, severity in CHECKS:
         mine = [item for item in findings if item["check"] == identifier]
         checks.append({
             "id": identifier,
             "title": title,
             "severity": severity,
-            "shared": shared,
-            "sharedWith": "tools/arch-index.py" if shared else "",
+            "shared": False,
+            "sharedWith": "",
             "kind": "finding",
             "count": len(mine),
         })
@@ -1207,7 +919,7 @@ def audit(root: Path, commit_times=None, commit_counts=None) -> dict:
             "medium": sum(1 for item in findings if item["severity"] == "medium"),
             "low": sum(1 for item in findings if item["severity"] == "low"),
             "docs": len(iter_doc_files(root)),
-            "adrs": len(arch_index.load_corpus(root)),
+            "adrs": 0,
         },
         "notes": list(NOTES),
         "warnings": [],

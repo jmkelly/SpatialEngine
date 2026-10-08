@@ -193,7 +193,7 @@ public sealed class GeometryCompatibilityReferenceTests
         // if that were the whole engine surface, which understated every verb
         // the adapter reaches for outside IGeometryOperations.
         Assert.DoesNotContain("ships four verbs", preamble, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("contracts.md", preamble, StringComparison.Ordinal);
+        Assert.Contains("Spatial.Contracts", preamble, StringComparison.Ordinal);
     }
 
     [Fact]

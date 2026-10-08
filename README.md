@@ -168,7 +168,7 @@ SPATIAL_ADMIN_TOKEN=my-token dotnet run --project clients/dotnet/Spatial.Cli -- 
 
 Use `--json` for a stable `{ok, command, data}` envelope and `--help` for the
 descriptive flag reference. See
-[`architecture/distilled/cli.md`](architecture/distilled/cli.md) for the
+[`architecture/principles.md`](architecture/principles.md) for the
 project-file schema and the full command surface.
 
 CI runs the four verification scripts plus the JavaScript typecheck,
@@ -284,15 +284,13 @@ A small stable core owns spatial values. Interfaces in `Spatial.Contracts`
 own the verbs. Implementations live in their own projects, depend on
 contracts and never on each other, and are composed by the host with
 Microsoft DI. Third-party types — NTS, Npgsql, EF, renderer — never cross a
-public boundary. The architecture tests enforce these walls, and every rule
-names the principle or ADR it implements.
+public boundary. The architecture tests enforce these walls.
 
 ### Reading order for contributors
 
-1. `architecture/decisions/` — the ADR register, the source of truth.
-2. `architecture/principles.md` — the twenty principles.
-3. `architecture/distilled/` — condensed docs routed by task.
-4. `AGENTS.md` — boundaries and guidance for development agents.
+1. `architecture/principles.md` — the project philosophy.
+2. `AGENTS.md` — boundaries and guidance for development agents.
+3. The code — it is the documentation.
 
 ---
 

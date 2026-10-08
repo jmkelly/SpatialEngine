@@ -5,7 +5,7 @@ values, over the canonical binary encodings the contract already owns. Two
 records bind it: **ADR-0032** (the geometry contract faces and the
 `Spatial.Core.Geometry.Codec` namespace) and **ADR-0029** (the feature-model
 contract faces and `Spatial.Core.Features.Codec`). Route by task:
-`architecture/distilled/core.md`.
+`architecture/principles.md`.
 
 ## Never
 
@@ -13,7 +13,7 @@ contract faces and `Spatial.Core.Features.Codec`). Route by task:
   `Spatial.Core` values, and `Spatial.Esri.Json.*` types stay internal to the
   decode (ADR-0032).
 - No change to a canonical binary layout without the codec version, the
-  specification in `architecture/distilled/core.md` and the round-trip tests
+  specification in `architecture/principles.md` and the round-trip tests
   landing together.
 - No lossy decode reported as lossless: an Esri extent that cannot be
   represented is a typed refusal or a stated round-trip tolerance, never a

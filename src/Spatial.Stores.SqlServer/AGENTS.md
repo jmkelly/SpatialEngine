@@ -5,7 +5,7 @@ interchange, SRID discovered from the data then the provider metadata. Two
 records bind it: **ADR-0073** (the provider, its interchange and its
 containerised tests) and **ADR-0092** (a created dataset carries its own
 indexes, and an index that cannot be created rolls the create back). Route by
-task: `architecture/distilled/plugins.md`.
+task: `architecture/principles.md`.
 
 ## Never
 

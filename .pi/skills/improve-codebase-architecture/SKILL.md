@@ -11,7 +11,7 @@ Surface architectural friction and propose **deepening opportunities**: refactor
 This command is _informed_ by the project's domain model and built on a shared design vocabulary:
 
 - Read [../codebase-design/SKILL.md](../codebase-design/SKILL.md) for the architecture vocabulary (**module**, **interface**, **depth**, **seam**, **adapter**, **leverage**, **locality**) and its principles (the deletion test, "the interface is the test surface", "one adapter = hypothetical seam, two = real"). Use these terms exactly in every suggestion, and don't drift into "component," "service," "API," or "boundary."
-- The domain language in `architecture/distilled/README.md` gives names to good seams; ADRs in `architecture/decisions/` record decisions this command should not re-litigate.
+- The domain language in `architecture/principles.md` gives names to good seams; ADRs in `architecture/` record decisions this command should not re-litigate.
 
 ## Process
 
@@ -22,7 +22,7 @@ This command is _informed_ by the project's domain model and built on a shared d
 - If the user named a direction (a module, a subsystem, a pain point), take it, and skip the inference below.
 - Otherwise, walk back a good stretch of the commit history (`git log --oneline`) to find the codebase's hot spots, the files and areas that keep coming up, and let those paths pull your attention first. If the changes are scattered with no clear hot spot, widen the net.
 
-Read `architecture/distilled/README.md` and any ADRs in `architecture/decisions/` covering the area you're touching first.
+Read `architecture/principles.md` and any ADRs in `architecture/` covering the area you're touching first.
 
 Then hand the walk to a sub-agent, so the survey runs in its own window and you keep the thread (pi has no built-in sub-agent: dispatch one through Paseo, or run the walk inline and keep notes). Don't follow rigid heuristics; explore organically and note where you experience friction:
 
@@ -51,7 +51,7 @@ For each candidate, render a card with:
 
 End the report with a **Top recommendation** section: which candidate you'd tackle first and why.
 
-**Use the project's own vocabulary for the domain, and the `codebase-design` vocabulary for the architecture.** If `architecture/distilled/README.md` defines "ingest," talk about "the ingest module," not "the FooBarHandler," and not "the ingest service."
+**Use the project's own vocabulary for the domain, and the `codebase-design` vocabulary for the architecture.** If `architecture/principles.md` defines "ingest," talk about "the ingest module," not "the FooBarHandler," and not "the ingest service."
 
 **ADR conflicts**: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Mark it clearly in the card (e.g. a warning callout: _"contradicts ADR-0007, but worth reopening because…"_). Don't list every theoretical refactor an ADR forbids.
 
@@ -65,9 +65,9 @@ Once the user picks a candidate, interview them one question at a time to walk t
 
 Side effects happen inline as decisions crystallize, and they land in this repo's own places:
 
-- **Naming a deepened module after a concept the project does not name?** Add the term to `architecture/distilled/README.md`, where the areas are defined.
-- **Sharpening a fuzzy term during the conversation?** Update `architecture/distilled/README.md` right there.
+- **Naming a deepened module after a concept the project does not name?** Add the term to `architecture/principles.md`, where the areas are defined.
+- **Sharpening a fuzzy term during the conversation?** Update `architecture/principles.md` right there.
 - **A refactor that crosses a hard wall in `AGENTS.md`?** Stop and say so before proposing it. Those walls are decided, not open.
 - **The work is bigger than one session?** Capture it with `bd create --title="<candidate>" --priority 2 -l <area>` and stop there. An architecture review yields a scoped candidate, not a sprawling edit.
-- **User rejects the candidate with a load-bearing reason?** Offer an ADR in `architecture/decisions/`, framed as: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing; skip ephemeral reasons ("not worth it right now") and self-evident ones.
+- **User rejects the candidate with a load-bearing reason?** Offer an ADR in `architecture/`, framed as: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing; skip ephemeral reasons ("not worth it right now") and self-evident ones.
 - **Want to explore alternative interfaces for the deepened module?** Read [../codebase-design/DESIGN-IT-TWICE.md](../codebase-design/DESIGN-IT-TWICE.md) and use its parallel sub-agent pattern.
