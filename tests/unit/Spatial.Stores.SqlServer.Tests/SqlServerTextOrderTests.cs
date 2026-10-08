@@ -185,6 +185,33 @@ public sealed class SqlServerTextOrderTests
         Assert.Null(SqlServerPlanQueries.Terms([new OrderTerm("nope")], Schema, byteOrderText: false));
     }
 
+    [Fact]
+    public void A_single_column_identity_is_rendered_as_the_id_string_it_orders_by()
+    {
+        Assert.Equal(
+            "CONVERT(nvarchar(max), [id]) COLLATE Latin1_General_100_BIN2",
+            SqlServerPlanQueries.TieBreak(["id"], Schema));
+    }
+
+    [Theory]
+    [InlineData(AttributeKind.Double)]
+    [InlineData(AttributeKind.Boolean)]
+    [InlineData(AttributeKind.DateTimeOffset)]
+    [InlineData(AttributeKind.Geometry)]
+    public void An_identity_column_t_sql_renders_differently_to_dotnet_has_no_tie_break(
+        AttributeKind kind)
+    {
+        // The tie-break is the id string, not the column's own values, and a
+        // column T-SQL renders as other text declines the pushdown rather than
+        // answering a different order.
+        var schema = new FeatureSchema(
+        [
+            new FieldDefinition("key", kind),
+        ]);
+
+        Assert.Null(SqlServerPlanQueries.TieBreak(["key"], schema));
+    }
+
     [Theory]
     [InlineData("Latin1_General_100_BIN2", true)]
     [InlineData("latin1_general_100_bin2", true)]

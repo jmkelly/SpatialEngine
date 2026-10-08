@@ -315,7 +315,7 @@ internal static class SqlServerPredicateSql
                 return;
             }
 
-            if (isIn.Values.Any(value => value.Kind == LiteralKind.Null))
+            if (HasNullLiteral(isIn))
             {
                 // `x IN (1, NULL)` and `x NOT IN (1, NULL)` are both
                 // unanswerable in SQL, and the grammar refuses a NULL inside
@@ -330,10 +330,7 @@ internal static class SqlServerPredicateSql
             // nothing is left the test answers the negated or plain truth value.
             // A comparable literal never binds to null, so null is the marker
             // for "this value is not a match and drops out".
-            var bindable = isIn.Values
-                .Select(value => TryBind(ComparisonOperator.Equals, value, kind, out var bound) ? bound : null)
-                .Where(bound => bound is not null)
-                .ToArray();
+            var bindable = BindableValues(isIn, kind);
             if (bindable.Length == 0)
             {
                 _sql.Append(isIn.Negated ? "(1 = 1)" : "(1 = 0)");
@@ -342,6 +339,39 @@ internal static class SqlServerPredicateSql
 
             _sql.Append(Column(_schema, index))
                 .Append(isIn.Negated ? " NOT IN (" : " IN (");
+            AppendInList(bindable);
+            _sql.Append(')');
+        }
+
+        private static bool HasNullLiteral(Predicate.IsIn isIn)
+        {
+            foreach (var value in isIn.Values)
+            {
+                if (value.Kind == LiteralKind.Null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static object?[] BindableValues(Predicate.IsIn isIn, AttributeKind kind)
+        {
+            var bound = new List<object?>(isIn.Values.Count);
+            foreach (var value in isIn.Values)
+            {
+                if (TryBind(ComparisonOperator.Equals, value, kind, out var single) && single is not null)
+                {
+                    bound.Add(single);
+                }
+            }
+
+            return [.. bound];
+        }
+
+        private void AppendInList(object?[] bindable)
+        {
             for (var i = 0; i < bindable.Length; i++)
             {
                 if (i > 0)
@@ -351,8 +381,6 @@ internal static class SqlServerPredicateSql
 
                 _sql.Append(Parameter(bindable[i]));
             }
-
-            _sql.Append(')');
         }
 
         private static string GeometryHint(FieldRef field) =>
@@ -430,11 +458,29 @@ internal static class SqlServerPredicateSql
         /// or <see cref="DBNull"/> for an explicit NULL. The parameter's CLR
         /// type is what the driver binds, so nothing is re-parsed on the server.
         /// </summary>
-        private static object Bind(Literal value) => value.Kind switch
+        private static object Bind(Literal value)
+        {
+            if (value.Kind == LiteralKind.Integer)
+            {
+                return BindInteger(value);
+            }
+
+            return BindOther(value);
+        }
+
+        private static object BindInteger(Literal value)
+        {
+            if (long.TryParse(value.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer))
+            {
+                return integer;
+            }
+
+            return value.Number;
+        }
+
+        private static object BindOther(Literal value) => value.Kind switch
         {
             LiteralKind.String => value.Text ?? string.Empty,
-            LiteralKind.Integer when long.TryParse(value.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer) => integer,
-            LiteralKind.Integer => value.Number,
             LiteralKind.Decimal => value.Number,
             LiteralKind.Boolean => value.Boolean,
             LiteralKind.DateTime => DateTimeOffset.FromUnixTimeMilliseconds((long)value.Number),

@@ -174,41 +174,11 @@ internal static class SqlServerPlanQueries
         Paging? paging = null)
     {
         ArgumentNullException.ThrowIfNull(parameters);
-        // A clause over the reduced groups is declined rather than compiled
-        // here: it resolves a name to the statistic's own aggregate expression,
-        // which asks this store's predicate compiler a second question it does
-        // not yet answer (ADR-0133 §5). The reduction is finished over the rows
-        // the restriction selected instead, where the clause is the reference's
-        // own.
-        if (having is not null)
-        {
-            return null;
-        }
-
-        if (groupColumns.Count == 0 && order.Count > 0)
-        {
-            // An ungrouped reduction is one group, so a plan's order over it
-            // has nothing to order and there is no term this statement could
-            // write; a reduction that carries one is finished here.
-            return null;
-        }
-
-        if (groupColumns.Count > 0
-            && (order.Count == 0 || order.Any(term => !groupColumns.Contains(term.Field, StringComparer.Ordinal))))
-        {
-            return null;
-        }
-
         // A page needs an order to skip over: T-SQL takes `OFFSET`/`FETCH NEXT`
         // only over an `ORDER BY`, and an ungrouped reduction is one group that
         // needs no order — so a page over one is reduced here (ADR-0124 §6).
         var page = paging ?? new Paging(null, 0);
-        if (!page.IsWhole && order.Count == 0)
-        {
-            return null;
-        }
-
-        if (groupColumns.Any(column => !Groupable(column, schema)))
+        if (!CanPush(groupColumns, order, schema, having, page))
         {
             return null;
         }
@@ -225,6 +195,152 @@ internal static class SqlServerPlanQueries
         var qualifier = windowed ? Derived.ToString() : string.Empty;
         var windows = new List<string>();
         var values = new List<string>(specs.Count);
+        if (!TryBuildValues(statistics, qualifier, keys, parameters, windows, values))
+        {
+            return null;
+        }
+
+        var source = ResolveSource(windowed, dataset, where, groupColumns, keys, statistics, windows);
+        // The group key as each statement names it: a windowed statement reads
+        // the derived column, which already carries the key expression's
+        // code-point collation, and a flat one reads the expression itself.
+        var (projected, grouped) = ResolveProjection(windowed, groupColumns, keys);
+        var builder = new StringBuilder("SELECT ")
+            .Append(string.Join(", ", projected.Concat(values)))
+            .Append(" FROM ")
+            .Append(source);
+        if (!windowed && where is not null)
+        {
+            builder.Append(" WHERE ").Append(where);
+        }
+
+        if (groupColumns.Count > 0)
+        {
+            builder.Append(" GROUP BY ").Append(string.Join(", ", grouped));
+            AppendGroupedOrder(builder, grouped, groupColumns, order);
+        }
+
+        page.AppendTo(builder, parameters);
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Whether the dialect can state the reference's answer for this reduction:
+    /// the five declines <see cref="Aggregate"/> documents — a clause over the
+    /// reduced groups, an order over an ungrouped reduction's single row, a
+    /// grouped order that is not over the group key, a page with no order to
+    /// skip over, and a group key the dialect does not group the reference's
+    /// way — each answered <c>false</c> so the caller reduces in process.
+    /// </summary>
+    private static bool CanPush(
+        IReadOnlyList<string> groupColumns,
+        IReadOnlyList<OrderTerm> order,
+        IFeatureSchema schema,
+        Predicate? having,
+        Paging page)
+    {
+        // A clause over the reduced groups is declined rather than compiled
+        // here: it resolves a name to the statistic's own aggregate expression,
+        // which asks this store's predicate compiler a second question it does
+        // not yet answer (ADR-0133 §5). The reduction is finished over the rows
+        // the restriction selected instead, where the clause is the reference's
+        // own.
+        if (having is not null)
+        {
+            return false;
+        }
+
+        if (groupColumns.Count == 0 && order.Count > 0)
+        {
+            // An ungrouped reduction is one group, so a plan's order over it
+            // has nothing to order and there is no term this statement could
+            // write; a reduction that carries one is finished here.
+            return false;
+        }
+
+        if (IsOrderMismatch(groupColumns, order))
+        {
+            return false;
+        }
+
+        if (!IsPagedWithoutOrder(page, order))
+        {
+            return GroupableColumns(groupColumns, schema);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether the page has rows to skip but no order to skip over: T-SQL
+    /// takes <c>OFFSET</c>/<c>FETCH NEXT</c> only over an <c>ORDER BY</c>, and
+    /// an ungrouped reduction is one group that needs no order.
+    /// </summary>
+    private static bool IsPagedWithoutOrder(Paging page, IReadOnlyList<OrderTerm> order) =>
+        !page.IsWhole && order.Count == 0;
+
+    /// <summary>
+    /// Whether the plan's order is one a grouped statement cannot return: a
+    /// grouped reduction whose plan asked for no order, or asked for one over
+    /// a value a group row does not carry (<c>GROUP BY</c> returns rows in no
+    /// defined order, and ordering a group by one of its own columns is a
+    /// different question).
+    /// </summary>
+    private static bool IsOrderMismatch(IReadOnlyList<string> groupColumns, IReadOnlyList<OrderTerm> order)
+    {
+        if (groupColumns.Count == 0)
+        {
+            return false;
+        }
+
+        if (order.Count == 0)
+        {
+            return true;
+        }
+
+        foreach (var term in order)
+        {
+            if (!groupColumns.Contains(term.Field, StringComparer.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether a <c>GROUP BY</c> over every key column groups the rows the way
+    /// the reference does (see <see cref="Groupable"/>).
+    /// </summary>
+    private static bool GroupableColumns(IReadOnlyList<string> groupColumns, IFeatureSchema schema)
+    {
+        foreach (var column in groupColumns)
+        {
+            if (!Groupable(column, schema))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// One aggregate expression per statistic, in request order: a percentile
+    /// contributes the grouped <c>MAX</c> over the rank its window took, and a
+    /// flat statistic contributes its own expression. Answers <c>false</c> —
+    /// the caller's cue to reduce in process — when a window cannot be ranked
+    /// or an expression cannot be stated.
+    /// </summary>
+    private static bool TryBuildValues(
+        Statistic[] statistics,
+        string qualifier,
+        string[] keys,
+        List<object?> parameters,
+        List<string> windows,
+        List<string> values)
+    {
         foreach (var statistic in statistics)
         {
             if (statistic.IsWindowed)
@@ -235,7 +351,7 @@ internal static class SqlServerPlanQueries
                 // never becomes an identifier here.
                 if (statistic.Window($"w{windows.Count}", keys, parameters) is not { } window)
                 {
-                    return null;
+                    return false;
                 }
 
                 windows.Add(window);
@@ -250,48 +366,82 @@ internal static class SqlServerPlanQueries
 
             if (statistic.Expression(qualifier) is not { } expression)
             {
-                return null;
+                return false;
             }
 
             values.Add(expression);
         }
 
-        var source = windowed
+        return true;
+    }
+
+    /// <summary>
+    /// A grouped statement's order over the expressions the <c>GROUP BY</c>
+    /// groups by: a term over the bare column of a text key is a column the
+    /// grouping does not contain, and T-SQL refuses the statement, so the term
+    /// is written over the group key expression itself.
+    /// </summary>
+    private static void AppendGroupedOrder(
+        StringBuilder builder,
+        string[] grouped,
+        IReadOnlyList<string> groupColumns,
+        IReadOnlyList<OrderTerm> order)
+    {
+        if (order.Count == 0)
+        {
+            return;
+        }
+
+        // A grouped statement's `ORDER BY` may only name what the `GROUP BY`
+        // groups: a term over the bare column of a text key is a column the
+        // grouping does not contain, and T-SQL refuses the statement. So the
+        // term is written over the group key expression itself.
+        var terms = new List<string>(order.Count);
+        foreach (var term in order)
+        {
+            var position = groupColumns.ToList().IndexOf(term.Field);
+            terms.Add(GroupedTerm(grouped[position], term.IsDescending));
+        }
+
+        builder.Append(" ORDER BY ").Append(string.Join(", ", terms));
+    }
+
+    /// <summary>
+    /// The table the grouped statement reduces: the dataset's own table for a
+    /// flat reduction, and the derived table the ranks are taken over for one
+    /// with a percentile — a window function cannot be written over the grouped
+    /// statement it is a statistic of.
+    /// </summary>
+    private static string ResolveSource(
+        bool windowed,
+        SqlServerDatasetName dataset,
+        string? where,
+        IReadOnlyList<string> groupColumns,
+        string[] keys,
+        Statistic[] statistics,
+        List<string> windows) =>
+        windowed
             ? Windowed(dataset, where, groupColumns, keys, statistics, windows)
             : dataset.QuoteQualified();
-        // The group key as each statement names it: a windowed statement reads
-        // the derived column, which already carries the key expression's
-        // code-point collation, and a flat one reads the expression itself.
-        var projected = windowed
-            ? groupColumns.Select(Quote).ToArray()
-            : keys.Select((key, i) => Alias(key, groupColumns[i])).ToArray();
-        var grouped = windowed ? projected : keys;
-        var builder = new StringBuilder("SELECT ")
-            .Append(string.Join(", ", projected.Concat(values)))
-            .Append(" FROM ")
-            .Append(source);
-        if (!windowed && where is not null)
+
+    /// <summary>
+    /// The group key as each statement names it: a windowed statement reads
+    /// the derived column, which already carries the key expression's
+    /// code-point collation, and a flat one reads the expression itself.
+    /// </summary>
+    private static (string[] Projected, string[] Grouped) ResolveProjection(
+        bool windowed,
+        IReadOnlyList<string> groupColumns,
+        string[] keys)
+    {
+        if (!windowed)
         {
-            builder.Append(" WHERE ").Append(where);
+            var flat = keys.Select((key, i) => Alias(key, groupColumns[i])).ToArray();
+            return (flat, keys);
         }
 
-        if (groupColumns.Count > 0)
-        {
-            builder.Append(" GROUP BY ").Append(string.Join(", ", grouped));
-            if (order.Count > 0)
-            {
-                // A grouped statement's `ORDER BY` may only name what the `GROUP BY`
-                // groups: a term over the bare column of a text key is a column the
-                // grouping does not contain, and T-SQL refuses the statement. So the
-                // term is written over the group key expression itself.
-                var terms = order.Select(term =>
-                    GroupedTerm(grouped[groupColumns.ToList().IndexOf(term.Field)], term.IsDescending));
-                builder.Append(" ORDER BY ").Append(string.Join(", ", terms));
-            }
-        }
-
-        page.AppendTo(builder, parameters);
-        return builder.ToString();
+        var derived = groupColumns.Select(Quote).ToArray();
+        return (derived, derived);
     }
 
     /// <summary>
@@ -479,36 +629,37 @@ internal static class SqlServerPlanQueries
                 return "COUNT(*)";
             }
 
-            var index = schema.IndexOf(spec.Field);
-            if (index < 0)
+            if (!TryFieldKind(out var kind))
             {
                 return null;
             }
 
-            var kind = schema[index].Kind;
-            var quoted = Qualified(spec.Field, qualifier);
-            return spec.Statistic switch
+            return Dispatch(spec.Statistic, kind, Qualified(spec.Field, qualifier), qualifier);
+        }
+
+        private bool TryFieldKind(out AttributeKind kind)
+        {
+            var index = schema.IndexOf(spec.Field);
+            if (index < 0)
+            {
+                kind = default;
+                return false;
+            }
+
+            kind = schema[index].Kind;
+            return true;
+        }
+
+        private string? Dispatch(AggregateStatistic statistic, AttributeKind kind, string quoted, string qualifier) =>
+            statistic switch
             {
                 // `COUNT` and `SUM` skip the nulls, and report a null for a
                 // group with none of them, exactly as the reference does.
                 AggregateStatistic.Count => $"COUNT({quoted})",
-                // `SUM` over an integer column is a `bigint` sum here: the
-                // column may be a hand-authored `int`, whose `SUM` overflows in
-                // the server where the reference's `long` sum does not.
-                AggregateStatistic.Sum => kind == AttributeKind.Int64
-                    ? $"SUM(CONVERT(bigint, {quoted}))"
-                    : kind == AttributeKind.Double ? $"SUM({quoted})" : null,
-                // `AVG` over an integer column is *integer* division — a
-                // truncated mean, not the reference's — and `float` is T-SQL's
-                // double, so the sum is taken in it and divided once at the end,
-                // the way the reference averages.
-                AggregateStatistic.Average => kind == AttributeKind.Int64
-                    ? $"SUM(CONVERT(float, {quoted})) / COUNT({quoted})"
-                    : kind == AttributeKind.Double ? $"SUM({quoted}) / COUNT({quoted})" : null,
-                // `VAR` and `STDEV` are the *sample* forms, which is the form
-                // the reference reports, and are null for fewer than two values.
-                AggregateStatistic.Variance => Numeric(kind, quoted) is { } numeric ? $"VAR({numeric})" : null,
-                AggregateStatistic.StdDev => Numeric(kind, quoted) is { } numeric ? $"STDEV({numeric})" : null,
+                AggregateStatistic.Sum => SumExpression(kind, quoted),
+                AggregateStatistic.Average => AverageExpression(kind, quoted),
+                AggregateStatistic.Variance => VarianceExpression(kind, quoted),
+                AggregateStatistic.StdDev => StdDevExpression(kind, quoted),
                 // An extreme is the smallest/largest value under the same
                 // comparison every other string here states. A `bit` has no
                 // `MIN`/`MAX` in T-SQL at all, but it is two integers and the
@@ -528,7 +679,43 @@ internal static class SqlServerPlanQueries
                 // derived table instead.
                 _ => null,
             };
-        }
+
+        /// <summary>
+        /// A sum in the reference's arithmetic: an integer column sums as a
+        /// <c>bigint</c> — the column may be a hand-authored <c>int</c>, whose
+        /// <c>SUM</c> overflows in the server where the reference's
+        /// <c>long</c> sum does not — and a double sums as itself.
+        /// </summary>
+        private static string? SumExpression(AttributeKind kind, string quoted) =>
+            kind == AttributeKind.Int64
+                ? $"SUM(CONVERT(bigint, {quoted}))"
+                : kind == AttributeKind.Double ? $"SUM({quoted})" : null;
+
+        /// <summary>
+        /// A mean in the reference's arithmetic: <c>AVG</c> over an integer
+        /// column is <em>integer</em> division — a truncated mean, not the
+        /// reference's — and <c>float</c> is T-SQL's double, so the sum is
+        /// taken in it and divided once at the end, the way the reference
+        /// averages.
+        /// </summary>
+        private static string? AverageExpression(AttributeKind kind, string quoted) =>
+            kind == AttributeKind.Int64
+                ? $"SUM(CONVERT(float, {quoted})) / COUNT({quoted})"
+                : kind == AttributeKind.Double ? $"SUM({quoted}) / COUNT({quoted})" : null;
+
+        /// <summary>
+        /// A sample variance over the reference's doubles, null for fewer than
+        /// two values, which is the form the reference reports.
+        /// </summary>
+        private static string? VarianceExpression(AttributeKind kind, string quoted) =>
+            Numeric(kind, quoted) is { } numeric ? $"VAR({numeric})" : null;
+
+        /// <summary>
+        /// A sample deviation over the reference's doubles, null for fewer
+        /// than two values, which is the form the reference reports.
+        /// </summary>
+        private static string? StdDevExpression(AttributeKind kind, string quoted) =>
+            Numeric(kind, quoted) is { } numeric ? $"STDEV({numeric})" : null;
 
         /// <summary>
         /// A percentile as T-SQL spells it — a window function over a partition,
