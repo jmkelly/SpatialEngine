@@ -164,54 +164,69 @@ internal static class MapValidator
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var relationship in layer.Relationships ?? [])
             {
-                if (!NamePattern.IsMatch(relationship.Name ?? string.Empty))
-                {
-                    throw SpatialException.BadArguments(
-                        $"Map '{map.Name}' has a relationship on layer {layer.LayerId} named '{relationship.Name}': expected a flat identifier [A-Za-z_][A-Za-z0-9_]*.");
-                }
-
-                if (!names.Add(relationship.Name!))
-                {
-                    throw SpatialException.BadArguments(
-                        $"Map '{map.Name}' declares relationship '{relationship.Name}' more than once on layer {layer.LayerId}.");
-                }
-
-                if (layer.Kind != MapLayerKind.Feature)
-                {
-                    throw SpatialException.BadArguments(
-                        $"Map '{map.Name}' relationship '{relationship.Name}' is declared on layer {layer.LayerId}, which is not a feature layer.");
-                }
-
-                if (!byId.TryGetValue(relationship.RelatedLayerId, out _))
-                {
-                    throw SpatialException.BadArguments(
-                        $"Map '{map.Name}' relationship '{relationship.Name}' on layer {layer.LayerId} targets layer {relationship.RelatedLayerId}, which the map does not publish.");
-                }
-
-                if (byId[relationship.RelatedLayerId].Kind != MapLayerKind.Feature)
-                {
-                    throw SpatialException.BadArguments(
-                        $"Map '{map.Name}' relationship '{relationship.Name}' on layer {layer.LayerId} targets layer {relationship.RelatedLayerId}, which is not a feature layer.");
-                }
-
-                foreach (var column in new[] { relationship.PrimaryKeyColumn, relationship.RelatedKeyColumn })
-                {
-                    if (!IsValidColumn(column))
-                    {
-                        throw SpatialException.BadArguments(
-                            $"Map '{map.Name}' relationship '{relationship.Name}' names column '{column}': expected an identifier [A-Za-z_][A-Za-z0-9_]*.");
-                    }
-                }
-
-                if (!Enum.IsDefined(relationship.Cardinality))
-                {
-                    throw SpatialException.BadArguments(
-                        $"Map '{map.Name}' relationship '{relationship.Name}' has unknown cardinality {relationship.Cardinality}.");
-                }
-
-                ValidateJoin(map, layer, relationship);
+                ValidateRelationshipName(map, layer, relationship, names);
+                ValidateRelationshipEndpoints(map, layer, relationship, byId);
+                ValidateRelationshipShape(map, layer, relationship);
             }
         }
+    }
+
+    private static void ValidateRelationshipName(
+        Map map, MapLayer layer, LayerRelationship relationship, HashSet<string> names)
+    {
+        if (!NamePattern.IsMatch(relationship.Name ?? string.Empty))
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' has a relationship on layer {layer.LayerId} named '{relationship.Name}': expected a flat identifier [A-Za-z_][A-Za-z0-9_]*.");
+        }
+
+        if (!names.Add(relationship.Name!))
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' declares relationship '{relationship.Name}' more than once on layer {layer.LayerId}.");
+        }
+    }
+
+    private static void ValidateRelationshipEndpoints(
+        Map map, MapLayer layer, LayerRelationship relationship, Dictionary<int, MapLayer> byId)
+    {
+        if (layer.Kind != MapLayerKind.Feature)
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' relationship '{relationship.Name}' is declared on layer {layer.LayerId}, which is not a feature layer.");
+        }
+
+        if (!byId.TryGetValue(relationship.RelatedLayerId, out var target))
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' relationship '{relationship.Name}' on layer {layer.LayerId} targets layer {relationship.RelatedLayerId}, which the map does not publish.");
+        }
+
+        if (target.Kind != MapLayerKind.Feature)
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' relationship '{relationship.Name}' on layer {layer.LayerId} targets layer {relationship.RelatedLayerId}, which is not a feature layer.");
+        }
+    }
+
+    private static void ValidateRelationshipShape(Map map, MapLayer layer, LayerRelationship relationship)
+    {
+        foreach (var column in new[] { relationship.PrimaryKeyColumn, relationship.RelatedKeyColumn })
+        {
+            if (!IsValidColumn(column))
+            {
+                throw SpatialException.BadArguments(
+                    $"Map '{map.Name}' relationship '{relationship.Name}' names column '{column}': expected an identifier [A-Za-z_][A-Za-z0-9_]*.");
+            }
+        }
+
+        if (!Enum.IsDefined(relationship.Cardinality))
+        {
+            throw SpatialException.BadArguments(
+                $"Map '{map.Name}' relationship '{relationship.Name}' has unknown cardinality {relationship.Cardinality}.");
+        }
+
+        ValidateJoin(map, layer, relationship);
     }
 
     private static void ValidateJoin(Map map, MapLayer layer, LayerRelationship relationship)
