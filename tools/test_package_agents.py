@@ -98,14 +98,6 @@ class PackageAgentsTests(_Fixture):
         found = findings(self.root)
         self.assertTrue(any(PACKAGES[0] in f and "line budget" in f for f in found), found)
 
-    def test_the_generated_orientation_block_does_not_spend_the_budget(self):
-        self.seed_all()
-        orientation = "<!-- orientation:begin -->\n\n## Orientation\n\n" + (
-            "- one line. (SpatialEngine-rzq)\n"
-        ) * 8 + "<!-- orientation:end -->\n"
-        _write(self.root, PACKAGES[0], AGENTS + "\n" + orientation)
-        self.assertEqual([], findings(self.root))
-
     def test_a_file_without_a_never_list_is_a_finding(self):
         self.seed_all()
         _write(self.root, PACKAGES[0], AGENTS.replace("## Never", "## Habits"))

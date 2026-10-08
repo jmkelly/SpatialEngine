@@ -125,11 +125,7 @@ git. `bd ready` is where to start; `bd prime` prints the full agent workflow.
   reached `origin/main`.
 - Complete: `bd close <id> --reason="…"` — only after CI's run for that merge
   is green on `main`, never on the branch. The fast gate is never the only
-  thing that ran. In the close, answer **where the first hour went**: if the
-  answer names a file, a subsystem, a trap, or a search that was dead, add one
-  imperative line under `## Orientation` in `architecture/principles.md`,
-  ending in `(SpatialEngine-<id>)`, and run `python3 tools/orientation.py` to
-  see the coverage. One line per bead.
+  thing that ran.
 - Recovery: `python3 tools/bd-safe-reclaim.py` after a crashed agent's lease
   expires — never bare `bd reclaim`, which keys on lease age alone and so cannot
   tell a crashed agent from one that simply has not heartbeated.
