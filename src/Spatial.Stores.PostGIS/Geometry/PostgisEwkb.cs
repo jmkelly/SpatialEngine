@@ -62,23 +62,33 @@ internal static class PostgisEwkb
     /// or <c>GeometryZM</c>. Layout knowledge lives here, on the plugin's single
     /// <c>Spatial.Core.Geometry</c> surface (ADR-0028).
     /// </summary>
-    public static string SqlTypeName(AttributeValue value) => value.GeometryValue.Layout switch
+    public static string SqlTypeName(AttributeValue value) =>
+        SqlTypeNames.TryGetValue(value.GeometryValue.Layout, out var name)
+            ? name
+            : throw new ArgumentOutOfRangeException(nameof(value), value.GeometryValue.Layout, "Unknown coordinate layout.");
+
+    /// <summary>The typmod name per coordinate layout, looked up rather than branched.</summary>
+    private static readonly Dictionary<CoordinateLayout, string> SqlTypeNames = new()
     {
-        CoordinateLayout.Xy => "Geometry",
-        CoordinateLayout.Xyz => "GeometryZ",
-        CoordinateLayout.Xym => "GeometryM",
-        CoordinateLayout.Xyzm => "GeometryZM",
-        _ => throw new ArgumentOutOfRangeException(nameof(value), value.GeometryValue.Layout, "Unknown coordinate layout."),
+        [CoordinateLayout.Xy] = "Geometry",
+        [CoordinateLayout.Xyz] = "GeometryZ",
+        [CoordinateLayout.Xym] = "GeometryM",
+        [CoordinateLayout.Xyzm] = "GeometryZM",
     };
 
     /// <summary>The display name of the value's coordinate layout, for diagnostics.</summary>
-    public static string LayoutName(AttributeValue value) => value.GeometryValue.Layout switch
+    public static string LayoutName(AttributeValue value) =>
+        LayoutNames.TryGetValue(value.GeometryValue.Layout, out var name)
+            ? name
+            : value.GeometryValue.Layout.ToString();
+
+    /// <summary>The display name per coordinate layout, looked up rather than branched.</summary>
+    private static readonly Dictionary<CoordinateLayout, string> LayoutNames = new()
     {
-        CoordinateLayout.Xy => "XY",
-        CoordinateLayout.Xyz => "XYZ",
-        CoordinateLayout.Xym => "XYM",
-        CoordinateLayout.Xyzm => "XYZM",
-        _ => value.GeometryValue.Layout.ToString(),
+        [CoordinateLayout.Xy] = "XY",
+        [CoordinateLayout.Xyz] = "XYZ",
+        [CoordinateLayout.Xym] = "XYM",
+        [CoordinateLayout.Xyzm] = "XYZM",
     };
 
     private static bool Matches(CoordinateReference reference, int srid) =>

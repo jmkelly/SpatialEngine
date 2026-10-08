@@ -509,18 +509,59 @@ internal static class PostgisPlanQueries
     /// <summary>One aggregate expression, with its bound parameters, in the plan's result order.</summary>
     private sealed class Statistic(AggregateSpec spec, IFeatureSchema schema, PostgisTextOrder text)
     {
-        public string Expression(List<object?> parameters) => spec.Statistic switch
+        public string Expression(List<object?> parameters)
         {
-            AggregateStatistic.Count when spec.IsRowCount => "COUNT(*)",
-            AggregateStatistic.Count => $"COUNT({Quote(spec.Field)})",
+            if (spec.IsRowCount)
+            {
+                return "COUNT(*)";
+            }
+
+            if (spec.Statistic == AggregateStatistic.Count)
+            {
+                return $"COUNT({Quote(spec.Field)})";
+            }
+
+            if (NumericExpression() is { } numeric)
+            {
+                return numeric;
+            }
+
+            if (ExtremeExpression() is { } extreme)
+            {
+                return extreme;
+            }
+
+            return spec.Statistic == AggregateStatistic.Envelope
+                ? Extent()
+                : Percentile(spec, parameters);
+        }
+
+        /// <summary>
+        /// A bare-column numeric aggregate (<c>SUM</c>, <c>AVG</c>,
+        /// <c>VAR_SAMP</c>, <c>STDDEV_SAMP</c>), or <c>null</c> when the
+        /// statistic is not one — the dialect spellings that need no
+        /// collation, no bound value and no geometry rewrite.
+        /// </summary>
+        private string? NumericExpression() => spec.Statistic switch
+        {
             AggregateStatistic.Sum => $"SUM({Quote(spec.Field)})",
             AggregateStatistic.Average => $"AVG({Quote(spec.Field)})",
             AggregateStatistic.Variance => $"VAR_SAMP({Quote(spec.Field)})",
             AggregateStatistic.StdDev => $"STDDEV_SAMP({Quote(spec.Field)})",
+            _ => null,
+        };
+
+        /// <summary>
+        /// An extreme over the field under the byte order every string
+        /// comparison in this store states, or <c>null</c> when the statistic
+        /// is not one — a <c>MIN</c>/<c>MAX</c> over a text column inherits the
+        /// column's collation exactly like a sort key does (ADR-0121).
+        /// </summary>
+        private string? ExtremeExpression() => spec.Statistic switch
+        {
             AggregateStatistic.Minimum => $"MIN({Ordered(spec.Field, schema, text)})",
             AggregateStatistic.Maximum => $"MAX({Ordered(spec.Field, schema, text)})",
-            AggregateStatistic.Envelope => Extent(),
-            _ => Percentile(spec, parameters),
+            _ => null,
         };
 
         /// <summary>

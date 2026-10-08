@@ -374,18 +374,12 @@ internal static class PostgisPredicateSql
 
         private void VisitIsIn(Predicate.IsIn isIn)
         {
-            if (!TryResolveColumn(isIn.Field, out var index, out var kind))
+            if (!TryResolveIsInColumn(isIn, out var index, out var kind))
             {
                 return;
             }
 
-            if (kind == AttributeKind.Geometry)
-            {
-                Error = GeometryHint(isIn.Field);
-                return;
-            }
-
-            if (isIn.Values.Any(value => value.Kind == LiteralKind.Null))
+            if (ContainsNull(isIn))
             {
                 // `x IN (1, NULL)` and `x NOT IN (1, NULL)` are both unanswerable
                 // in SQL, and the grammar refuses a NULL inside IN, so this is
@@ -395,23 +389,61 @@ internal static class PostgisPredicateSql
                 return;
             }
 
-            // A value the column can never equal is not an error and does not
-            // poison the list — it simply is not a match, so it drops out. If
-            // nothing is left the test answers the negated or plain truth value.
-            // A comparable literal never binds to null, so null is the marker
-            // for "this value is not a match and drops out".
-            var bindable = isIn.Values
-                .Select(value => TryBind(ComparisonOperator.Equals, value, kind, out var bound) ? bound : null)
-                .Where(bound => bound is not null)
-                .ToArray();
+            var bindable = BindInValues(isIn, kind);
             if (bindable.Length == 0)
             {
+                // A value the column can never equal is not an error and does not
+                // poison the list — it simply is not a match, so it drops out.
+                // When nothing is left the test answers the negated or plain truth value.
                 _sql.Append(isIn.Negated ? "TRUE" : "FALSE");
                 return;
             }
 
+            AppendInList(index, isIn.Negated, bindable);
+        }
+
+        /// <summary>
+        /// The filtered column an <c>IN</c> test resolves against: the same
+        /// resolution every other clause gets, plus the geometry refusal —
+        /// a geometry field is filtered spatially, never by value.
+        /// </summary>
+        private bool TryResolveIsInColumn(Predicate.IsIn isIn, out int index, out AttributeKind kind)
+        {
+            if (!TryResolveColumn(isIn.Field, out index, out kind))
+            {
+                return false;
+            }
+
+            if (kind == AttributeKind.Geometry)
+            {
+                Error = GeometryHint(isIn.Field);
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>Whether the value list carries a null, which SQL's three-valued logic reads as "not matched".</summary>
+        private static bool ContainsNull(Predicate.IsIn isIn) =>
+            isIn.Values.Any(value => value.Kind == LiteralKind.Null);
+
+        /// <summary>
+        /// The list values bound as the column's kind, with the values the
+        /// column can never equal dropped: a comparable literal never binds to
+        /// null, so null is the marker for "this value is not a match and
+        /// drops out".
+        /// </summary>
+        private static object?[] BindInValues(Predicate.IsIn isIn, AttributeKind kind) =>
+            isIn.Values
+                .Select(value => TryBind(ComparisonOperator.Equals, value, kind, out var bound) ? bound : null)
+                .Where(bound => bound is not null)
+                .ToArray();
+
+        /// <summary>The membership test itself over the values that survived binding.</summary>
+        private void AppendInList(int index, bool negated, object?[] bindable)
+        {
             _sql.Append(Operand(index))
-                .Append(isIn.Negated ? " NOT IN (" : " IN (");
+                .Append(negated ? " NOT IN (" : " IN (");
             for (var i = 0; i < bindable.Length; i++)
             {
                 if (i > 0)
@@ -503,14 +535,31 @@ internal static class PostgisPredicateSql
         private static object Bind(Literal value) => value.Kind switch
         {
             LiteralKind.String => value.Text ?? string.Empty,
-            LiteralKind.Integer when long.TryParse(value.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer) => integer,
-            LiteralKind.Integer => value.Number,
+            LiteralKind.Integer => BindInteger(value),
             LiteralKind.Decimal => value.Number,
             LiteralKind.Boolean => value.Boolean,
-            LiteralKind.DateTime => DateTimeOffset.FromUnixTimeMilliseconds((long)value.Number),
+            LiteralKind.DateTime => BindDateTime(value),
             LiteralKind.Null => DBNull.Value,
             _ => throw SpatialException.BadArguments($"the filter literal '{value.Text}' is not a bindable value."),
         };
+
+        /// <summary>
+        /// A whole number carried verbatim: the literal keeps its text so no
+        /// precision is lost, and binds as a long when it parses as one.
+        /// </summary>
+        private static object BindInteger(Literal value)
+        {
+            if (long.TryParse(value.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var integer))
+            {
+                return integer;
+            }
+
+            return value.Number;
+        }
+
+        /// <summary>A date-time literal as the UTC instant the driver binds.</summary>
+        private static DateTimeOffset BindDateTime(Literal value) =>
+            DateTimeOffset.FromUnixTimeMilliseconds((long)value.Number);
 
         private bool TryResolveColumn(FieldRef field, out int index, out AttributeKind kind)
         {

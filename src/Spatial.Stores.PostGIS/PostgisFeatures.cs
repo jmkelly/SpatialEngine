@@ -83,7 +83,7 @@ internal sealed class PostgisFeatures(PostgisStorage storage, PostgisCatalogue c
             : Task.FromResult(PostgisTextOrder.Locale);
 
     /// <summary>Whether the plan's restriction compares a text column, in either half of it.</summary>
-    private static bool ComparesText(DatasetDescription description, FeatureQuery query) =>
+    internal static bool ComparesText(DatasetDescription description, FeatureQuery query) =>
         (query.Ids is { Count: > 0 } && PostgisIdentity.ComparesText(description))
         || (query.Where is { } where && PostgisPredicateSql.ComparesText(where, description.Schema));
 

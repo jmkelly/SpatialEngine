@@ -32,22 +32,45 @@ internal static class PostgisCoordinateLayout
             return CoordinateLayout.Xy;
         }
 
+        return LayoutOfDeclared(DeclaredName(typeModifier));
+    }
+
+    /// <summary>
+    /// The declared geometry name inside the modifier's parentheses
+    /// (<c>geometry(PointZ,4326)</c> declares <c>PointZ</c>), or <c>null</c>
+    /// when the modifier declares no parenthesised type at all.
+    /// </summary>
+    private static string? DeclaredName(string typeModifier)
+    {
         var open = typeModifier.IndexOf('(');
         if (open < 0)
         {
-            return CoordinateLayout.Xy;
+            return null;
         }
 
         var close = typeModifier.IndexOf(')', open);
         var declared = typeModifier[(open + 1)..(close < 0 ? typeModifier.Length : close)];
-        var name = declared.Split(',')[0].Trim();
+        return declared.Split(',')[0].Trim();
+    }
 
-        return name.EndsWith("ZM", StringComparison.OrdinalIgnoreCase)
+    /// <summary>The layout a declared name proves, or Xy when it declares none.</summary>
+    private static CoordinateLayout LayoutOfDeclared(string? name)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return CoordinateLayout.Xy;
+        }
+
+        return LayoutOfSuffix(name);
+    }
+
+    /// <summary>The layout a declared name's ordinate suffix proves (<c>ZM</c>, <c>Z</c>, <c>M</c>, or none).</summary>
+    private static CoordinateLayout LayoutOfSuffix(string name) =>
+        name.EndsWith("ZM", StringComparison.OrdinalIgnoreCase)
             ? CoordinateLayout.Xyzm
             : name.EndsWith("Z", StringComparison.OrdinalIgnoreCase)
                 ? CoordinateLayout.Xyz
                 : name.EndsWith("M", StringComparison.OrdinalIgnoreCase)
                     ? CoordinateLayout.Xym
                     : CoordinateLayout.Xy;
-    }
 }

@@ -46,10 +46,64 @@ namespace Spatial.Stores.PostGIS;
 /// ordinal of the read, and only a whole read keeps those ordinals the same
 /// across two pages (ADR-0184 §2).
 /// </para>
+///
+/// <para>
+/// The faces live in three cohesive readers — the page read
+/// (<see cref="PostgisPageReader"/>), the restriction compilation
+/// (<see cref="PostgisRestrictionResolver"/>) and the reductions
+/// (<see cref="PostgisReductionReader"/>) — and this type is the thin
+/// composition over them, so the store keeps one entry point whatever face a
+/// plan needs.
+/// </para>
 /// </summary>
 internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue catalogue)
 {
+    private readonly PostgisPageReader _pages = new(storage, catalogue);
+    private readonly PostgisReductionReader _reductions = new(storage, catalogue);
+
+    /// <summary>Reads the page a plan names, with the total when it was computed cheaply.</summary>
+    public Task<FeatureQueryPage> ReadAsync(
+        PostgisDatasetName name, FeatureQuery query, CancellationToken cancellationToken) =>
+        _pages.ReadAsync(name, query, cancellationToken);
+
+    /// <summary>The count of the rows a plan selects, counted by the database.</summary>
+    public Task<int> CountAsync(PostgisDatasetName name, FeatureQuery query, CancellationToken cancellationToken) =>
+        _reductions.CountAsync(name, query, cancellationToken);
+
+    /// <summary>
+    /// The deduplicated field combinations a plan selects: a
+    /// <c>SELECT DISTINCT</c> under the plan's order when that order is total
+    /// over the distinct rows, and reduced over the rows the pushed-down read
+    /// returned for every other plan.
+    /// </summary>
+    public Task<DistinctPage> DistinctAsync(
+        PostgisDatasetName name, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken) =>
+        _reductions.DistinctAsync(name, query, distinct, cancellationToken);
+
+    /// <summary>
+    /// The reduction a plan selects, pushed down when the dialect can return its
+    /// row order, and reduced here over the rows the restriction selected
+    /// otherwise.
+    /// </summary>
+    public Task<AggregatePage> AggregateAsync(
+        PostgisDatasetName name, FeatureQuery query, AggregateQuery aggregate, CancellationToken cancellationToken) =>
+        _reductions.AggregateAsync(name, query, aggregate, cancellationToken);
+
+    /// <summary>Whether the whole page can be addressed in SQL.</summary>
+    internal static bool Pushed(string? where, FeatureQuery query, IReadOnlyList<string>? order) =>
+        PostgisPageReader.Pushed(where, query, order);
+}
+
+/// <summary>
+/// The pushed-down page read: the plan's restriction, order and row cap as one
+/// <c>SELECT</c>, with the total counted beside it, and the fallback over the
+/// whole read when the page cannot be addressed in SQL.
+/// </summary>
+internal sealed class PostgisPageReader(PostgisStorage storage, PostgisCatalogue catalogue)
+{
     private const int BatchSize = 512;
+
+    private readonly PostgisRestrictionResolver _restrictions = new(storage);
 
     /// <summary>Reads the page a plan names, with the total when it was computed cheaply.</summary>
     public async Task<FeatureQueryPage> ReadAsync(
@@ -59,9 +113,9 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var description = facts.Description;
         FeatureQueryValidation.Validate(description.Schema, query);
         var parameters = new List<object?>();
-        var where = await RestrictionAsync(facts, query, parameters, cancellationToken);
+        var where = await _restrictions.RestrictionAsync(facts, query, parameters, cancellationToken);
         var order = PostgisPlanQueries.Order(
-            query.Order ?? [], description.IdColumns, description.Schema, await TextOrderAsync(facts, cancellationToken));
+            query.Order ?? [], description.IdColumns, description.Schema, await _restrictions.TextOrderAsync(facts, cancellationToken));
         if (!Pushed(where, query, order))
         {
             // The restriction is not expressible without renumbering this
@@ -71,7 +125,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             // executor, which selects over the whole read.
             return FeaturePlanExecutor.Finish(
                 description.Schema,
-                await SelectedAsync(facts, query, where, parameters, cancellationToken),
+                await PostgisReductionReader.SelectedAsync(storage, facts, query, where, parameters, cancellationToken),
                 query,
                 cancellationToken);
         }
@@ -81,7 +135,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var shape = Columns(facts, query.Projection);
         var sql = PostgisPlanQueries.Read(
             name, shape.Columns, where, order, new PostgisPlanQueries.Paging(query.Limit, start), parameters);
-        var page = await BatchesAsync(sql, parameters, shape, cancellationToken);
+        var page = await BatchesAsync(storage, sql, parameters, shape, cancellationToken);
         var consumed = page.Sum(batch => batch.Count);
         var more = total is { } matched && start + consumed < matched;
         return FeatureQueryPage.Page(
@@ -114,78 +168,99 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         return where is not null || order is not null;
     }
 
-    /// <summary>The count of the rows a plan selects, counted by the database.</summary>
-    public async Task<int> CountAsync(PostgisDatasetName name, FeatureQuery query, CancellationToken cancellationToken)
+    /// <summary>
+    /// How a pushed-down read is shaped in SQL: the plan's projection as the
+    /// result schema, plus the identity columns the row mapper needs to name
+    /// each row, and the column list that reads both. The identity columns are
+    /// dropped again before the page is returned, so a projection returns
+    /// exactly the fields it asked for.
+    /// </summary>
+    internal static Shape Columns(PostgisDatasetFacts facts, IReadOnlyList<string>? projection)
     {
-        var facts = await catalogue.DescribeFactsAsync(name, cancellationToken);
+        // The projection is decided once per read, not once per row: a read
+        // that appended nothing to drop returns each row's own feature
+        // (FeatureRowProjection), which is what a whole read of a keyless layer
+        // does on every row it reads (SpatialEngine-yup).
         var description = facts.Description;
-        FeatureQueryValidation.Validate(description.Schema, query);
-        var parameters = new List<object?>();
-        var where = await ReductionAsync(facts, query, parameters, cancellationToken);
-        return where is null
-            ? FeatureReduction.CountFeatures(await SelectedAsync(facts, query, null, cancellationToken))
-            : (int)await ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
+        var fields = (projection is null or { Count: 0 }
+            ? description.Schema.Fields
+            : projection
+                .Where(field => field != AggregateSpec.AllFields)
+                .Select(field => description.Schema[description.Schema.IndexOf(field)])
+                .ToArray()).ToList();
+        var result = new FeatureSchema(fields);
+        var read = new FeatureSchema([
+            .. fields,
+            .. description.IdColumns
+                .Select(column => description.Schema[description.Schema.IndexOf(column)])
+                .Where(field => !fields.Contains(field))]);
+        // The identity indexes are the identity columns' positions in what was
+        // *read*, which is not the set of columns that were appended: an
+        // ordinary read carries the whole schema and therefore already carries
+        // the identity, and taking the appended ones as the identity would name
+        // every pushed row by its ordinal instead of its key (ADR-0131).
+        var indexes = description.IdColumns.Select(column => read.IndexOf(column)).Where(index => index >= 0).ToArray();
+        return new Shape(PostgisPlanQueries.Columns(read, null), read, new FeatureRowProjection(read, result), indexes);
+    }
+
+    internal static async Task<FeatureBatch[]> BatchesAsync(
+        PostgisStorage storage, string sql, IReadOnlyList<object?> parameters, Shape shape, CancellationToken cancellationToken)
+    {
+        await using var connection = await storage.OpenConnectionAsync(cancellationToken);
+        await using var reader = await PostgisDataStore.ExecuteReaderAsync(connection, sql, parameters, cancellationToken);
+        var features = new List<Feature>(BatchSize);
+        long ordinal = 0;
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var row = PostgisDataStore.ReadRow(reader, reader.FieldCount);
+            features.Add(shape.Projection.Apply(PostgisRowMapper.MapRow(shape.Read, shape.Identity, row, ordinal++)));
+        }
+
+        return features.Count == 0
+            ? [new FeatureBatch(shape.Result, [])]
+            : features.Chunk(BatchSize).Select(chunk => new FeatureBatch(shape.Result, chunk)).ToArray();
     }
 
     /// <summary>
-    /// The deduplicated field combinations a plan selects: a
-    /// <c>SELECT DISTINCT</c> under the plan's order when that order is total
-    /// over the distinct rows, and reduced over the rows the pushed-down read
-    /// returned for every other plan. The dialect returns distinct rows in no
-    /// defined order, and the contract's order for them is the order the plan
-    /// asked for — so the plan that cannot hand that order to the server keeps
-    /// the first-seen order, which only the rows know (ADR-0133 §6).
+    /// The number of rows the plan matches, counted by the database. It runs on
+    /// every pushed read — with or without a <c>WHERE</c> — because an
+    /// aggregate row is not a row set: the count is what lets the page say
+    /// whether the plan has more without over-fetching, and it is the same
+    /// number the reference reports as the page's total.
     /// </summary>
-    public async Task<DistinctPage> DistinctAsync(
-        PostgisDatasetName name, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken)
-    {
-        var facts = await catalogue.DescribeFactsAsync(name, cancellationToken);
-        var description = facts.Description;
-        var schema = (FeatureSchema)description.Schema;
-        FeatureQueryValidation.ValidateDistinct(schema, distinct);
-        var parameters = new List<object?>();
-        var where = await ReductionAsync(facts, query, parameters, cancellationToken);
-        var order = query.Order ?? [];
-        var sql = PostgisPlanQueries.Distinct(
-            name,
-            distinct.Fields,
-            order,
-            schema,
-            await TextOrderAsync(facts, schema, distinct.Fields, order, cancellationToken),
-            where,
-            parameters);
-        // A restriction this store cannot state (a dataset with no identity
-        // column asked for identities, so there is no expression to say it
-        // with — ADR-0184 §1) leaves `where` null for a plan that *does*
-        // restrict. Deduplicating on that null would answer with the whole
-        // table's set for a restricted plan, so the set is reduced over the
-        // rows the reference selected instead.
-        if (sql is null || (where is null && PostgisPlanQueries.Restricts(query)))
-        {
-            return FeatureReduction.Distinct(
-                schema,
-                await SelectedAsync(facts, query, where, parameters, cancellationToken),
-                distinct,
-                query.Order);
-        }
+    private static async Task<int> TotalAsync(
+        PostgisStorage storage, PostgisDatasetName name, string? where, List<object?> parameters, CancellationToken cancellationToken) =>
+        (int)await ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
 
+    internal static async Task<long> ScalarAsync(
+        PostgisStorage storage, string sql, IReadOnlyList<object?> parameters, CancellationToken cancellationToken)
+    {
         await using var connection = await storage.OpenConnectionAsync(cancellationToken);
         var rows = await PostgisDataStore.ReadRowsAsync(connection, sql, parameters, cancellationToken);
-        var reduced = new List<IReadOnlyList<AttributeValue>>(rows.Count);
-        foreach (var row in rows)
-        {
-            var values = new AttributeValue[distinct.Fields.Count];
-            for (var i = 0; i < values.Length; i++)
-            {
-                values[i] = PostgisRowMapper.MapValue(schema[schema.IndexOf(distinct.Fields[i])].Kind, row[i]);
-            }
-
-            reduced.Add(values);
-        }
-
-        return new DistinctPage(distinct.Fields, reduced, reduced.Count);
+        return rows.Count == 0
+            ? throw SpatialException.Unavailable("The database returned no row for a single-row aggregate query.")
+            : Convert.ToInt64(rows[0][0], CultureInfo.InvariantCulture);
     }
 
+    /// <summary>One pushed-down read's SQL shape: what is read, and what is returned.</summary>
+    internal sealed record Shape(
+        IReadOnlyList<string> Columns,
+        FeatureSchema Read,
+        FeatureRowProjection Projection,
+        IReadOnlyList<int> Identity)
+    {
+        /// <summary>The schema the page is answered with: the plan's projection.</summary>
+        public FeatureSchema Result => Projection.Result;
+    }
+}
+
+/// <summary>
+/// The restriction a plan pushes, and the collation reads that decide how its
+/// text comparisons are written: one compilation shared by the page read and
+/// every reduction, so a plan states the same comparison everywhere.
+/// </summary>
+internal sealed class PostgisRestrictionResolver(PostgisStorage storage)
+{
     /// <summary>
     /// Whether this database already compares text by bytes, which is what
     /// decides whether a pushed-down text term carries an explicit
@@ -193,7 +268,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// or orders a text column: the probe is a round trip, and a set of numbers
     /// cannot be changed by the collation.
     /// </summary>
-    private async Task<PostgisTextOrder> TextOrderAsync(
+    internal async Task<PostgisTextOrder> TextOrderAsync(
         PostgisDatasetFacts facts,
         FeatureSchema schema,
         IReadOnlyList<string> fields,
@@ -215,7 +290,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// pushes through <see cref="ReductionAsync"/>, which is this restriction
     /// with one dataset shape's decline lifted (ADR-0184 §1).
     /// </summary>
-    private async Task<string?> RestrictionAsync(
+    internal async Task<string?> RestrictionAsync(
         PostgisDatasetFacts facts,
         FeatureQuery query,
         List<object?> parameters,
@@ -242,7 +317,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// renumber. Only an identity restriction the dataset cannot state keeps
     /// the whole plan in the caller.
     /// </summary>
-    private async Task<string?> ReductionAsync(
+    internal async Task<string?> ReductionAsync(
         PostgisDatasetFacts facts,
         FeatureQuery query,
         List<object?> parameters,
@@ -269,8 +344,90 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// cannot answer for is treated as a locale collation, because the term is
     /// the only thing standing between the pushdown and the contract's answer.
     /// </summary>
-    private Task<PostgisTextOrder> TextOrderAsync(PostgisDatasetFacts facts, CancellationToken cancellationToken) =>
+    internal Task<PostgisTextOrder> TextOrderAsync(PostgisDatasetFacts facts, CancellationToken cancellationToken) =>
         storage.TextOrderAsync(facts, cancellationToken);
+}
+
+/// <summary>
+/// The reductions over a plan's selected rows — the count, the distinct set
+/// and the grouped aggregate — pushed down when the dialect can return their
+/// row order and finished here over the selected rows otherwise.
+/// </summary>
+internal sealed class PostgisReductionReader(PostgisStorage storage, PostgisCatalogue catalogue)
+{
+    private readonly PostgisRestrictionResolver _restrictions = new(storage);
+
+    /// <summary>The count of the rows a plan selects, counted by the database.</summary>
+    public async Task<int> CountAsync(PostgisDatasetName name, FeatureQuery query, CancellationToken cancellationToken)
+    {
+        var facts = await catalogue.DescribeFactsAsync(name, cancellationToken);
+        var description = facts.Description;
+        FeatureQueryValidation.Validate(description.Schema, query);
+        var parameters = new List<object?>();
+        var where = await _restrictions.ReductionAsync(facts, query, parameters, cancellationToken);
+        return where is null
+            ? FeatureReduction.CountFeatures(await SelectedAsync(storage, facts, query, null, cancellationToken))
+            : (int)await PostgisPageReader.ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
+    }
+
+    /// <summary>
+    /// The deduplicated field combinations a plan selects: a
+    /// <c>SELECT DISTINCT</c> under the plan's order when that order is total
+    /// over the distinct rows, and reduced over the rows the pushed-down read
+    /// returned for every other plan. The dialect returns distinct rows in no
+    /// defined order, and the contract's order for them is the order the plan
+    /// asked for — so the plan that cannot hand that order to the server keeps
+    /// the first-seen order, which only the rows know (ADR-0133 §6).
+    /// </summary>
+    public async Task<DistinctPage> DistinctAsync(
+        PostgisDatasetName name, FeatureQuery query, DistinctQuery distinct, CancellationToken cancellationToken)
+    {
+        var facts = await catalogue.DescribeFactsAsync(name, cancellationToken);
+        var description = facts.Description;
+        var schema = (FeatureSchema)description.Schema;
+        FeatureQueryValidation.ValidateDistinct(schema, distinct);
+        var parameters = new List<object?>();
+        var where = await _restrictions.ReductionAsync(facts, query, parameters, cancellationToken);
+        var order = query.Order ?? [];
+        var sql = PostgisPlanQueries.Distinct(
+            name,
+            distinct.Fields,
+            order,
+            schema,
+            await _restrictions.TextOrderAsync(facts, schema, distinct.Fields, order, cancellationToken),
+            where,
+            parameters);
+        // A restriction this store cannot state (a dataset with no identity
+        // column asked for identities, so there is no expression to say it
+        // with — ADR-0184 §1) leaves `where` null for a plan that *does*
+        // restrict. Deduplicating on that null would answer with the whole
+        // table's set for a restricted plan, so the set is reduced over the
+        // rows the reference selected instead.
+        if (sql is null || (where is null && PostgisPlanQueries.Restricts(query)))
+        {
+            return FeatureReduction.Distinct(
+                schema,
+                await SelectedAsync(storage, facts, query, where, parameters, cancellationToken),
+                distinct,
+                query.Order);
+        }
+
+        await using var connection = await storage.OpenConnectionAsync(cancellationToken);
+        var rows = await PostgisDataStore.ReadRowsAsync(connection, sql, parameters, cancellationToken);
+        var reduced = new List<IReadOnlyList<AttributeValue>>(rows.Count);
+        foreach (var row in rows)
+        {
+            var values = new AttributeValue[distinct.Fields.Count];
+            for (var i = 0; i < values.Length; i++)
+            {
+                values[i] = PostgisRowMapper.MapValue(schema[schema.IndexOf(distinct.Fields[i])].Kind, row[i]);
+            }
+
+            reduced.Add(values);
+        }
+
+        return new DistinctPage(distinct.Fields, reduced, reduced.Count);
+    }
 
     /// <summary>
     /// The reduction a plan selects, pushed down when the dialect can return its
@@ -288,7 +445,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var schema = (FeatureSchema)description.Schema;
         FeatureQueryValidation.ValidateAggregate(schema, aggregate);
         var parameters = new List<object?>();
-        var where = await ReductionAsync(facts, query, parameters, cancellationToken);
+        var where = await _restrictions.ReductionAsync(facts, query, parameters, cancellationToken);
         // An ungrouped reduction is one row, so the plan's order has nothing to
         // order: it is not written into the SQL at all (an `ORDER BY` over an
         // ungrouped aggregate's column is a query Postgres refuses).
@@ -301,12 +458,12 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         // row".
         var pushed = where is not null || !PostgisPlanQueries.Restricts(query)
             ? await PushedGroupsAsync(
-                name, facts, aggregate, where, order, await TextOrderAsync(facts, cancellationToken), parameters, cancellationToken)
+                name, facts, aggregate, where, order, await _restrictions.TextOrderAsync(facts, cancellationToken), parameters, cancellationToken)
                 .ConfigureAwait(false)
             : null;
         return pushed ?? FeatureReduction.Aggregate(
             schema,
-            await SelectedAsync(facts, query, where, parameters, cancellationToken),
+            await SelectedAsync(storage, facts, query, where, parameters, cancellationToken),
             aggregate,
             query.Order);
     }
@@ -376,66 +533,176 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         var names = aggregate.Specs.Select(spec => spec.Name).ToArray();
         if (rows.Count == 0)
         {
-            // A paged reduction that returned nothing is past the last group, and
-            // how many groups there were is a count the cap just cut, so the
-            // total is the store's to leave uncomputed (ADR-0128). An *ungrouped*
-            // reduction is one group, and an offset that lands past it is past
-            // the last group too: the reference pages the one group and hands
-            // back nothing, so a store that answered the empty group here would
-            // be answering a page the plan did not ask for
-            // (SpatialEngine-u2x.55).
-            var pastTheOnlyGroup = groupCount == 0 && aggregate.Offset > 0;
-            return new AggregatePage(
-                aggregate.GroupBy ?? (IReadOnlyList<string>)[],
-                names,
-                groupCount == 0 && !pastTheOnlyGroup ? [EmptyGroup(aggregate.Specs)] : [],
-                groupCount == 0 || aggregate.Limit is not null ? null : 0);
+            return EmptyResult(aggregate, groupCount, names);
         }
 
-        if (groupCount == 0 && MatchedNothing(aggregate, rows[0]))
+        if (TryEmptySelection(aggregate, groupCount, rows[0], names, out var empty))
         {
-            return new AggregatePage(
-                aggregate.GroupBy ?? (IReadOnlyList<string>)[]!, names, [EmptyGroup(aggregate.Specs)], null);
+            return empty;
         }
 
         // The row past the page is the store's "one more group" answer, not a
         // group of the page (ADR-0128): the page is what the query asked for and
         // the flag is what the caller cannot compute without the rows the cap
         // just cut.
-        var hasMore = aggregate.Limit is { } limit && rows.Count > limit;
-        var groups = new List<AggregateGroup>(Math.Min(rows.Count, aggregate.Limit ?? int.MaxValue));
-        for (var at = 0; at < rows.Count && (aggregate.Limit is not { } cap || at < cap); at++)
-        {
-            var row = rows[at];
-            var key = new AttributeValue[groupCount];
-            for (var i = 0; i < groupCount; i++)
-            {
-                key[i] = PostgisRowMapper.MapValue(schema[schema.IndexOf(aggregate.GroupBy![i])].Kind, row[i]);
-            }
-
-            var values = new AttributeValue[aggregate.Specs.Count];
-            for (var i = 0; i < aggregate.Specs.Count; i++)
-            {
-                var spec = aggregate.Specs[i];
-                var value = row[groupCount + i];
-                values[i] = spec.IsRowCount
-                    ? PostgisRowMapper.MapValue(AttributeKind.Int64, value)
-                    : spec.Statistic == AggregateStatistic.Count
-                        ? FeatureReduction.Counted(Convert.ToInt64(value, CultureInfo.InvariantCulture))
-                        : PostgisRowMapper.MapValue(
-                            FeatureReduction.ResultKind(spec, schema[schema.IndexOf(spec.Field)].Kind), value);
-            }
-
-            groups.Add(new AggregateGroup(key, values));
-        }
-
+        var page = TrimPage(rows, aggregate.Limit);
+        var groups = MapPage(schema, aggregate, page, groupCount);
         return new AggregatePage(
             aggregate.GroupBy ?? (IReadOnlyList<string>)[],
-            aggregate.Specs.Select(spec => spec.Name).ToArray(),
+            names,
             groups,
-            aggregate.IsGrouped && aggregate.Limit is null ? groups.Count : null,
-            hasMore);
+            PageTotal(aggregate, groups.Count),
+            HasMoreGroups(rows, aggregate.Limit));
     }
+
+    /// <summary>
+    /// The reduction over an empty row set: a paged reduction that returned
+    /// nothing is past the last group, and how many groups there were is a
+    /// count the cap just cut, so the total is the store's to leave uncomputed
+    /// (ADR-0128). An *ungrouped* reduction is one group, and an offset that
+    /// lands past it is past the last group too: the reference pages the one
+    /// group and hands back nothing, so a store that answered the empty group
+    /// here would be answering a page the plan did not ask for
+    /// (SpatialEngine-u2x.55).
+    /// </summary>
+    private static AggregatePage EmptyResult(AggregateQuery aggregate, int groupCount, string[] names) =>
+        new(
+            aggregate.GroupBy ?? (IReadOnlyList<string>)[],
+            names,
+            EmptyGroups(aggregate, groupCount),
+            EmptyTotal(aggregate, groupCount));
+
+    /// <summary>The groups an empty row set answers with: none, unless the plan asked for the one ungrouped group.</summary>
+    private static IReadOnlyList<AggregateGroup> EmptyGroups(AggregateQuery aggregate, int groupCount)
+    {
+        if (groupCount != 0)
+        {
+            return [];
+        }
+
+        return aggregate.Offset > 0 ? [] : [EmptyGroup(aggregate.Specs)];
+    }
+
+    /// <summary>The total an empty row set reports: uncomputed, except a grouped uncapped reduction whose answer is no groups.</summary>
+    private static int? EmptyTotal(AggregateQuery aggregate, int groupCount)
+    {
+        if (groupCount == 0 || aggregate.Limit is not null)
+        {
+            return null;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// The one group an ungrouped reduction of an empty selection answers with,
+    /// when the row count says no rows were selected: every other statistic of
+    /// an empty set is null either way, and only the row count can tell the
+    /// empty selection from a selected row of nulls.
+    /// </summary>
+    private static bool TryEmptySelection(
+        AggregateQuery aggregate, int groupCount, IReadOnlyList<object?> first, string[] names, out AggregatePage empty)
+    {
+        if (groupCount == 0 && MatchedNothing(aggregate, first))
+        {
+            empty = new AggregatePage(
+                aggregate.GroupBy ?? (IReadOnlyList<string>)[]!, names, [EmptyGroup(aggregate.Specs)], null);
+            return true;
+        }
+
+        empty = null!;
+        return false;
+    }
+
+    /// <summary>Whether the row set holds one more group than the page carries (ADR-0128).</summary>
+    private static bool HasMoreGroups(IReadOnlyList<IReadOnlyList<object?>> rows, int? limit) =>
+        limit is { } cap && rows.Count > cap;
+
+    /// <summary>The rows of the page the query asked for, without the one-past-the-page probe row.</summary>
+    private static List<IReadOnlyList<object?>> TrimPage(IReadOnlyList<IReadOnlyList<object?>> rows, int? limit)
+    {
+        var count = PageSize(rows.Count, limit);
+        var page = new List<IReadOnlyList<object?>>(count);
+        for (var at = 0; at < count; at++)
+        {
+            page.Add(rows[at]);
+        }
+
+        return page;
+    }
+
+    /// <summary>How many rows of the row set belong to the page: the cap, or every row when uncapped.</summary>
+    private static int PageSize(int total, int? limit) =>
+        limit is { } take ? Math.Min(take, total) : total;
+
+    /// <summary>The page's rows mapped to groups, in the order the server returned them.</summary>
+    private static List<AggregateGroup> MapPage(
+        FeatureSchema schema, AggregateQuery aggregate, List<IReadOnlyList<object?>> page, int groupCount)
+    {
+        var groups = new List<AggregateGroup>(page.Count);
+        foreach (var row in page)
+        {
+            groups.Add(MapOne(schema, aggregate, row, groupCount));
+        }
+
+        return groups;
+    }
+
+    /// <summary>The total a mapped page reports: a grouped uncapped reduction counted its groups; anything else leaves it uncomputed.</summary>
+    private static int? PageTotal(AggregateQuery aggregate, int count)
+    {
+        if (aggregate.IsGrouped && aggregate.Limit is null)
+        {
+            return count;
+        }
+
+        return null;
+    }
+
+    /// <summary>One pushed-down group row as a reduction: the group key with one coerced value per statistic.</summary>
+    private static AggregateGroup MapOne(
+        FeatureSchema schema, AggregateQuery aggregate, IReadOnlyList<object?> row, int groupCount) =>
+        new(MapKey(schema, aggregate, row, groupCount), MapValues(schema, aggregate, row, groupCount));
+
+    /// <summary>One group row's key, with each group column read back under its own kind.</summary>
+    private static AttributeValue[] MapKey(
+        FeatureSchema schema, AggregateQuery aggregate, IReadOnlyList<object?> row, int groupCount)
+    {
+        var key = new AttributeValue[groupCount];
+        for (var i = 0; i < groupCount; i++)
+        {
+            key[i] = PostgisRowMapper.MapValue(schema[schema.IndexOf(aggregate.GroupBy![i])].Kind, row[i]);
+        }
+
+        return key;
+    }
+
+    /// <summary>One group row's statistic values, each coerced to the kind the reference reports.</summary>
+    private static AttributeValue[] MapValues(
+        FeatureSchema schema, AggregateQuery aggregate, IReadOnlyList<object?> row, int groupCount)
+    {
+        var values = new AttributeValue[aggregate.Specs.Count];
+        for (var i = 0; i < aggregate.Specs.Count; i++)
+        {
+            values[i] = MapValue(schema, aggregate.Specs[i], row[groupCount + i]);
+        }
+
+        return values;
+    }
+
+    /// <summary>
+    /// One pushed-down statistic value as the reference reports it: a row count
+    /// is a long, a <c>COUNT(field)</c> counts the non-null values (a zero of
+    /// which is a null, the empty group's answer), and every other statistic is
+    /// read back under the result kind.
+    /// </summary>
+    private static AttributeValue MapValue(FeatureSchema schema, AggregateSpec spec, object? value) =>
+        spec.IsRowCount
+            ? PostgisRowMapper.MapValue(AttributeKind.Int64, value)
+            : spec.Statistic == AggregateStatistic.Count
+                ? FeatureReduction.Counted(Convert.ToInt64(value, CultureInfo.InvariantCulture))
+                : PostgisRowMapper.MapValue(
+                    FeatureReduction.ResultKind(spec, schema[schema.IndexOf(spec.Field)].Kind), value);
 
     /// <summary>
     /// The one group an ungrouped reduction of an empty selection answers with
@@ -486,14 +753,16 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
     /// whole read gave it (ADR-0097).
     /// </para>
     /// </summary>
-    private Task<List<Feature>> SelectedAsync(
+    internal static Task<List<Feature>> SelectedAsync(
+        PostgisStorage storage,
         PostgisDatasetFacts facts,
         FeatureQuery query,
         string? where,
         CancellationToken cancellationToken) =>
-        SelectedAsync(facts, query, where, new List<object?>(), cancellationToken);
+        SelectedAsync(storage, facts, query, where, new List<object?>(), cancellationToken);
 
-    private async Task<List<Feature>> SelectedAsync(
+    internal static async Task<List<Feature>> SelectedAsync(
+        PostgisStorage storage,
         PostgisDatasetFacts facts,
         FeatureQuery query,
         string? where,
@@ -503,7 +772,7 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
         // The store's own row order, never a SQL order of this store's choosing:
         // a reduction's row order is the plan's, and a plan that asked for no
         // order takes the order its scan would have returned.
-        var rows = await WholeAsync(facts, where, parameters, cancellationToken);
+        var rows = await WholeAsync(storage, facts, where, parameters, cancellationToken);
 
         // A restriction the dialect could not express is applied here, over the
         // whole read, so a feature keeps the identity the full scan gave it
@@ -514,98 +783,13 @@ internal sealed class PostgisPlanReader(PostgisStorage storage, PostgisCatalogue
             : rows;
     }
 
-    private async Task<List<Feature>> WholeAsync(
-        PostgisDatasetFacts facts, string? where, List<object?> parameters, CancellationToken cancellationToken)
+    private static async Task<List<Feature>> WholeAsync(
+        PostgisStorage storage, PostgisDatasetFacts facts, string? where, List<object?> parameters, CancellationToken cancellationToken)
     {
-        var shape = Columns(facts, projection: null);
+        var shape = PostgisPageReader.Columns(facts, projection: null);
         var sql = PostgisPlanQueries.Read(
             facts.Dataset, shape.Columns, where, null, new PostgisPlanQueries.Paging(null, 0), parameters);
-        var page = await BatchesAsync(sql, parameters, shape, cancellationToken);
+        var page = await PostgisPageReader.BatchesAsync(storage, sql, parameters, shape, cancellationToken);
         return page.SelectMany(batch => batch.Features).ToList();
-    }
-
-    /// <summary>
-    /// How a pushed-down read is shaped in SQL: the plan's projection as the
-    /// result schema, plus the identity columns the row mapper needs to name
-    /// each row, and the column list that reads both. The identity columns are
-    /// dropped again before the page is returned, so a projection returns
-    /// exactly the fields it asked for.
-    /// </summary>
-    private static Shape Columns(PostgisDatasetFacts facts, IReadOnlyList<string>? projection)
-    {
-        // The projection is decided once per read, not once per row: a read
-        // that appended nothing to drop returns each row's own feature
-        // (FeatureRowProjection), which is what a whole read of a keyless layer
-        // does on every row it reads (SpatialEngine-yup).
-        var description = facts.Description;
-        var fields = (projection is null or { Count: 0 }
-            ? description.Schema.Fields
-            : projection
-                .Where(field => field != AggregateSpec.AllFields)
-                .Select(field => description.Schema[description.Schema.IndexOf(field)])
-                .ToArray()).ToList();
-        var result = new FeatureSchema(fields);
-        var read = new FeatureSchema([
-            .. fields,
-            .. description.IdColumns
-                .Select(column => description.Schema[description.Schema.IndexOf(column)])
-                .Where(field => !fields.Contains(field))]);
-        // The identity indexes are the identity columns' positions in what was
-        // *read*, which is not the set of columns that were appended: an
-        // ordinary read carries the whole schema and therefore already carries
-        // the identity, and taking the appended ones as the identity would name
-        // every pushed row by its ordinal instead of its key (ADR-0131).
-        var indexes = description.IdColumns.Select(column => read.IndexOf(column)).Where(index => index >= 0).ToArray();
-        return new Shape(PostgisPlanQueries.Columns(read, null), read, new FeatureRowProjection(read, result), indexes);
-    }
-
-    private async Task<FeatureBatch[]> BatchesAsync(
-        string sql, IReadOnlyList<object?> parameters, Shape shape, CancellationToken cancellationToken)
-    {
-        await using var connection = await storage.OpenConnectionAsync(cancellationToken);
-        await using var reader = await PostgisDataStore.ExecuteReaderAsync(connection, sql, parameters, cancellationToken);
-        var features = new List<Feature>(BatchSize);
-        long ordinal = 0;
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            var row = PostgisDataStore.ReadRow(reader, reader.FieldCount);
-            features.Add(shape.Projection.Apply(PostgisRowMapper.MapRow(shape.Read, shape.Identity, row, ordinal++)));
-        }
-
-        return features.Count == 0
-            ? [new FeatureBatch(shape.Result, [])]
-            : features.Chunk(BatchSize).Select(chunk => new FeatureBatch(shape.Result, chunk)).ToArray();
-    }
-
-    /// <summary>
-    /// The number of rows the plan matches, counted by the database. It runs on
-    /// every pushed read — with or without a <c>WHERE</c> — because an
-    /// aggregate row is not a row set: the count is what lets the page say
-    /// whether the plan has more without over-fetching, and it is the same
-    /// number the reference reports as the page's total.
-    /// </summary>
-    private static async Task<int> TotalAsync(
-        PostgisStorage storage, PostgisDatasetName name, string? where, List<object?> parameters, CancellationToken cancellationToken) =>
-        (int)await ScalarAsync(storage, PostgisPlanQueries.Count(name, where), parameters, cancellationToken);
-
-    private static async Task<long> ScalarAsync(
-        PostgisStorage storage, string sql, IReadOnlyList<object?> parameters, CancellationToken cancellationToken)
-    {
-        await using var connection = await storage.OpenConnectionAsync(cancellationToken);
-        var rows = await PostgisDataStore.ReadRowsAsync(connection, sql, parameters, cancellationToken);
-        return rows.Count == 0
-            ? throw SpatialException.Unavailable("The database returned no row for a single-row aggregate query.")
-            : Convert.ToInt64(rows[0][0], CultureInfo.InvariantCulture);
-    }
-
-    /// <summary>One pushed-down read's SQL shape: what is read, and what is returned.</summary>
-    private sealed record Shape(
-        IReadOnlyList<string> Columns,
-        FeatureSchema Read,
-        FeatureRowProjection Projection,
-        IReadOnlyList<int> Identity)
-    {
-        /// <summary>The schema the page is answered with: the plan's projection.</summary>
-        public FeatureSchema Result => Projection.Result;
     }
 }
