@@ -33,6 +33,13 @@ internal sealed record RelatedQuery(EsriFeatureQuery Query, CoordinateReference?
     /// </summary>
     private static void RejectUnsupportedShapes(DatasetDescription related, EsriFeatureQuery query)
     {
+        RejectCountShapes(related, query);
+        RejectAggregateShapes(related, query);
+        RejectPagingShapes(related, query);
+    }
+
+    private static void RejectCountShapes(DatasetDescription related, EsriFeatureQuery query)
+    {
         if (query.ReturnIdsOnly)
         {
             throw Unsupported(related, "returnIdsOnly", "a traversal returns the related records, not their ids.");
@@ -47,7 +54,10 @@ internal sealed record RelatedQuery(EsriFeatureQuery Query, CoordinateReference?
         {
             throw Unsupported(related, "returnExtentOnly", "use 'query' on the related layer to get its extent.");
         }
+    }
 
+    private static void RejectAggregateShapes(DatasetDescription related, EsriFeatureQuery query)
+    {
         if (query.ReturnDistinctValues)
         {
             throw Unsupported(related, "returnDistinctValues", "use 'query' on the related layer with 'returnDistinctValues'.");
@@ -62,7 +72,10 @@ internal sealed record RelatedQuery(EsriFeatureQuery Query, CoordinateReference?
         {
             throw Unsupported(related, "uniqueIds", "use 'objectIds' on 'queryRelatedRecords' to address origin records.");
         }
+    }
 
+    private static void RejectPagingShapes(DatasetDescription related, EsriFeatureQuery query)
+    {
         if (query.ResultPaginationToken is not null || query.ResultOffset is not null || query.ResultRecordCount is not null)
         {
             throw Unsupported(

@@ -735,26 +735,33 @@ internal static class GeometryService
         var custom = parameters.Get("relationParam");
         if (string.IsNullOrWhiteSpace(named))
         {
-            // Legacy callers name only the DE-9IM pattern.
-            var pattern = string.IsNullOrWhiteSpace(custom)
-                ? throw GeoServicesErrors.Invalid("The 'relation' parameter is required ('relationParam' holds a DE-9IM pattern).")
-                : ParseRelationPattern(custom);
-            return (left, right, relations, token) => relations.Relate(left, right, pattern, token);
+            return RelationPredicateUnnamed(custom);
         }
 
-        var relation = named.Trim();
+        return RelationPredicateNamed(named.Trim(), custom);
+    }
+
+    private static Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> RelationPredicateUnnamed(
+        string? custom)
+    {
+        // Legacy callers name only the DE-9IM pattern.
+        var pattern = string.IsNullOrWhiteSpace(custom)
+            ? throw GeoServicesErrors.Invalid("The 'relation' parameter is required ('relationParam' holds a DE-9IM pattern).")
+            : ParseRelationPattern(custom);
+        return (left, right, relations, token) => relations.Relate(left, right, pattern, token);
+    }
+
+    private static Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> RelationPredicateNamed(
+        string relation, string? custom)
+    {
         if (IsRelationPattern(relation))
         {
             return (left, right, relations, token) => relations.Relate(left, right, relation, token);
         }
 
-        if (string.Equals(relation, "esriSpatialRelRelation", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(relation, "esriGeometryRelationRelation", StringComparison.OrdinalIgnoreCase))
+        if (IsCustomRelation(relation))
         {
-            var pattern = string.IsNullOrWhiteSpace(custom)
-                ? throw GeoServicesErrors.Invalid("The 'relationParam' parameter is required when 'relation' is a custom relation.")
-                : ParseRelationPattern(custom);
-            return (left, right, relations, token) => relations.Relate(left, right, pattern, token);
+            return RelationPredicateCustom(custom);
         }
 
         if (string.Equals(relation, "esriSpatialRelDisjoint", StringComparison.OrdinalIgnoreCase))
@@ -762,6 +769,25 @@ internal static class GeometryService
             return (left, right, relations, token) => relations.Relate(left, right, "FF*FF****", token);
         }
 
+        return RelationPredicateTable(relation);
+    }
+
+    private static bool IsCustomRelation(string relation) =>
+        string.Equals(relation, "esriSpatialRelRelation", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(relation, "esriGeometryRelationRelation", StringComparison.OrdinalIgnoreCase);
+
+    private static Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> RelationPredicateCustom(
+        string? custom)
+    {
+        var pattern = string.IsNullOrWhiteSpace(custom)
+            ? throw GeoServicesErrors.Invalid("The 'relationParam' parameter is required when 'relation' is a custom relation.")
+            : ParseRelationPattern(custom);
+        return (left, right, relations, token) => relations.Relate(left, right, pattern, token);
+    }
+
+    private static Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> RelationPredicateTable(
+        string relation)
+    {
         // The named predicates are read out of the one pattern table the
         // feature query path tests with, so the same verb has one answer
         // whichever endpoint serves it (SpatialEngine-dih): no pattern string
@@ -779,6 +805,7 @@ internal static class GeometryService
             return (left, right, relations, token) => relations.Relate(left, right, "T*F**FFF*", token);
         }
 
+        var named = relation;
         throw GeoServicesErrors.Invalid(
             $"The 'relation' value '{named}' is not supported: the engine tests DE-9IM patterns " +
             "(esriSpatialRelIntersects/Disjoint/Contains/Within/Touches/Overlaps/Crosses/Equals, or esriSpatialRelRelation with a 'relationParam' pattern).");
@@ -800,37 +827,54 @@ internal static class GeometryService
     private static bool TryNamedRelation(
         string relation, out Func<IGeometry, IGeometry, IGeometryRelations, CancellationToken, bool> predicate)
     {
-        Func<GeometryPair, IGeometryRelations, CancellationToken, bool>? matched = null;
-        if (Matches(relation, "esriSpatialRelContains"))
-        {
-            matched = SpatialRelationPredicates.Contains;
-        }
-        else if (Matches(relation, "esriSpatialRelWithin"))
-        {
-            matched = SpatialRelationPredicates.Within;
-        }
-        else if (Matches(relation, "esriSpatialRelTouches"))
-        {
-            matched = SpatialRelationPredicates.Touches;
-        }
-        else if (Matches(relation, "esriSpatialRelOverlaps"))
-        {
-            matched = SpatialRelationPredicates.Overlaps;
-        }
-        else if (Matches(relation, "esriSpatialRelCrosses"))
-        {
-            matched = SpatialRelationPredicates.Crosses;
-        }
-        else if (Matches(relation, "esriSpatialRelIntersects"))
-        {
-            matched = SpatialRelationPredicates.Intersects;
-        }
+        Func<GeometryPair, IGeometryRelations, CancellationToken, bool>? matched =
+            MatchSurfaceRelation(relation) ?? MatchCurveRelation(relation);
 
         predicate = (left, right, relations, token) =>
             matched is not null
             && GeometryPair.Of(left, right) is { } pair
             && matched(pair, relations, token);
         return matched is not null;
+    }
+
+    private static Func<GeometryPair, IGeometryRelations, CancellationToken, bool>? MatchSurfaceRelation(string relation)
+    {
+        if (Matches(relation, "esriSpatialRelContains"))
+        {
+            return SpatialRelationPredicates.Contains;
+        }
+
+        if (Matches(relation, "esriSpatialRelWithin"))
+        {
+            return SpatialRelationPredicates.Within;
+        }
+
+        if (Matches(relation, "esriSpatialRelTouches"))
+        {
+            return SpatialRelationPredicates.Touches;
+        }
+
+        return null;
+    }
+
+    private static Func<GeometryPair, IGeometryRelations, CancellationToken, bool>? MatchCurveRelation(string relation)
+    {
+        if (Matches(relation, "esriSpatialRelOverlaps"))
+        {
+            return SpatialRelationPredicates.Overlaps;
+        }
+
+        if (Matches(relation, "esriSpatialRelCrosses"))
+        {
+            return SpatialRelationPredicates.Crosses;
+        }
+
+        if (Matches(relation, "esriSpatialRelIntersects"))
+        {
+            return SpatialRelationPredicates.Intersects;
+        }
+
+        return null;
     }
 
     private static bool Matches(string relation, string name) =>

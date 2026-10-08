@@ -40,14 +40,28 @@ internal static class FeatureRelationshipKeys
     /// </summary>
     internal static string Literal(AttributeValue value) => value.Kind switch
     {
+        AttributeKind.Int64 or AttributeKind.Double => LiteralNumber(value),
+        _ => LiteralScalar(value),
+    };
+
+    private static string LiteralNumber(AttributeValue value) => value.Kind switch
+    {
         AttributeKind.Int64 => value.Int64Value.ToString(CultureInfo.InvariantCulture),
-        AttributeKind.Double => value.DoubleValue.ToString("R", CultureInfo.InvariantCulture),
+        _ => value.DoubleValue.ToString("R", CultureInfo.InvariantCulture),
+    };
+
+    private static string LiteralScalar(AttributeValue value) => value.Kind switch
+    {
         AttributeKind.String => Quote(value.StringValue ?? string.Empty),
-        AttributeKind.Guid => Quote(value.GuidValue.ToString("D")),
-        AttributeKind.Boolean => value.BooleanValue ? "TRUE" : "FALSE",
+        AttributeKind.Guid => QuoteGuid(value),
+        AttributeKind.Boolean => LiteralBoolean(value),
         _ => throw GeoServicesErrors.Invalid(
             $"A relationship key of kind {value.Kind} has no equality literal; key columns must be scalar."),
     };
+
+    private static string QuoteGuid(AttributeValue value) => Quote(value.GuidValue.ToString("D"));
+
+    private static string LiteralBoolean(AttributeValue value) => value.BooleanValue ? "TRUE" : "FALSE";
 
     /// <summary>Conjoins rendered terms with <c>AND</c>, the composite-key case.</summary>
     public static string Conjoin(params string?[] terms) =>

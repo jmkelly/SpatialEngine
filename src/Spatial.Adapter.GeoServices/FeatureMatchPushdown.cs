@@ -170,15 +170,8 @@ internal static class FeatureMatchPushdown
     private static Predicate? DesignatedTime(DatasetDescription dataset, TemporalExtentFields fields, EsriTimeExtent extent)
     {
         var terms = new List<Predicate>();
-        if (fields.StartField is { } start && extent.EndMs is { } end && Declared(dataset, start))
-        {
-            terms.Add(AtOrBefore(start, end));
-        }
-
-        if (fields.EndField is { } finish && extent.StartMs is { } from && Declared(dataset, finish))
-        {
-            terms.Add(AtOrAfter(finish, from));
-        }
+        AddStartTerm(dataset, fields, extent, terms);
+        AddEndTerm(dataset, fields, extent, terms);
 
         return terms.Count switch
         {
@@ -186,6 +179,22 @@ internal static class FeatureMatchPushdown
             1 => terms[0],
             _ => new Predicate.Every(terms),
         };
+    }
+
+    private static void AddStartTerm(DatasetDescription dataset, TemporalExtentFields fields, EsriTimeExtent extent, List<Predicate> terms)
+    {
+        if (fields.StartField is { } start && extent.EndMs is { } end && Declared(dataset, start))
+        {
+            terms.Add(AtOrBefore(start, end));
+        }
+    }
+
+    private static void AddEndTerm(DatasetDescription dataset, TemporalExtentFields fields, EsriTimeExtent extent, List<Predicate> terms)
+    {
+        if (fields.EndField is { } finish && extent.StartMs is { } from && Declared(dataset, finish))
+        {
+            terms.Add(AtOrAfter(finish, from));
+        }
     }
 
     /// <summary>

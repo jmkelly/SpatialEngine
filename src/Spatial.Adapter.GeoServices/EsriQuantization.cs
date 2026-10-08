@@ -97,15 +97,28 @@ internal sealed record EsriQuantization(double Tolerance, double OriginX, double
     private IGeometry? QuantizeMulti(IGeometry geometry)
     {
         var crs = geometry.CoordinateReference;
-        return geometry switch
+        if (geometry is MultiPoint multiPoint)
         {
-            MultiPoint multiPoint => GeometryFactory.CreateMultiPoint(multiPoint.Points.Select(point => GeometryFactory.CreatePoint(Snap(point.Coordinate ?? new Coordinate(0, 0)), crs)), crs),
-            MultiLineString multiLine => GeometryFactory.CreateMultiLineString(multiLine.LineStrings.Select(line => QuantizeLine(line, crs)), crs),
-            MultiPolygon multiPolygon => GeometryFactory.CreateMultiPolygon(multiPolygon.Polygons.Select(QuantizePolygon), crs),
-            GeometryCollection collection => GeometryFactory.CreateGeometryCollection(collection.Geometries.Select(Quantize), crs),
-            _ => null,
-        };
+            return QuantizeMultiPoint(multiPoint, crs);
+        }
+
+        if (geometry is MultiLineString multiLine)
+        {
+            return GeometryFactory.CreateMultiLineString(multiLine.LineStrings.Select(line => QuantizeLine(line, crs)), crs);
+        }
+
+        return QuantizeCollection(geometry, crs);
     }
+
+    private IGeometry? QuantizeCollection(IGeometry geometry, CoordinateReference? crs) => geometry switch
+    {
+        MultiPolygon multiPolygon => GeometryFactory.CreateMultiPolygon(multiPolygon.Polygons.Select(QuantizePolygon), crs),
+        GeometryCollection collection => GeometryFactory.CreateGeometryCollection(collection.Geometries.Select(Quantize), crs),
+        _ => null,
+    };
+
+    private MultiPoint QuantizeMultiPoint(MultiPoint multiPoint, CoordinateReference? crs) =>
+        GeometryFactory.CreateMultiPoint(multiPoint.Points.Select(point => GeometryFactory.CreatePoint(Snap(point.Coordinate ?? new Coordinate(0, 0)), crs)), crs);
 
     private Polygon QuantizePolygon(Polygon polygon)
     {

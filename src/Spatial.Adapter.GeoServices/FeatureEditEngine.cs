@@ -291,10 +291,24 @@ internal static class FeatureEditEngine
     private static async Task<List<Feature>> MatchAsync(EditSession session, EsriWhere where)
     {
         var pushdown = EsriWhereResolver.Pushdown(where, session.Scheme, session.Dataset);
-        var batches = pushdown is null
-            ? await session.Store.ScanAsync(session.Dataset.Id, session.CancellationToken)
-            : (await session.Store.QueryAsync(
-                session.Dataset.Id, new FeatureQuery(Where: pushdown), session.CancellationToken)).Batches;
+        var batches = await ReadMatchBatchesAsync(session, pushdown);
+        return FilterMatches(session, batches, where, pushdown);
+    }
+
+    private static async Task<IEnumerable<FeatureBatch>> ReadMatchBatchesAsync(EditSession session, Predicate? pushdown)
+    {
+        if (pushdown is null)
+        {
+            return await session.Store.ScanAsync(session.Dataset.Id, session.CancellationToken);
+        }
+
+        return (await session.Store.QueryAsync(
+            session.Dataset.Id, new FeatureQuery(Where: pushdown), session.CancellationToken)).Batches;
+    }
+
+    private static List<Feature> FilterMatches(
+        EditSession session, IEnumerable<FeatureBatch> batches, EsriWhere where, Predicate? pushdown)
+    {
         var matched = new List<Feature>();
         long ordinal = 0;
         foreach (var feature in batches.SelectMany(batch => batch.Features))

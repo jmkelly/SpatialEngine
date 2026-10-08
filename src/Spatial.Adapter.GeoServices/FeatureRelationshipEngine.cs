@@ -113,19 +113,15 @@ internal static class FeatureRelationshipEngine
         {
             Where = traversal.Query.Query.Where is { } requested ? term.And(requested) : term,
         };
-        var queryGeometry = FeatureProjection.TransformQueryGeometry(
-            effective.Geometry, traversal.Query.LayerCrs, traversal.Transforms, cancellationToken);
-        var matches = relatedRows
-            .Where(row => FeatureSpatialMatcher.Matches(
-                new FeatureSpatialMatcher.MatchCandidate(
-                    effective, row.Feature, row.ObjectId, queryGeometry, traversal.Relations,
-                    TimeFields: traversal.Target.Related.Description.TimeFields),
-                cancellationToken))
-            .ToList();
-        var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(traversal.Target.Related.Description, effective));
-        return ordered
-            .Select(row => FeatureProjection.TransformFeature(row, effective, traversal.Query.LayerCrs, traversal.Transforms, traversal.Operations, cancellationToken))
-            .ToList();
+        return RelatedMatch.Apply(
+            effective,
+            relatedRows,
+            traversal.Target.Related.Description,
+            traversal.Query.LayerCrs,
+            traversal.Operations,
+            traversal.Relations,
+            traversal.Transforms,
+            cancellationToken);
     }
 
     /// <summary>
@@ -161,48 +157,15 @@ internal static class FeatureRelationshipEngine
     /// <summary>
     /// The §9.1.5.6 response: the related layer's field metadata and one entry
     /// per origin record that has related records, each carrying the key the
-    /// rows relate through as <c>relatedId</c> and the projected rows as
-    /// <c>fields</c>. Origin records with no related records are omitted
-    /// rather than served empty.
+    /// rows relate through and the projected rows. Origin records with no
+    /// related records are omitted rather than served empty.
     /// </summary>
     private static IResult Write(
         DatasetDescription related,
         RelatedQuery query,
         IReadOnlyList<RelatedGroup> groups,
-        CancellationToken cancellationToken)
-    {
-        var options = new EsriFeatureWriteOptions(
-            EsriLayerModel.ObjectIdField, 0, query.Query.OutFields, query.Query.ReturnGeometry, query.Query.ReturnEnvelope);
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            FeatureResponseWriter.WriteFields(writer, related);
-            writer.WritePropertyName("relationships");
-            writer.WriteStartArray();
-            foreach (var group in groups)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                writer.WriteStartObject();
-                writer.WriteString("name", group.Name);
-                EsriAttributeCodec.Write(writer, "relatedId", group.Key);
-                writer.WritePropertyName("fields");
-                writer.WriteStartArray();
-                foreach (var row in group.Rows)
-                {
-                    EsriFeatureCodec.Write(writer, row.Feature, options with { ObjectId = row.ObjectId });
-                }
-
-                writer.WriteEndArray();
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        });
-    }
-
-    /// <summary>One origin record's related rows, with the key they relate through.</summary>
-    private sealed record RelatedGroup(string Name, AttributeValue Key, IReadOnlyList<MatchedFeature> Rows);
+        CancellationToken cancellationToken) =>
+        FeatureResponseWriter.WriteRelatedGroups(related, query, groups, cancellationToken);
 
     /// <summary>
     /// One traversal's fixed state: the resolved relationship, the related
@@ -219,4 +182,60 @@ internal static class FeatureRelationshipEngine
         IGeometryRelations Relations,
         ICoordinateTransforms Transforms,
         CancellationToken CancellationToken);
+}
+
+/// <summary>One origin record's related rows, with the key they relate through.</summary>
+internal sealed record RelatedGroup(string Name, AttributeValue RelatedKey, IReadOnlyList<MatchedFeature> Rows);
+
+/// <summary>
+/// One traversal's match→order→project pass: the related rows of one origin
+/// record, matched by the shared query machinery, ordered and projected
+/// exactly as <c>query</c> does. Split out of
+/// <see cref="FeatureRelationshipEngine"/> so the traversal keeps only
+/// orchestration and the match fan-out lives with the code that uses it.
+/// </summary>
+internal static class RelatedMatch
+{
+    internal static List<MatchedFeature> Apply(
+        EsriFeatureQuery effective,
+        IReadOnlyList<MatchedFeature> relatedRows,
+        DatasetDescription related,
+        CoordinateReference? layerCrs,
+        IGeometryOperations operations,
+        IGeometryRelations relations,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken)
+    {
+        var queryGeometry = FeatureProjection.TransformQueryGeometry(
+            effective.Geometry, layerCrs, transforms, cancellationToken);
+        var matches = MatchRows(effective, relatedRows, queryGeometry, related, relations, cancellationToken);
+        var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(related, effective));
+        return ProjectRows(ordered, effective, layerCrs, operations, transforms, cancellationToken);
+    }
+
+    private static List<MatchedFeature> MatchRows(
+        EsriFeatureQuery effective,
+        IReadOnlyList<MatchedFeature> relatedRows,
+        IGeometry? queryGeometry,
+        DatasetDescription related,
+        IGeometryRelations relations,
+        CancellationToken cancellationToken) =>
+        relatedRows
+            .Where(row => FeatureSpatialMatcher.Matches(
+                new FeatureSpatialMatcher.MatchCandidate(
+                    effective, row.Feature, row.ObjectId, queryGeometry, relations,
+                    TimeFields: related.TimeFields),
+                cancellationToken))
+            .ToList();
+
+    private static List<MatchedFeature> ProjectRows(
+        List<MatchedFeature> ordered,
+        EsriFeatureQuery effective,
+        CoordinateReference? layerCrs,
+        IGeometryOperations operations,
+        ICoordinateTransforms transforms,
+        CancellationToken cancellationToken) =>
+        ordered
+            .Select(row => FeatureProjection.TransformFeature(row, effective, layerCrs, transforms, operations, cancellationToken))
+            .ToList();
 }

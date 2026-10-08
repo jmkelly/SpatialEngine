@@ -110,24 +110,40 @@ public static class EsriWhereText
         ArgumentNullException.ThrowIfNull(predicate);
         return predicate switch
         {
-            Predicate.Every every => Group("AND", every.Terms),
-            Predicate.Some some => Group("OR", some.Terms),
-            Predicate.Constant constant => constant.Value ? "1 = 1" : "1 = 0",
-            Predicate.IsNull isNull => $"{isNull.Field.Name} IS {(isNull.Negated ? "NOT " : string.Empty)}NULL",
-            Predicate.IsIn isIn => $"{isIn.Field.Name} {(isIn.Negated ? "NOT IN" : "IN")} ({string.Join(", ", isIn.Values.Select(Render))})",
-            Predicate.Compare compare => $"{compare.Field.Name} {OperatorText(compare.Operator)} {Render(compare.Value)}",
-            // Unreachable while the vocabulary is closed: the base record has a
-            // private constructor, so no node outside these six can exist. It
-            // reports a future node rather than emitting a broken clause.
-            _ => throw EsriInteropException.Invalid($"A {predicate.GetType().Name} has no Esri where-clause shape."),
+            Predicate.Every or Predicate.Some => RenderGroup(predicate),
+            _ => RenderLeaf(predicate),
         };
     }
+
+    private static string RenderGroup(Predicate predicate) => predicate switch
+    {
+        Predicate.Every every => Group("AND", every.Terms),
+        Predicate.Some some => Group("OR", some.Terms),
+        _ => throw EsriInteropException.Invalid($"A {predicate.GetType().Name} has no Esri where-clause shape."),
+    };
+
+    private static string RenderLeaf(Predicate predicate) => predicate switch
+    {
+        Predicate.Constant constant => constant.Value ? "1 = 1" : "1 = 0",
+        Predicate.IsNull isNull => $"{isNull.Field.Name} IS {(isNull.Negated ? "NOT " : string.Empty)}NULL",
+        Predicate.IsIn isIn => $"{isIn.Field.Name} {(isIn.Negated ? "NOT IN" : "IN")} ({string.Join(", ", isIn.Values.Select(Render))})",
+        Predicate.Compare compare => $"{compare.Field.Name} {OperatorText(compare.Operator)} {Render(compare.Value)}",
+        // Unreachable while the vocabulary is closed: the base record has a
+        // private constructor, so no node outside these six can exist. It
+        // reports a future node rather than emitting a broken clause.
+        _ => throw EsriInteropException.Invalid($"A {predicate.GetType().Name} has no Esri where-clause shape."),
+    };
 
     /// <summary>The Esri where-clause rendering of a comparison operator.</summary>
     public static string OperatorText(ComparisonOperator comparison) => comparison switch
     {
         ComparisonOperator.Equals => "=",
         ComparisonOperator.NotEquals => "<>",
+        _ => OperatorInequalityText(comparison),
+    };
+
+    private static string OperatorInequalityText(ComparisonOperator comparison) => comparison switch
+    {
         ComparisonOperator.LessThan => "<",
         ComparisonOperator.LessOrEqual => "<=",
         ComparisonOperator.GreaterThan => ">",
@@ -207,16 +223,22 @@ public static class EsriWhereText
     /// <summary>The Esri where-clause rendering of a literal.</summary>
     public static string Render(Literal literal) => literal.Kind switch
     {
-        LiteralKind.String => "'" + (literal.Text ?? string.Empty).Replace("'", "''", StringComparison.Ordinal) + "'",
+        LiteralKind.String => RenderText(literal),
         LiteralKind.Integer => literal.Text ?? string.Empty,
         LiteralKind.Decimal => literal.Number.ToString("R", CultureInfo.InvariantCulture),
         LiteralKind.Boolean => literal.Boolean ? "TRUE" : "FALSE",
-        LiteralKind.DateTime => "TIMESTAMP '" + DateTimeOffset
-            .FromUnixTimeMilliseconds((long)literal.Number)
-            .UtcDateTime
-            .ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture) + "'",
+        LiteralKind.DateTime => RenderTimestamp(literal),
         _ => "NULL",
     };
+
+    private static string RenderText(Literal literal) =>
+        "'" + (literal.Text ?? string.Empty).Replace("'", "''", StringComparison.Ordinal) + "'";
+
+    private static string RenderTimestamp(Literal literal) =>
+        "TIMESTAMP '" + DateTimeOffset
+            .FromUnixTimeMilliseconds((long)literal.Number)
+            .UtcDateTime
+            .ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture) + "'";
 
     /// <summary>Parenthesises a group so a nested conjunction or disjunction keeps its precedence.</summary>
     private static string Group(string conjunction, IReadOnlyList<Predicate> terms) =>
@@ -504,25 +526,10 @@ public static class EsriWhereText
         {
             if (Current.Kind == TokenKind.LeftParen)
             {
-                _index++;
-                if (!TryOr(out expression, out error))
-                {
-                    return false;
-                }
-
-                if (Current.Kind != TokenKind.RightParen)
-                {
-                    error = $"expected ')' at position {Current.Position}, found '{Current.Text}'";
-                    expression = null!;
-                    return false;
-                }
-
-                _index++;
-                return true;
+                return TryParenthesized(out expression, out error);
             }
 
-            if (Current.Kind is TokenKind.Number or TokenKind.String or TokenKind.True or TokenKind.False or TokenKind.Null
-                or TokenKind.Timestamp or TokenKind.CurrentTimestamp)
+            if (IsConstantStart(Current.Kind))
             {
                 return TryConstantComparison(out expression, out error);
             }
@@ -534,7 +541,34 @@ public static class EsriWhereText
                 return false;
             }
 
-            var field = new FieldRef(Current.Text);
+            return TryFieldTerm(new FieldRef(Current.Text), out expression, out error);
+        }
+
+        private static bool IsConstantStart(TokenKind kind) =>
+            kind is TokenKind.Number or TokenKind.String or TokenKind.True or TokenKind.False or TokenKind.Null
+                or TokenKind.Timestamp or TokenKind.CurrentTimestamp;
+
+        private bool TryParenthesized(out Predicate expression, out string error)
+        {
+            _index++;
+            if (!TryOr(out expression, out error))
+            {
+                return false;
+            }
+
+            if (Current.Kind != TokenKind.RightParen)
+            {
+                error = $"expected ')' at position {Current.Position}, found '{Current.Text}'";
+                expression = null!;
+                return false;
+            }
+
+            _index++;
+            return true;
+        }
+
+        private bool TryFieldTerm(FieldRef field, out Predicate expression, out string error)
+        {
             _index++;
             if (Current.Kind == TokenKind.Is)
             {
@@ -546,6 +580,11 @@ public static class EsriWhereText
                 return TryIsIn(field, out expression, out error);
             }
 
+            return TryFieldComparison(field, out expression, out error);
+        }
+
+        private bool TryFieldComparison(FieldRef field, out Predicate expression, out string error)
+        {
             if (!TryOperator(out var comparison, out error))
             {
                 expression = null!;
@@ -559,6 +598,7 @@ public static class EsriWhereText
             }
 
             expression = new Predicate.Compare(field, comparison, literal);
+            error = string.Empty;
             return true;
         }
 
@@ -661,18 +701,7 @@ public static class EsriWhereText
 
         private bool TryOperator(out ComparisonOperator comparison, out string error)
         {
-            comparison = Current.Kind switch
-            {
-                TokenKind.Equals => ComparisonOperator.Equals,
-                TokenKind.NotEquals => ComparisonOperator.NotEquals,
-                TokenKind.LessThan => ComparisonOperator.LessThan,
-                TokenKind.LessOrEqual => ComparisonOperator.LessOrEqual,
-                TokenKind.GreaterThan => ComparisonOperator.GreaterThan,
-                TokenKind.GreaterOrEqual => ComparisonOperator.GreaterOrEqual,
-                TokenKind.Like => ComparisonOperator.Like,
-                _ => (ComparisonOperator)(-1),
-            };
-            if ((int)comparison < 0)
+            if (!MapOperator(Current.Kind, out comparison))
             {
                 error = $"expected a comparison operator at position {Current.Position}, found '{Current.Text}'";
                 return false;
@@ -683,7 +712,58 @@ public static class EsriWhereText
             return true;
         }
 
+        private static bool MapOperator(TokenKind kind, out ComparisonOperator comparison)
+        {
+            switch (kind)
+            {
+                case TokenKind.Equals:
+                case TokenKind.NotEquals:
+                    comparison = kind == TokenKind.Equals ? ComparisonOperator.Equals : ComparisonOperator.NotEquals;
+                    return true;
+                case TokenKind.LessThan:
+                case TokenKind.LessOrEqual:
+                    comparison = kind == TokenKind.LessThan ? ComparisonOperator.LessThan : ComparisonOperator.LessOrEqual;
+                    return true;
+                default:
+                    return MapOperatorRest(kind, out comparison);
+            }
+        }
+
+        private static bool MapOperatorRest(TokenKind kind, out ComparisonOperator comparison)
+        {
+            switch (kind)
+            {
+                case TokenKind.GreaterThan:
+                    comparison = ComparisonOperator.GreaterThan;
+                    return true;
+                case TokenKind.GreaterOrEqual:
+                    comparison = ComparisonOperator.GreaterOrEqual;
+                    return true;
+                case TokenKind.Like:
+                    comparison = ComparisonOperator.Like;
+                    return true;
+                default:
+                    comparison = (ComparisonOperator)(-1);
+                    return false;
+            }
+        }
+
         private bool TryValue(out Literal literal, out string error)
+        {
+            if (TrySimpleLiteral(out literal, out error))
+            {
+                return true;
+            }
+
+            if (error is not null)
+            {
+                return false;
+            }
+
+            return TryTemporalLiteral(out literal, out error);
+        }
+
+        private bool TrySimpleLiteral(out Literal literal, out string error)
         {
             if (Current.Kind == TokenKind.String)
             {
@@ -714,6 +794,13 @@ public static class EsriWhereText
                 return true;
             }
 
+            literal = default;
+            error = null!;
+            return false;
+        }
+
+        private bool TryTemporalLiteral(out Literal literal, out string error)
+        {
             if (Current.Kind == TokenKind.Timestamp)
             {
                 return TryTimestampLiteral(out literal, out error);
@@ -870,25 +957,34 @@ public static class EsriWhereText
 
         if (left.Kind == LiteralKind.Boolean && right.Kind == LiteralKind.Boolean)
         {
-            return comparison switch
-            {
-                ComparisonOperator.Equals => left.Boolean == right.Boolean,
-                ComparisonOperator.NotEquals => left.Boolean != right.Boolean,
-                _ => false,
-            };
+            return ConstantBoolean(left, comparison, right);
         }
 
         if (left.Kind == LiteralKind.String && right.Kind == LiteralKind.String)
         {
-            return comparison == ComparisonOperator.Like
-                ? EsriLikePattern.IsMatch(left.Text ?? string.Empty, right.Text ?? string.Empty)
-                : Satisfies(StringComparer.Ordinal.Compare(left.Text, right.Text), comparison);
+            return ConstantText(left, comparison, right);
         }
 
-        return Number(left) is { } first
-            && Number(right) is { } second
-            && Satisfies(first.CompareTo(second), comparison);
+        return ConstantNumeric(left, right, comparison);
     }
+
+    private static bool ConstantBoolean(Literal left, ComparisonOperator comparison, Literal right) =>
+        comparison switch
+        {
+            ComparisonOperator.Equals => left.Boolean == right.Boolean,
+            ComparisonOperator.NotEquals => left.Boolean != right.Boolean,
+            _ => false,
+        };
+
+    private static bool ConstantText(Literal left, ComparisonOperator comparison, Literal right) =>
+        comparison == ComparisonOperator.Like
+            ? EsriLikePattern.IsMatch(left.Text ?? string.Empty, right.Text ?? string.Empty)
+            : Satisfies(StringComparer.Ordinal.Compare(left.Text, right.Text), comparison);
+
+    private static bool ConstantNumeric(Literal left, Literal right, ComparisonOperator comparison) =>
+        Number(left) is { } first
+        && Number(right) is { } second
+        && Satisfies(first.CompareTo(second), comparison);
 
     /// <summary>The numeric value of a literal, when it has one.</summary>
     private static double? Number(Literal literal) => literal.Kind switch
@@ -902,6 +998,11 @@ public static class EsriWhereText
     {
         ComparisonOperator.Equals => comparison == 0,
         ComparisonOperator.NotEquals => comparison != 0,
+        _ => SatisfiesInequality(comparison, comparison2),
+    };
+
+    private static bool SatisfiesInequality(int comparison, ComparisonOperator comparison2) => comparison2 switch
+    {
         ComparisonOperator.LessThan => comparison < 0,
         ComparisonOperator.LessOrEqual => comparison <= 0,
         ComparisonOperator.GreaterThan => comparison > 0,

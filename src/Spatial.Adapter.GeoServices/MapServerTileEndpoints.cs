@@ -44,41 +44,8 @@ internal static partial class MapServerTileEndpoints
         {
             var resolved = await GeoServicesResolution.ResolveServiceAsync(catalog, registry, service, "MapServer", MapServiceKind.MapServer, cancellationToken);
             var layers = await GeoServicesResolution.ListLayersAsync(stores, resolved, cancellationToken);
-            var scheme = MapServerEndpoints.MapTileScheme(render.Schemes)
-                ?? throw GeoServicesErrors.ServiceUnavailable("No tiling scheme is configured on this host.");
-            var coordinate = new TileCoordinate(address.Z, address.X, address.Y);
-            if (!scheme.IsValid(coordinate))
-            {
-                throw GeoServicesErrors.NotFound($"Tile {address.Z}/{address.Y}/{address.X} is outside the tiling scheme.");
-            }
-
-            var style = MapRenderEngine.Style(service, layers);
-            var version = MapRenderEngine.Version(
-                service, style, await MapRenderEngine.DataVersionAsync(stores, resolved.Store, layers, cancellationToken));
-            var key = new TileCacheKey(scheme.Id, address.Z, address.X, address.Y, RasterFormat.Png, version);
-            var image = await render.Cache.TryGetAsync(key, cancellationToken);
-            if (image is null)
-            {
-                var viewport = new RasterViewport(scheme.Bounds(coordinate), scheme.TileSize, scheme.TileSize, scheme.Crs);
-
-                // Diagnostic seam: one Debug event per tile resolves the
-                // requested address to the rendered geography, so a client
-                // fetching the wrong tiles (a canvas parked at Null Island,
-                // say) is distinguishable from the server rendering the
-                // wrong geography.
-                if (logger.IsEnabled(LogLevel.Debug))
-                {
-                    var bounds = viewport.Bounds;
-                    LogTile(logger, service, address.Z, address.Y, address.X, scheme.Id, scheme.Crs,
-                        bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY);
-                }
-
-                var sources = MapRenderEngine.Sources(stores, resolved.Store, layers, null);
-                image = await render.Renderer.RenderAsync(
-                    new MapRenderRequest(viewport, style, sources, null, RasterFormat.Png, 90, null, true, 1.0), cancellationToken);
-                await render.Cache.SetAsync(key, image, cancellationToken);
-            }
-
+            var scheme = ResolveTileScheme(render, address);
+            var (image, version) = await GetOrRenderTileAsync(call, resolved, layers, scheme, logger);
             GeoServicesResponses.WriteImageHeaders(context, image);
             context.Response.Headers["X-Tile-Version"] = version;
             return Results.Bytes(image.Content, image.MediaType);
@@ -92,6 +59,71 @@ internal static partial class MapServerTileEndpoints
 
             return EsriErrorMapper.Map(exception);
         }
+    }
+
+    private static ITileScheme ResolveTileScheme(MapTileRenderDependencies render, MapTileAddress address)
+    {
+        var scheme = MapServerEndpoints.MapTileScheme(render.Schemes)
+            ?? throw GeoServicesErrors.ServiceUnavailable("No tiling scheme is configured on this host.");
+        if (!scheme.IsValid(new TileCoordinate(address.Z, address.X, address.Y)))
+        {
+            throw GeoServicesErrors.NotFound($"Tile {address.Z}/{address.Y}/{address.X} is outside the tiling scheme.");
+        }
+
+        return scheme;
+    }
+
+    private static async Task<(RasterImage Image, string Version)> GetOrRenderTileAsync(
+        MapTileCall call,
+        ResolvedService resolved,
+        IReadOnlyList<PublishedLayer> layers,
+        ITileScheme scheme,
+        ILogger logger)
+    {
+        var (_, _, service, address, _, stores, render, cancellationToken) = call;
+        var style = MapRenderEngine.Style(service, layers);
+        var version = MapRenderEngine.Version(
+            service, style, await MapRenderEngine.DataVersionAsync(stores, resolved.Store, layers, cancellationToken));
+        var key = new TileCacheKey(scheme.Id, address.Z, address.X, address.Y, RasterFormat.Png, version);
+        var image = await render.Cache.TryGetAsync(key, cancellationToken);
+        if (image is not null)
+        {
+            return (image, version);
+        }
+
+        return (await RenderTileAsync(call, resolved, layers, scheme, style, key, logger), version);
+    }
+
+    private static async Task<RasterImage> RenderTileAsync(
+        MapTileCall call,
+        ResolvedService resolved,
+        IReadOnlyList<PublishedLayer> layers,
+        ITileScheme scheme,
+        string style,
+        TileCacheKey key,
+        ILogger logger)
+    {
+        var (_, _, service, address, _, stores, render, cancellationToken) = call;
+        var coordinate = new TileCoordinate(address.Z, address.X, address.Y);
+        var viewport = new RasterViewport(scheme.Bounds(coordinate), scheme.TileSize, scheme.TileSize, scheme.Crs);
+
+        // Diagnostic seam: one Debug event per tile resolves the
+        // requested address to the rendered geography, so a client
+        // fetching the wrong tiles (a canvas parked at Null Island,
+        // say) is distinguishable from the server rendering the
+        // wrong geography.
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            var bounds = viewport.Bounds;
+            LogTile(logger, service, address.Z, address.Y, address.X, scheme.Id, scheme.Crs,
+                bounds.MinX, bounds.MinY, bounds.MaxX, bounds.MaxY);
+        }
+
+        var sources = MapRenderEngine.Sources(stores, resolved.Store, layers, null);
+        var image = await render.Renderer.RenderAsync(
+            new MapRenderRequest(viewport, style, sources, null, RasterFormat.Png, 90, null, true, 1.0), cancellationToken);
+        await render.Cache.SetAsync(key, image, cancellationToken);
+        return image;
     }
 
     [LoggerMessage(

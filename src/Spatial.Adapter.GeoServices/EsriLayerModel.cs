@@ -133,10 +133,18 @@ internal static class EsriLayerModel
         bool isTable = false,
         IReadOnlyList<EsriRelationship>? relationships = null)
     {
-        var uniqueScheme = EsriUniqueIdScheme.For(dataset);
-        EsriUniqueIdField? uniqueIdField = uniqueScheme is null
-            ? null
-            : new(uniqueScheme.FieldName, IsSystemMaintained: false);
+        return DescribeCore(id, dataset, editable, hasAttachments, isTable, relationships);
+    }
+
+    private static EsriLayer DescribeCore(
+        int id,
+        DatasetDescription dataset,
+        bool editable,
+        bool hasAttachments,
+        bool isTable,
+        IReadOnlyList<EsriRelationship>? relationships)
+    {
+        var uniqueIdField = DescribeUniqueId(dataset);
         var layout = isTable ? CoordinateLayout.Xy : dataset.GeometryLayout;
         return new(
             10.0,
@@ -155,14 +163,30 @@ internal static class EsriLayerModel
             SupportsDefaultSR: true,
             SupportsAdvancedQueries: true,
             QueryCapabilities,
-            SupportsQuantization: isTable ? null : true,
+            SupportsQuantization: DescribeQuantization(isTable),
             uniqueIdField,
             HasAttachments: hasAttachments,
-            AttachmentProperties: hasAttachments ? AttachmentProperties : null,
-            Relationships: relationships is { Count: > 0 } ? relationships : null,
+            AttachmentProperties: DescribeAttachments(hasAttachments),
+            Relationships: DescribeRelationships(relationships),
             HasZ: layout.HasZ() ? true : null,
             HasM: layout.HasM() ? true : null);
     }
+
+    private static EsriUniqueIdField? DescribeUniqueId(DatasetDescription dataset)
+    {
+        var uniqueScheme = EsriUniqueIdScheme.For(dataset);
+        return uniqueScheme is null
+            ? null
+            : new(uniqueScheme.FieldName, IsSystemMaintained: false);
+    }
+
+    private static bool? DescribeQuantization(bool isTable) => isTable ? null : true;
+
+    private static IReadOnlyList<EsriAttachmentProperty>? DescribeAttachments(bool hasAttachments) =>
+        hasAttachments ? AttachmentProperties : null;
+
+    private static IReadOnlyList<EsriRelationship>? DescribeRelationships(IReadOnlyList<EsriRelationship>? relationships) =>
+        relationships is { Count: > 0 } ? relationships : null;
 
     /// <summary>The layer's Esri spatial reference, or null when the SRID is unknown to the map.</summary>
     public static EsriSpatialReferenceDto? SpatialReference(int srid) =>

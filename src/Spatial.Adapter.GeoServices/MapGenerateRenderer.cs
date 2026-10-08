@@ -143,26 +143,9 @@ internal static class MapGenerateRenderer
     {
         var field = RequiredString(definition.Root, "classificationField", definition.RawType);
         var index = FieldIndex(dataset, field);
-        var kind = dataset.Schema[index].Kind;
-        if (kind is not (AttributeKind.Int64 or AttributeKind.Double))
-        {
-            throw GeoServicesErrors.Invalid(
-                $"The classification field '{field}' is {kind}, but 'classBreaksDef' needs a numeric field.");
-        }
-
-        var method = OptionalString(definition.Root, "classificationMethod") ?? "esriClassifyEqualInterval";
-        if (!string.Equals(method, "esriClassifyEqualInterval", StringComparison.Ordinal))
-        {
-            throw GeoServicesErrors.Invalid(
-                $"The classification method '{method}' is not supported; use 'esriClassifyEqualInterval'.");
-        }
-
-        var breakCount = OptionalInt(definition.Root, "breakCount") ?? 5;
-        if (breakCount < 1 || breakCount > MaxBreaks)
-        {
-            throw GeoServicesErrors.Invalid(
-                $"The 'breakCount' value '{breakCount}' is out of range; use 1 to {MaxBreaks}.");
-        }
+        RequireNumericField(dataset, field, index, definition.RawType);
+        RequireEqualInterval(definition.Root);
+        var breakCount = RequireBreakCount(definition.Root);
 
         var (minimum, maximum) = await ClassBreakDomainAsync(store, dataset, field, index, filter, cancellationToken);
         if (minimum is not { } min || maximum is not { } max)
@@ -171,6 +154,43 @@ internal static class MapGenerateRenderer
                 $"No features of layer '{dataset.Id}' match, so no breaks can be classified for field '{field}'.");
         }
 
+        return BuildClassBreaks(dataset, field, min, max, breakCount);
+    }
+
+    private static void RequireNumericField(DatasetDescription dataset, string field, int index, string rawType)
+    {
+        var kind = dataset.Schema[index].Kind;
+        if (kind is not (AttributeKind.Int64 or AttributeKind.Double))
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The classification field '{field}' is {kind}, but 'classBreaksDef' needs a numeric field.");
+        }
+    }
+
+    private static void RequireEqualInterval(JsonElement root)
+    {
+        var method = OptionalString(root, "classificationMethod") ?? "esriClassifyEqualInterval";
+        if (!string.Equals(method, "esriClassifyEqualInterval", StringComparison.Ordinal))
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The classification method '{method}' is not supported; use 'esriClassifyEqualInterval'.");
+        }
+    }
+
+    private static int RequireBreakCount(JsonElement root)
+    {
+        var breakCount = OptionalInt(root, "breakCount") ?? 5;
+        if (breakCount < 1 || breakCount > MaxBreaks)
+        {
+            throw GeoServicesErrors.Invalid(
+                $"The 'breakCount' value '{breakCount}' is out of range; use 1 to {MaxBreaks}.");
+        }
+
+        return breakCount;
+    }
+
+    private static EsriRenderer BuildClassBreaks(DatasetDescription dataset, string field, double min, double max, int breakCount)
+    {
         var bounds = min == max
             ? [max]
             : Enumerable.Range(1, breakCount).Select(step => min + ((max - min) * step / breakCount)).ToArray();
@@ -259,19 +279,40 @@ internal static class MapGenerateRenderer
         var clause = ReductionClause(dataset, filter);
         if (clause is not null || filter is null)
         {
-            var reduction = new AggregateQuery(
-            [
-                new AggregateSpec(AggregateStatistic.Minimum, field),
-                new AggregateSpec(AggregateStatistic.Maximum, field),
-            ]);
-            var page = await FeatureReductionFallback
-                .AggregateAsync(store, dataset.Id, new FeatureQuery(Where: clause), reduction, cancellationToken)
-                .ConfigureAwait(false);
-            var group = page.Groups.Count > 0 ? page.Groups[0] : null;
-            var values = group?.Values;
-            return (Bound(values, 0, field), Bound(values, 1, field));
+            return await ClassBreakReducedAsync(store, dataset, field, clause, cancellationToken);
         }
 
+        return await ClassBreakScannedAsync(store, dataset, field, index, filter, cancellationToken);
+    }
+
+    private static async Task<(double? Minimum, double? Maximum)> ClassBreakReducedAsync(
+        IFeatureStore store,
+        DatasetDescription dataset,
+        string field,
+        Predicate? clause,
+        CancellationToken cancellationToken)
+    {
+        var reduction = new AggregateQuery(
+        [
+            new AggregateSpec(AggregateStatistic.Minimum, field),
+            new AggregateSpec(AggregateStatistic.Maximum, field),
+        ]);
+        var page = await FeatureReductionFallback
+            .AggregateAsync(store, dataset.Id, new FeatureQuery(Where: clause), reduction, cancellationToken)
+            .ConfigureAwait(false);
+        var group = page.Groups.Count > 0 ? page.Groups[0] : null;
+        var values = group?.Values;
+        return (Bound(values, 0, field), Bound(values, 1, field));
+    }
+
+    private static async Task<(double? Minimum, double? Maximum)> ClassBreakScannedAsync(
+        IFeatureStore store,
+        DatasetDescription dataset,
+        string field,
+        int index,
+        EsriWhere? filter,
+        CancellationToken cancellationToken)
+    {
         var scheme = EsriObjectIdScheme.For(dataset);
         double? minimum = null;
         double? maximum = null;
@@ -339,23 +380,45 @@ internal static class MapGenerateRenderer
         var clause = ReductionClause(dataset, filter);
         if (clause is not null || filter is null)
         {
-            var page = await FeatureReductionFallback
-                .DistinctAsync(store, dataset.Id, new FeatureQuery(Where: clause), new DistinctQuery([field]), cancellationToken)
-                .ConfigureAwait(false);
-            // The store dedups by value, the renderer enumerates by rendered
-            // value: two values that render alike are one class here, as they
-            // were when the set was built in memory.
-            foreach (var row in page.Rows)
-            {
-                if (row is { Count: > 0 } && !row[0].IsNull)
-                {
-                    values.Add(Format(row[0]));
-                }
-            }
-
-            return [.. values];
+            return await DistinctReducedAsync(store, dataset, field, clause, values, cancellationToken);
         }
 
+        return await DistinctScannedAsync(store, dataset, index, filter, values, cancellationToken);
+    }
+
+    private static async Task<List<string>> DistinctReducedAsync(
+        IFeatureStore store,
+        DatasetDescription dataset,
+        string field,
+        Predicate? clause,
+        HashSet<string> values,
+        CancellationToken cancellationToken)
+    {
+        var page = await FeatureReductionFallback
+            .DistinctAsync(store, dataset.Id, new FeatureQuery(Where: clause), new DistinctQuery([field]), cancellationToken)
+            .ConfigureAwait(false);
+        // The store dedups by value, the renderer enumerates by rendered
+        // value: two values that render alike are one class here, as they
+        // were when the set was built in memory.
+        foreach (var row in page.Rows)
+        {
+            if (row is { Count: > 0 } && !row[0].IsNull)
+            {
+                values.Add(Format(row[0]));
+            }
+        }
+
+        return [.. values];
+    }
+
+    private static async Task<List<string>> DistinctScannedAsync(
+        IFeatureStore store,
+        DatasetDescription dataset,
+        int index,
+        EsriWhere? filter,
+        HashSet<string> values,
+        CancellationToken cancellationToken)
+    {
         var scheme = EsriObjectIdScheme.For(dataset);
         long ordinal = 0;
         var batches = await store.ScanAsync(dataset.Id, cancellationToken);

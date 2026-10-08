@@ -123,6 +123,11 @@ internal static class EsriPredicateEvaluator
         Predicate.Every every => every.Terms.All(term => Evaluate(term, feature, overlay)),
         Predicate.Some some => some.Terms.Any(term => Evaluate(term, feature, overlay)),
         Predicate.Constant constant => constant.Value,
+        _ => EvaluateLeaf(predicate, feature, overlay),
+    };
+
+    private static bool EvaluateLeaf(Predicate predicate, IFeature feature, EsriFieldOverlay? overlay) => predicate switch
+    {
         Predicate.IsNull isNull => Value(feature, isNull.Field, overlay).IsNull != isNull.Negated,
         Predicate.IsIn isIn => In(feature, isIn, overlay),
         Predicate.Compare compare => Compare(feature, compare, overlay),
@@ -187,17 +192,31 @@ internal static class EsriPredicateEvaluator
             return false;
         }
 
-        return value.Kind switch
+        return IsNumericKind(value.Kind)
+            ? TestNumber(value, comparison, literal)
+            : TestScalar(value, comparison, literal);
+    }
+
+    private static bool IsNumericKind(AttributeKind kind) =>
+        kind is AttributeKind.Int64 or AttributeKind.Double or AttributeKind.DateTimeOffset;
+
+    private static bool TestNumber(AttributeValue value, ComparisonOperator comparison, Literal literal) =>
+        value.Kind switch
         {
             AttributeKind.Int64 => Number(value.Int64Value, comparison, literal),
             AttributeKind.Double => Number(value.DoubleValue, comparison, literal),
             AttributeKind.DateTimeOffset => Number(value.DateTimeOffsetValue.ToUnixTimeMilliseconds(), comparison, literal),
+            _ => false,
+        };
+
+    private static bool TestScalar(AttributeValue value, ComparisonOperator comparison, Literal literal) =>
+        value.Kind switch
+        {
             AttributeKind.String => Text(value.StringValue, comparison, literal),
             AttributeKind.Boolean => Flag(value.BooleanValue, comparison, literal),
             AttributeKind.Guid => Identifier(value.GuidValue, comparison, literal),
             _ => false,
         };
-    }
 
     private static bool Number(double left, ComparisonOperator comparison, Literal literal)
     {
@@ -220,6 +239,11 @@ internal static class EsriPredicateEvaluator
     {
         ComparisonOperator.Equals => left == right,
         ComparisonOperator.NotEquals => left != right,
+        _ => OrderingInequality(left, right, comparison),
+    };
+
+    private static bool OrderingInequality(double left, double right, ComparisonOperator comparison) => comparison switch
+    {
         ComparisonOperator.LessThan => left < right,
         ComparisonOperator.LessOrEqual => left <= right,
         ComparisonOperator.GreaterThan => left > right,
@@ -235,6 +259,11 @@ internal static class EsriPredicateEvaluator
     {
         ComparisonOperator.Equals => comparison == 0,
         ComparisonOperator.NotEquals => comparison != 0,
+        _ => SatisfiesInequality(comparison, comparison2),
+    };
+
+    private static bool SatisfiesInequality(int comparison, ComparisonOperator comparison2) => comparison2 switch
+    {
         ComparisonOperator.LessThan => comparison < 0,
         ComparisonOperator.LessOrEqual => comparison <= 0,
         ComparisonOperator.GreaterThan => comparison > 0,

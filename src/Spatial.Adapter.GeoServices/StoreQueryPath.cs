@@ -78,6 +78,22 @@ internal static class StoreQueryPath
         {
             return null;
         }
+
+        return await DispatchStoreShapeAsync(dataset, store, query, queryGeometry, clause, plan, scheme, layerCrs, services, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<IResult?> DispatchStoreShapeAsync(
+        DatasetDescription dataset,
+        IFeatureStore store,
+        EsriFeatureQuery query,
+        IGeometry? queryGeometry,
+        Predicate? clause,
+        FeatureQuery plan,
+        EsriObjectIdScheme scheme,
+        CoordinateReference? layerCrs,
+        QueryServices services,
+        CancellationToken cancellationToken)
+    {
         if (query.ReturnCountOnly)
         {
             return await CountAsync(dataset, store, plan, query, cancellationToken).ConfigureAwait(false);
@@ -88,6 +104,21 @@ internal static class StoreQueryPath
             return await ExtentAsync(dataset, store, plan, query, layerCrs, cancellationToken).ConfigureAwait(false);
         }
 
+        return await DispatchStoreTableAsync(dataset, store, query, queryGeometry, clause, plan, scheme, layerCrs, services, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<IResult?> DispatchStoreTableAsync(
+        DatasetDescription dataset,
+        IFeatureStore store,
+        EsriFeatureQuery query,
+        IGeometry? queryGeometry,
+        Predicate? clause,
+        FeatureQuery plan,
+        EsriObjectIdScheme scheme,
+        CoordinateReference? layerCrs,
+        QueryServices services,
+        CancellationToken cancellationToken)
+    {
         if (query.OutStatistics is not null)
         {
             return await StatisticsAsync(dataset, store, query, queryGeometry, clause, cancellationToken).ConfigureAwait(false);
@@ -98,10 +129,21 @@ internal static class StoreQueryPath
             return await DistinctAsync(dataset, store, plan, query, layerCrs, cancellationToken).ConfigureAwait(false);
         }
 
-        return scheme.IsIdentity
+        return await FeaturesOrNullAsync(dataset, store, plan, query, scheme, layerCrs, services, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<IResult?> FeaturesOrNullAsync(
+        DatasetDescription dataset,
+        IFeatureStore store,
+        FeatureQuery plan,
+        EsriFeatureQuery query,
+        EsriObjectIdScheme scheme,
+        CoordinateReference? layerCrs,
+        QueryServices services,
+        CancellationToken cancellationToken) =>
+        scheme.IsIdentity
             ? await FeaturesAsync(dataset, store, plan, query, scheme, layerCrs, services, cancellationToken).ConfigureAwait(false)
             : null;
-    }
 
     /// <summary>
     /// Whether every part of the match is in the plan. The where clause is

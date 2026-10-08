@@ -21,115 +21,18 @@ internal static class FeatureResponseWriter
     /// Executes a service-level query (S1 query-feature-service/) and writes
     /// the <c>{"layers": [...]}</c> response: one feature set, count, or id
     /// list per layer, in layer-id order. Each layer already carries its
-    /// effective query (shared parameters plus its <c>layerDefs</c>
-    /// overrides), so this method only matches, pages and projects per layer.
-    /// Layer-level result shapes (extent, distinct, statistics, unique ids)
-    /// are rejected by <see cref="FeatureServiceQuery.RejectLayerOnlyShapes"/>
-    /// before this runs; only the full, count and ids shapes arrive here.
+    /// effective query, so this method only matches, pages and projects per
+    /// layer. Layer-level result shapes (extent, distinct, statistics, unique
+    /// ids) are rejected before this runs; only the full, count and ids
+    /// shapes arrive here.
     /// </summary>
     internal static async Task<IResult> ServiceQueryAsync(
         IReadOnlyList<ServiceLayerQuery> layers,
         IFeatureStore store,
         EsriFeatureQuery shared,
         QueryServices services,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(layers);
-        ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(shared);
-        FeatureServiceQuery.RejectLayerOnlyShapes(shared);
-        var ordered = layers.OrderBy(layer => layer.Id).ToArray();
-        var matched = new List<(ServiceLayerQuery Layer, List<MatchedFeature> Matches)>(ordered.Length);
-        foreach (var layer in ordered)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
-            var scheme = EsriObjectIdScheme.For(layer.Description);
-            var queryGeometry = FeatureProjection.MatchGeometry(
-                new FeatureProjection.QueryGeometryRequest(layer.Query, layerCrs, services), cancellationToken);
-            matched.Add((layer, await FeatureSpatialMatcher.MatchAsync(
-                new FeatureSpatialMatcher.QuerySpec(layer.Description, store, layer.Query, queryGeometry, services, scheme), cancellationToken)));
-        }
-
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            writer.WritePropertyName("layers");
-            writer.WriteStartArray();
-            foreach (var (layer, matches) in matched)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                WriteServiceLayer(writer, layer, matches, services, cancellationToken);
-            }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        });
-    }
-
-    /// <summary>
-    /// Writes one service-query layer entry (S1 response syntax): the full
-    /// feature set, the count, or the id list. Paging applies per layer, and
-    /// tables omit the layer-only <c>geometryType</c>/<c>spatialReference</c>
-    /// keys, exactly as the layer query shapes they mirror.
-    /// </summary>
-    private static void WriteServiceLayer(
-        Utf8JsonWriter writer,
-        ServiceLayerQuery layer,
-        List<MatchedFeature> matches,
-        QueryServices services,
-        CancellationToken cancellationToken)
-    {
-        var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(layer.Description, layer.Query));
-        writer.WriteStartObject();
-        writer.WriteNumber("id", layer.Id);
-        if (layer.Query.ReturnCountOnly)
-        {
-            writer.WriteNumber("count", ordered.Count);
-            writer.WriteEndObject();
-            return;
-        }
-
-        if (layer.Query.ReturnIdsOnly)
-        {
-            writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
-            writer.WritePropertyName("objectIds");
-            writer.WriteStartArray();
-            foreach (var match in ordered)
-            {
-                writer.WriteNumberValue(match.ObjectId);
-            }
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-            return;
-        }
-
-        var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
-        var page = FeaturePaging.Page(ordered, layer.Query);
-        var options = WriteOptions(layer.Query, objectId: 0, services);
-        writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
-        writer.WriteString("globalIdFieldName", string.Empty);
-        if (!layer.IsTable)
-        {
-            writer.WriteString("geometryType", EsriLayerModel.GeometryType(layer.Description.GeometryType));
-            WriteSpatialReference(writer, layer.Query.OutSr ?? layerCrs);
-        }
-
-        WriteFields(writer, layer.Description);
-        writer.WritePropertyName("features");
-        writer.WriteStartArray();
-        foreach (var match in page.Items)
-        {
-            var transformed = FeatureProjection.TransformFeature(match, layer.Query, layerCrs, services.Transforms, services.Operations, cancellationToken);
-            EsriFeatureCodec.Write(writer, transformed.Feature, options with { ObjectId = transformed.ObjectId });
-        }
-
-        writer.WriteEndArray();
-        writer.WriteBoolean("exceededTransferLimit", page.Exceeded);
-        WritePaginationToken(writer, page.NextToken);
-        writer.WriteEndObject();
-    }
+        CancellationToken cancellationToken) =>
+        await ServiceLayerWriter.ServiceQueryAsync(layers, store, shared, new ResponseWriteServices(services), cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// The <c>returnUniqueIdsOnly</c> response (spec §9.1.4, 11.5+): the
@@ -258,7 +161,7 @@ internal static class FeatureResponseWriter
     /// have deduplicated itself.
     /// </summary>
     internal static IReadOnlyList<string> DistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields) =>
-        [.. ResolveDistinctFields(dataset, outFields).Select(field => field.Name)];
+        DistinctValuesWriter.DistinctFields(dataset, outFields);
 
     /// <summary>
     /// The distinct-values response for rows a store deduplicated: the same
@@ -270,15 +173,8 @@ internal static class FeatureResponseWriter
         IReadOnlyList<AttributeValue[]> rows,
         List<DistinctField> fields,
         EsriFeatureQuery query,
-        CoordinateReference? layerCrs)
-    {
-        var offset = Math.Min(FeaturePaging.ResolveOffset(query), rows.Count);
-        var count = FeaturePaging.EffectivePageSize(query);
-        var page = rows.Skip(offset).Take(count).ToArray();
-        var exceeded = offset + page.Length < rows.Count;
-        return WriteDistinctValues(
-            dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
-    }
+        CoordinateReference? layerCrs) =>
+        DistinctValuesWriter.DistinctValues(dataset, rows, fields, query, layerCrs);
 
     internal static IResult CountResponse(
         DatasetDescription dataset,
@@ -291,78 +187,22 @@ internal static class FeatureResponseWriter
     internal static IResult DistinctCount(
         DatasetDescription dataset,
         IReadOnlyList<MatchedFeature> matches,
-        EsriFeatureQuery query)
-    {
-        var fields = ResolveDistinctFields(dataset, query.OutFields);
-        return EsriJson.Value(new EsriCountResponse(DistinctRows(matches, fields).Count));
-    }
+        EsriFeatureQuery query) =>
+        DistinctValuesWriter.DistinctCount(dataset, matches, query);
 
     /// <summary>
     /// The <c>returnDistinctValues</c> response: the deduplicated combinations
-    /// of the projected fields, no geometry. Paging is applied after dedupe.
+    /// of the projected fields, no geometry. Page slicing is applied after dedupe.
     /// </summary>
     internal static IResult DistinctValues(
         DatasetDescription dataset,
         IReadOnlyList<MatchedFeature> matches,
         EsriFeatureQuery query,
-        CoordinateReference? layerCrs)
-    {
-        var fields = ResolveDistinctFields(dataset, query.OutFields);
-        var rows = DistinctRows(matches, fields);
-        var offset = Math.Min(FeaturePaging.ResolveOffset(query), rows.Count);
-        var count = FeaturePaging.EffectivePageSize(query);
-        var page = rows.Skip(offset).Take(count).ToArray();
-        var exceeded = offset + page.Length < rows.Count;
-        return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
-    }
+        CoordinateReference? layerCrs) =>
+        DistinctValuesWriter.DistinctValues(dataset, matches, query, layerCrs);
 
-    /// <summary>
-    /// Deduplicates the projected fields over the matched set, preserving
-    /// first-seen order. Shared by the distinct-values response and the
-    /// COUNT DISTINCT response so both agree on what "distinct" means.
-    /// </summary>
-    private static List<AttributeValue[]> DistinctRows(IReadOnlyList<MatchedFeature> matches, List<DistinctField> fields)
-    {
-        var rows = new List<AttributeValue[]>();
-        var seen = new HashSet<AttributeValue[]>(FeatureOrdering.AttributeRowComparer.Instance);
-        foreach (var match in matches)
-        {
-            var row = new AttributeValue[fields.Count];
-            for (var i = 0; i < fields.Count; i++)
-            {
-                row[i] = match.Feature[fields[i].Index];
-            }
-
-            if (seen.Add(row))
-            {
-                rows.Add(row);
-            }
-        }
-
-        return rows;
-    }
-
-    internal static List<DistinctField> ResolveDistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields)
-    {
-        var schema = dataset.Schema;
-        var names = outFields is { Count: > 0 }
-            ? outFields
-            : schema.Fields.Where(field => field.Kind != AttributeKind.Geometry).Select(field => field.Name).ToArray();
-        var fields = new List<DistinctField>(names.Count);
-        foreach (var name in names)
-        {
-            var index = schema.IndexOf(name);
-            if (index < 0 || schema[index].Kind == AttributeKind.Geometry)
-            {
-                throw GeoServicesErrors.Invalid(
-                    $"The 'outFields' value '{name}' is not a distinctable attribute of layer '{dataset.Id}'.");
-            }
-
-            fields.Add(new DistinctField(name, index));
-        }
-
-        return fields;
-    }
+    internal static List<DistinctField> ResolveDistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields) =>
+        DistinctValuesWriter.ResolveDistinctFields(dataset, outFields);
 
     internal static IResult WriteDistinctValues(
         DatasetDescription dataset,
@@ -370,37 +210,8 @@ internal static class FeatureResponseWriter
         IReadOnlyList<DistinctField> fields,
         IReadOnlyList<AttributeValue[]> rows,
         bool exceeded,
-        string? nextToken)
-    {
-        return EsriJson.Write(writer =>
-        {
-            writer.WriteStartObject();
-            writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
-            writer.WriteString("geometryType", EsriLayerModel.GeometryType(dataset.GeometryType));
-            WriteSpatialReference(writer, coordinateReference);
-            WriteFields(writer, dataset);
-            writer.WritePropertyName("features");
-            writer.WriteStartArray();
-            foreach (var row in rows)
-            {
-                writer.WriteStartObject();
-                writer.WritePropertyName("attributes");
-                writer.WriteStartObject();
-                for (var i = 0; i < fields.Count; i++)
-                {
-                    EsriAttributeCodec.Write(writer, fields[i].Name, row[i]);
-                }
-
-                writer.WriteEndObject();
-                writer.WriteEndObject();
-            }
-
-            writer.WriteEndArray();
-            writer.WriteBoolean("exceededTransferLimit", exceeded);
-            WritePaginationToken(writer, nextToken);
-            writer.WriteEndObject();
-        });
-    }
+        string? nextToken) =>
+        DistinctValuesWriter.WriteDistinctValues(dataset, coordinateReference, fields, rows, exceeded, nextToken);
 
     internal static IResult WriteFeatures(
         DatasetDescription dataset,
@@ -440,7 +251,7 @@ internal static class FeatureResponseWriter
     /// for, the engine's centroid verb. Naming the mapping once keeps the
     /// query, service and feature-resource shapes in step.
     /// </summary>
-    private static EsriFeatureWriteOptions WriteOptions(EsriFeatureQuery query, long objectId, QueryServices services) =>
+    internal static EsriFeatureWriteOptions WriteOptions(EsriFeatureQuery query, long objectId, QueryServices services) =>
         new(
             EsriLayerModel.ObjectIdField,
             objectId,
@@ -451,7 +262,7 @@ internal static class FeatureResponseWriter
             query.ReturnM,
             query.ReturnCentroid ? geometry => services.Measures.Centroid(geometry) : null);
 
-    private static void WriteSpatialReference(Utf8JsonWriter writer, CoordinateReference? coordinateReference)
+    internal static void WriteSpatialReference(Utf8JsonWriter writer, CoordinateReference? coordinateReference)
     {
         if (coordinateReference is { } crs && IsMapped(crs))
         {
@@ -466,6 +277,54 @@ internal static class FeatureResponseWriter
         string.Equals(crs.Authority, "EPSG", StringComparison.OrdinalIgnoreCase)
         && int.TryParse(crs.Code, NumberStyles.None, CultureInfo.InvariantCulture, out var epsg)
         && WkidMap.TryFromEpsg(epsg, out _);
+
+    /// <summary>
+    /// The §9.1.5.6 response: the related layer's field metadata and one entry
+    /// per origin record that has related records, each carrying the key the
+    /// rows relate through and the projected rows. Origin records with no
+    /// related records are omitted rather than served empty.
+    /// </summary>
+    internal static IResult WriteRelatedGroups(
+        DatasetDescription related,
+        RelatedQuery query,
+        IReadOnlyList<RelatedGroup> groups,
+        CancellationToken cancellationToken)
+    {
+        var options = new EsriFeatureWriteOptions(
+            EsriLayerModel.ObjectIdField, 0, query.Query.OutFields, query.Query.ReturnGeometry, query.Query.ReturnEnvelope);
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            WriteFields(writer, related);
+            writer.WritePropertyName("relationships");
+            writer.WriteStartArray();
+            foreach (var group in groups)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                WriteRelatedGroup(writer, group, options);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        });
+    }
+
+    private static void WriteRelatedGroup(
+        Utf8JsonWriter writer, RelatedGroup group, EsriFeatureWriteOptions options)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("name", group.Name);
+        EsriAttributeCodec.Write(writer, "relatedId", group.RelatedKey);
+        writer.WritePropertyName("fields");
+        writer.WriteStartArray();
+        foreach (var row in group.Rows)
+        {
+            EsriFeatureCodec.Write(writer, row.Feature, options with { ObjectId = row.ObjectId });
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
 
     internal static void WriteFields(Utf8JsonWriter writer, DatasetDescription dataset)
     {
@@ -509,4 +368,308 @@ internal static class FeatureResponseWriter
 
     /// <summary>One projected field of a distinct-values request.</summary>
     internal readonly record struct DistinctField(string Name, int Index);
+}
+
+/// <summary>
+/// The engine verbs one response write needs, as one seam: the transform and
+/// generalization faces behind per-feature projection plus the centroid verb
+/// behind the per-feature write options. Call-sites name this record instead
+/// of the three services separately.
+/// </summary>
+internal sealed record ResponseWriteServices(QueryServices Services)
+{
+    public MatchedFeature TransformFeature(
+        MatchedFeature match,
+        EsriFeatureQuery query,
+        CoordinateReference? layerCrs,
+        CancellationToken cancellationToken) =>
+        FeatureProjection.TransformFeature(match, query, layerCrs, Services.Transforms, Services.Operations, cancellationToken);
+
+    public EsriFeatureWriteOptions WriteOptions(EsriFeatureQuery query, long objectId) =>
+        FeatureResponseWriter.WriteOptions(query, objectId, Services);
+}
+
+/// <summary>
+/// The service-level query assembly (S1 query-feature-service/): matching one
+/// feature set, count, or id list per layer, in layer-id order, with per-layer
+/// paging and projection. Split out of <see cref="FeatureResponseWriter"/> so
+/// the response writer keeps only the single-layer shapes and the matching
+/// fan-out lives with the code that uses it.
+/// </summary>
+internal static class ServiceLayerWriter
+{
+    internal static async Task<IResult> ServiceQueryAsync(
+        IReadOnlyList<ServiceLayerQuery> layers,
+        IFeatureStore store,
+        EsriFeatureQuery shared,
+        ResponseWriteServices writers,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(layers);
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(shared);
+        FeatureServiceQuery.RejectLayerOnlyShapes(shared);
+        var ordered = layers.OrderBy(layer => layer.Id).ToArray();
+        var matched = new List<(ServiceLayerQuery Layer, List<MatchedFeature> Matches)>(ordered.Length);
+        foreach (var layer in ordered)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            matched.Add((layer, await MatchLayerAsync(layer, store, writers, cancellationToken)));
+        }
+
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("layers");
+            writer.WriteStartArray();
+            foreach (var (layer, matches) in matched)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                WriteServiceLayer(writer, layer, matches, writers, cancellationToken);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        });
+    }
+
+    private static Task<List<MatchedFeature>> MatchLayerAsync(
+        ServiceLayerQuery layer,
+        IFeatureStore store,
+        ResponseWriteServices writers,
+        CancellationToken cancellationToken)
+    {
+        var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
+        var scheme = EsriObjectIdScheme.For(layer.Description);
+        var queryGeometry = FeatureProjection.MatchGeometry(
+            new FeatureProjection.QueryGeometryRequest(layer.Query, layerCrs, writers.Services), cancellationToken);
+        return FeatureSpatialMatcher.MatchAsync(
+            new FeatureSpatialMatcher.QuerySpec(layer.Description, store, layer.Query, queryGeometry, writers.Services, scheme), cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes one service-query layer entry (S1 response syntax): the full
+    /// feature set, the count, or the id list. Page slicing applies per layer,
+    /// and tables omit the layer-only <c>geometryType</c>/<c>spatialReference</c>
+    /// keys, exactly as the layer query shapes they mirror.
+    /// </summary>
+    private static void WriteServiceLayer(
+        Utf8JsonWriter writer,
+        ServiceLayerQuery layer,
+        List<MatchedFeature> matches,
+        ResponseWriteServices writers,
+        CancellationToken cancellationToken)
+    {
+        var ordered = FeatureOrdering.Apply(matches, FeatureOrdering.Compile(layer.Description, layer.Query));
+        writer.WriteStartObject();
+        writer.WriteNumber("id", layer.Id);
+        if (layer.Query.ReturnCountOnly)
+        {
+            writer.WriteNumber("count", ordered.Count);
+            writer.WriteEndObject();
+            return;
+        }
+
+        if (layer.Query.ReturnIdsOnly)
+        {
+            WriteServiceIds(writer, ordered);
+            return;
+        }
+
+        WriteServiceFeatures(writer, layer, ordered, writers, cancellationToken);
+    }
+
+    private static void WriteServiceIds(Utf8JsonWriter writer, List<MatchedFeature> ordered)
+    {
+        writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
+        writer.WritePropertyName("objectIds");
+        writer.WriteStartArray();
+        foreach (var match in ordered)
+        {
+            writer.WriteNumberValue(match.ObjectId);
+        }
+
+        writer.WriteEndArray();
+        writer.WriteEndObject();
+    }
+
+    private static void WriteServiceFeatures(
+        Utf8JsonWriter writer,
+        ServiceLayerQuery layer,
+        List<MatchedFeature> ordered,
+        ResponseWriteServices writers,
+        CancellationToken cancellationToken)
+    {
+        var layerCrs = EsriLayerModel.LayerCoordinateReference(layer.Description.Srid);
+        var page = FeaturePaging.Page(ordered, layer.Query);
+        var options = writers.WriteOptions(layer.Query, objectId: 0);
+        writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
+        writer.WriteString("globalIdFieldName", string.Empty);
+        if (!layer.IsTable)
+        {
+            writer.WriteString("geometryType", EsriLayerModel.GeometryType(layer.Description.GeometryType));
+            FeatureResponseWriter.WriteSpatialReference(writer, layer.Query.OutSr ?? layerCrs);
+        }
+
+        FeatureResponseWriter.WriteFields(writer, layer.Description);
+        writer.WritePropertyName("features");
+        writer.WriteStartArray();
+        foreach (var match in page.Items)
+        {
+            var transformed = writers.TransformFeature(match, layer.Query, layerCrs, cancellationToken);
+            EsriFeatureCodec.Write(writer, transformed.Feature, options with { ObjectId = transformed.ObjectId });
+        }
+
+        writer.WriteEndArray();
+        writer.WriteBoolean("exceededTransferLimit", page.Exceeded);
+        FeatureResponseWriter.WritePaginationToken(writer, page.NextToken);
+        writer.WriteEndObject();
+    }
+}
+
+/// <summary>
+/// The distinct-values stack: the projected fields, the first-seen dedupe
+/// shared by the values response and the COUNT DISTINCT response, the paging
+/// over the deduplicated rows and the values shape itself. Split out of
+/// <see cref="FeatureResponseWriter"/> so the response writer keeps only the
+/// single-layer shapes and the dedupe machinery lives with the code that uses
+/// it.
+/// </summary>
+internal static class DistinctValuesWriter
+{
+    internal static IReadOnlyList<string> DistinctFields(DatasetDescription dataset, IReadOnlyList<string>? outFields) =>
+        [.. ResolveDistinctFields(dataset, outFields).Select(field => field.Name)];
+
+    internal static IResult DistinctValues(
+        DatasetDescription dataset,
+        IReadOnlyList<AttributeValue[]> rows,
+        List<FeatureResponseWriter.DistinctField> fields,
+        EsriFeatureQuery query,
+        CoordinateReference? layerCrs)
+    {
+        var offset = Math.Min(FeaturePaging.ResolveOffset(query), rows.Count);
+        var count = FeaturePaging.EffectivePageSize(query);
+        var page = rows.Skip(offset).Take(count).ToArray();
+        var exceeded = offset + page.Length < rows.Count;
+        return WriteDistinctValues(
+            dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
+    }
+
+    internal static IResult DistinctCount(
+        DatasetDescription dataset,
+        IReadOnlyList<MatchedFeature> matches,
+        EsriFeatureQuery query)
+    {
+        var fields = ResolveDistinctFields(dataset, query.OutFields);
+        return EsriJson.Value(new EsriCountResponse(DistinctRows(matches, fields).Count));
+    }
+
+    internal static IResult DistinctValues(
+        DatasetDescription dataset,
+        IReadOnlyList<MatchedFeature> matches,
+        EsriFeatureQuery query,
+        CoordinateReference? layerCrs)
+    {
+        var fields = ResolveDistinctFields(dataset, query.OutFields);
+        var rows = DistinctRows(matches, fields);
+        var offset = Math.Min(FeaturePaging.ResolveOffset(query), rows.Count);
+        var count = FeaturePaging.EffectivePageSize(query);
+        var page = rows.Skip(offset).Take(count).ToArray();
+        var exceeded = offset + page.Length < rows.Count;
+        return WriteDistinctValues(dataset, query.OutSr ?? layerCrs, fields, page, exceeded, exceeded ? ResultPagination.Encode(offset + page.Length) : null);
+    }
+
+    /// <summary>
+    /// Deduplicates the projected fields over the matched set, preserving
+    /// first-seen order. Shared by the distinct-values response and the
+    /// COUNT DISTINCT response so both agree on what "distinct" means.
+    /// </summary>
+    private static List<AttributeValue[]> DistinctRows(
+        IReadOnlyList<MatchedFeature> matches, List<FeatureResponseWriter.DistinctField> fields)
+    {
+        var rows = new List<AttributeValue[]>();
+        var seen = new HashSet<AttributeValue[]>(FeatureOrdering.AttributeRowComparer.Instance);
+        foreach (var match in matches)
+        {
+            var row = new AttributeValue[fields.Count];
+            for (var i = 0; i < fields.Count; i++)
+            {
+                row[i] = match.Feature[fields[i].Index];
+            }
+
+            if (seen.Add(row))
+            {
+                rows.Add(row);
+            }
+        }
+
+        return rows;
+    }
+
+    internal static List<FeatureResponseWriter.DistinctField> ResolveDistinctFields(
+        DatasetDescription dataset, IReadOnlyList<string>? outFields)
+    {
+        var schema = dataset.Schema;
+        var names = outFields is { Count: > 0 }
+            ? outFields
+            : schema.Fields.Where(field => field.Kind != AttributeKind.Geometry).Select(field => field.Name).ToArray();
+        var fields = new List<FeatureResponseWriter.DistinctField>(names.Count);
+        foreach (var name in names)
+        {
+            var index = schema.IndexOf(name);
+            if (index < 0 || schema[index].Kind == AttributeKind.Geometry)
+            {
+                throw GeoServicesErrors.Invalid(
+                    $"The 'outFields' value '{name}' is not a distinctable attribute of layer '{dataset.Id}'.");
+            }
+
+            fields.Add(new FeatureResponseWriter.DistinctField(name, index));
+        }
+
+        return fields;
+    }
+
+    internal static IResult WriteDistinctValues(
+        DatasetDescription dataset,
+        CoordinateReference? coordinateReference,
+        IReadOnlyList<FeatureResponseWriter.DistinctField> fields,
+        IReadOnlyList<AttributeValue[]> rows,
+        bool exceeded,
+        string? nextToken)
+    {
+        return EsriJson.Write(writer =>
+        {
+            writer.WriteStartObject();
+            writer.WriteString("objectIdFieldName", EsriLayerModel.ObjectIdField);
+            writer.WriteString("geometryType", EsriLayerModel.GeometryType(dataset.GeometryType));
+            FeatureResponseWriter.WriteSpatialReference(writer, coordinateReference);
+            FeatureResponseWriter.WriteFields(writer, dataset);
+            writer.WritePropertyName("features");
+            writer.WriteStartArray();
+            foreach (var row in rows)
+            {
+                WriteDistinctRow(writer, fields, row);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteBoolean("exceededTransferLimit", exceeded);
+            FeatureResponseWriter.WritePaginationToken(writer, nextToken);
+            writer.WriteEndObject();
+        });
+    }
+
+    private static void WriteDistinctRow(
+        Utf8JsonWriter writer, IReadOnlyList<FeatureResponseWriter.DistinctField> fields, AttributeValue[] row)
+    {
+        writer.WriteStartObject();
+        writer.WritePropertyName("attributes");
+        writer.WriteStartObject();
+        for (var i = 0; i < fields.Count; i++)
+        {
+            EsriAttributeCodec.Write(writer, fields[i].Name, row[i]);
+        }
+
+        writer.WriteEndObject();
+        writer.WriteEndObject();
+    }
 }
