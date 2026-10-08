@@ -2,13 +2,12 @@ namespace Spatial.Architecture.Tests;
 
 /// <summary>
 /// Naming regression net (T-108, consolidates the N1–N11 sweeps): retired
-/// vocabulary from the worker-plugin era (ADR-0033), the publication era
-/// (ADR-0041/ADR-0053) and the pre-rename project buckets must not return.
+/// vocabulary from the worker-plugin era, the publication era
+/// and the pre-rename project buckets must not return.
 /// <c>capability</c> stays reserved for protocol wire vocabulary (Esri layer
 /// strings, OGC <c>GetCapabilities</c>, neutral <c>/capabilities</c> routes);
-/// store interfaces are <c>faces</c>. ADRs, the release changelog
-/// (<c>docs/CHANGELOG.md</c>, ADR-0148) and the distilled
-/// superseded-register keep history.
+/// store interfaces are <c>faces</c>. The release changelog
+/// (<c>docs/CHANGELOG.md</c>) keeps history.
 /// </summary>
 public sealed class NamingTests
 {
@@ -120,40 +119,6 @@ public sealed class NamingTests
         Assert.Contains("\"publications\"", registry, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// The ladder and spelling rule are written down where implementors look.
-    /// </summary>
-    [Fact]
-    public void Ladder_spelling_and_vocabulary_are_documented()
-    {
-        var contracts = File.ReadAllText(Path.Combine(Root.Value, "architecture", "distilled", "contracts.md"));
-        Assert.Contains("`Catalogue` = datasets in one store", contracts, StringComparison.Ordinal);
-        Assert.Contains("stores and maps across the engine", contracts, StringComparison.Ordinal);
-
-        var rendering = File.ReadAllText(Path.Combine(Root.Value, "architecture", "distilled", "rendering.md"));
-        Assert.Contains("TileServing", rendering, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The distilled docs keep exactly one publications history line: the
-    /// removal note for the pre-ADR-0053 aliases.
-    /// </summary>
-    [Fact]
-    public void Distilled_keeps_a_single_publications_history_line()
-    {
-        var hits = LiveFiles("*.md")
-            .Where(path => Path.GetRelativePath(Root.Value, path).StartsWith(
-                Path.Combine("architecture", "distilled"), StringComparison.Ordinal))
-            .SelectMany(path => File.ReadAllLines(path)
-                .Select((line, index) => (Path: path, Line: line, Number: index + 1))
-                .Where(entry => entry.Line.Contains("/api/publications", StringComparison.Ordinal))
-                .Select(entry => $"{Path.GetRelativePath(Root.Value, entry.Path)}:{entry.Number}: {entry.Line.Trim()}"))
-            .ToList();
-
-        Assert.Single(hits);
-        Assert.Contains("were removed in 0.2.0", hits[0], StringComparison.Ordinal);
-    }
-
     [Fact]
     public void Generated_artifact_roots_are_excluded_from_live_scan()
     {
@@ -189,14 +154,11 @@ public sealed class NamingTests
 
         if (string.Equals(relative, Path.Combine("docs", "CHANGELOG.md"), StringComparison.Ordinal)
             || relative.EndsWith("-queue.md", StringComparison.Ordinal)
-            || relative.EndsWith("-report.json", StringComparison.Ordinal)
-            || string.Equals(relative, Path.Combine("architecture", "distilled", "README.md"), StringComparison.Ordinal))
+            || relative.EndsWith("-report.json", StringComparison.Ordinal))
         {
             return true;
         }
 
-        return segments.Any(segment => segment is "bin" or "obj" or ".git" or "node_modules" or "StrykerOutput" || GeneratedRoots.Contains(segment))
-            || relative.StartsWith(
-                "architecture" + Path.DirectorySeparatorChar + "decisions", StringComparison.Ordinal);
+        return segments.Any(segment => segment is "bin" or "obj" or ".git" or "node_modules" or "StrykerOutput" || GeneratedRoots.Contains(segment));
     }
 }

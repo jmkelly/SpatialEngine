@@ -5,7 +5,7 @@ producing canonical `FeatureBatch` pages. Two records bind it: **ADR-0082**
 (ingest honours the declared source CRS, reports what the decode did, and
 streams pages into one transaction) and **ADR-0029** (the feature contract
 faces and the `FeatureBatchCodec` namespace the pages are encoded through).
-Route by task: `architecture/distilled/contracts.md`.
+Route by task: `architecture/principles.md`.
 
 ## Never
 

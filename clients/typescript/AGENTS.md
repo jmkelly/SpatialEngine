@@ -5,7 +5,7 @@ bind it: **ADR-0033** (contracts outlive implementations; the SDK speaks only
 the public HTTP surface) and **ADR-0014** (React, TypeScript and MapLibre are
 the first frontend, which is why this SDK is the delivered client's only
 channel to the host). Route by task:
-`architecture/distilled/host-and-clients.md`.
+`architecture/principles.md`.
 
 ## Never
 

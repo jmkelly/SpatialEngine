@@ -4,7 +4,7 @@ Mapbox Vector Tiles: the protobuf wire encoder and the tile request/response
 over core-typed values. Two records bind it: **ADR-0070** (MVT is in scope;
 protobuf and encoder types live here and not in a contract) and **ADR-0101** (a
 tile with no extent on an axis is a typed rejection, never a narrowed one).
-Route by task: `architecture/distilled/rendering.md`.
+Route by task: `architecture/principles.md`.
 
 ## Never
 

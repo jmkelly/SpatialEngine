@@ -5,7 +5,7 @@ exported image. Two records bind it: **ADR-0049** (labels and symbols shape
 through bundled HarfBuzz over one embedded pinned font, sprites are embedded
 SVG, and `Skia.HarfBuzz` / `Svg.Skia` are allowlisted packages) and
 **ADR-0044** (raster rendering is a pipeline over Skia for vector and NetVips
-for imagery). Route by task: `architecture/distilled/rendering.md`.
+for imagery). Route by task: `architecture/principles.md`.
 
 ## Never
 

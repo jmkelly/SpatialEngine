@@ -61,8 +61,6 @@ CONFORMANCE = ("tests/conformance/Spatial.QueryConformance/"
 #: these expected plans because a lane that quietly lost it would be a gate
 #: that stopped reading the decision records. It follows the trailing-whitespace
 #: check in every plan, which is the cheaper of the two repo-wide steps
-#: (ADR-0143) and is first for the same reason.
-DOC_GATE = "python3 tools/arch-index.py --check"
 # The conflict-marker check: every lane calls it directly rather than finding
 # it through the tools/**-only tooling suite, which is the hole ADR-0146 closes.
 CONFLICT_MARKER_GATE = "python3 tools/conflict_markers.py"
@@ -814,7 +812,6 @@ class ScriptLaneTests(unittest.TestCase):
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
             CHANGELOG_GATE,
-            DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
             "dotnet build .verify-scoped.slnx",
@@ -874,7 +871,6 @@ class ScriptLaneTests(unittest.TestCase):
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
             CHANGELOG_GATE,
-            DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
             "dotnet build .verify-scoped.slnx",
@@ -893,7 +889,6 @@ class ScriptLaneTests(unittest.TestCase):
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
             CHANGELOG_GATE,
-            DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
@@ -913,7 +908,6 @@ class ScriptLaneTests(unittest.TestCase):
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
             CHANGELOG_GATE,
-            DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
@@ -949,7 +943,6 @@ class ScriptLaneTests(unittest.TestCase):
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
             CHANGELOG_GATE,
-            DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",
@@ -970,7 +963,6 @@ class ScriptLaneTests(unittest.TestCase):
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
             CHANGELOG_GATE,
-            DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
             f"dotnet format {MAPS} --verify-no-changes",
@@ -991,7 +983,6 @@ class ScriptLaneTests(unittest.TestCase):
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
             CHANGELOG_GATE,
-            DOC_GATE,
             beads_gate_gate("origin/does-not-exist"),
             SPIKE_HARNESS_GATE,
             "dotnet build SpatialEngine.slnx",
@@ -1009,7 +1000,6 @@ class ScriptLaneTests(unittest.TestCase):
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
             CHANGELOG_GATE,
-            DOC_GATE,
             beads_gate_gate("origin/does-not-exist"),
             SPIKE_HARNESS_GATE,
             "dotnet format SpatialEngine.slnx --verify-no-changes",

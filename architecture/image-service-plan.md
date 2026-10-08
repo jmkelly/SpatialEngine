@@ -9,7 +9,7 @@
 > publication. **I4 — COG and tiled GeoTIFF support** is implemented; I5
 > (cache and limits beyond the download caps) remains. Read
 > `architecture/references/geoservices-compatibility.md` §4 and
-> `architecture/distilled/host-and-clients.md` first.
+> `architecture/principles.md` first.
 >
 > **Blocking decision (resolved):** the engine had no raster concept
 > (ADR-0035 listed image as out of scope). ADR-0051 fixes the boundary and the
@@ -247,7 +247,7 @@ be served efficiently (I4) is a storage concern, not analytics.
 
 ## 7. References
 
-- `architecture/distilled/contracts.md` (Map/registry/admin)
-- `architecture/distilled/host-and-clients.md` (M0 data-only pattern; shared render path)
+- `architecture/principles.md` (Map/registry/admin)
+- `architecture/principles.md` (M0 data-only pattern; shared render path)
 - `architecture/references/geoservices-compatibility.md` §4
 - ADR-0001/0032 (core values), ADR-0021 (native/AOT evidence), ADR-0035, principles 1–2

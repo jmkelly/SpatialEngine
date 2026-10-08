@@ -1,6 +1,6 @@
 ---
 name: spatial-engine
-description: Operate the Spatial Engine as a client, through the Spatial CLI and its stores. Use when asked to add, list, describe, style, publish or remove spatial datasets and maps; when running the engine end to end (start host, health, ingest, MapServer); when touching clients/dotnet/Spatial.Cli, a spatial.json project file, store selection (demo, memory, postgis), or a SpatialException exit code. For repo-wide quality gates use the quality-loop skill; to decide where a code change belongs read architecture/distilled/README.md.
+description: Operate the Spatial Engine as a client, through the Spatial CLI and its stores. Use when asked to add, list, describe, style, publish or remove spatial datasets and maps; when running the engine end to end (start host, health, ingest, MapServer); when touching clients/dotnet/Spatial.Cli, a spatial.json project file, store selection (demo, memory, postgis), or a SpatialException exit code. For repo-wide quality gates use the quality-loop skill; to decide where a code change belongs read architecture/principles.md.
 ---
 
 # Spatial Engine
@@ -129,17 +129,17 @@ $CLI map show Reference   # error: not.found ... ; exit 3
 `dataset` is `list`, `describe`, `add` and nothing else: there is no dataset
 remove and no dataset update. Data goes in and comes back out through the CLI;
 only maps and layers are removable. A task that needs dataset deletion is a
-**host API change**, so route it through the ADRs in `architecture/decisions/`
+**host API change**, so route it through the ADRs in `architecture/`
 before writing any client code.
 
 ## Reference
 
-- `architecture/distilled/cli.md` - canonical command, option and project-file reference
+- `architecture/principles.md` - canonical command, option and project-file reference
 - `clients/dotnet/Spatial.Cli/README.md` - the client itself
 - `architecture/references/geoservices-compatibility.md` - the REST surface
-- `architecture/distilled/core.md` - geometry values
-- `architecture/distilled/plugins.md` - implementations, stores and capabilities
-- `architecture/distilled/rendering.md` - tiles and labels
+- `architecture/principles.md` - geometry values
+- `architecture/principles.md` - implementations, stores and capabilities
+- `architecture/principles.md` - tiles and labels
 
 ## Changing the engine, not just driving it
 
@@ -147,7 +147,7 @@ before writing any client code.
 .pi/skills/spatial-engine/scripts/doctor.sh   # toolchain, working tree, task routing
 ```
 
-Route the task through `architecture/distilled/README.md` (ADRs win on
+Route the task through `architecture/principles.md` (ADRs win on
 conflict), land contract + SDK + test + ADR together, and gate on
 `eng/verify.sh --full` (the bare `eng/verify.sh` is the scoped build gate an
 agent runs while iterating — ADR-0118). After a CLI or HTTP change run

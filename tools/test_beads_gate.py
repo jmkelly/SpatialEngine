@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The bead protocol and the hard walls are gates, not things to remember.
+"""The bead protocol is a gate, not a thing to remember.
 
 Run: python3 -m unittest tools/test_beads_gate.py
 
@@ -12,7 +12,7 @@ still running; two merges landed with conflict resolutions written by somebody
 who did not hold the workers' context; and three commits exist purely to rescue
 work the reclaim race orphaned. Prose that has failed is advice.
 
-So the four mechanical checks the bead names are `tools/beads-gate.py`, and
+So the two mechanical checks the bead names are `tools/beads_gate.py`, and
 every lane of `eng/verify.sh` runs it:
 
   1. a closed bead's merge records the bead it merged: a `Task: <id>` trailer
@@ -57,8 +57,6 @@ from tools.beads_gate import (  # noqa: E402
     merge_bead,
     parked_lease_holds,
     reclaimed_lease_findings,
-    shared_adr_findings,
-    wall_findings,
 )
 
 
@@ -95,89 +93,6 @@ def commit(root: Path, message: str) -> str:
 def bead(bead_id: str, status: str = "closed") -> dict:
     return {"id": bead_id, "title": "work", "status": status,
             "closed_at": "2026-09-30T11:01:28Z"}
-
-
-class WallTests(unittest.TestCase):
-    """A change to a contract or to Core lands with a decision record.
-
-    This is the acceptance case: `eng/verify.sh` must fail on a merge commit
-    touching `Spatial.Contracts` or `Spatial.Core` with no ADR change in the
-    diff and no `ADR-NNNN` in the commit body.
-    """
-
-    def setUp(self):
-        self.raw = tempfile.TemporaryDirectory()
-        self.root = make_repo(Path(self.raw.name))
-        self.base = git(self.root, "rev-parse", "HEAD")
-        self.addCleanup(self.raw.cleanup)
-
-    def findings(self):
-        return wall_findings(self.root, base=self.base)
-
-    def test_a_contract_change_with_no_record_is_a_finding(self):
-        # The reproduction. `AGENTS.md` says behaviour changes land contract,
-        # SDK, test and ADR updates together; nothing read that sentence.
-        commit(self.root, "Add a query parameter to the feature service")
-        write(self.root, "src/Spatial.Contracts/IFeatureService.cs", "// v2\n")
-        commit(self.root, "Feature service gains a second parameter")
-        found = self.findings()
-        self.assertTrue(
-            any("Spatial.Contracts" in finding for finding in found),
-            f"a contract change with no ADR was not a finding: {found}")
-
-    def test_a_core_change_with_no_record_is_a_finding(self):
-        write(self.root, "src/Spatial.Core/Envelope.cs", "// v2\n")
-        commit(self.root, "Core envelope gains a field")
-        found = self.findings()
-        self.assertTrue(any("Spatial.Core" in finding for finding in found),
-                        f"a Core change with no ADR was not a finding: {found}")
-
-    def test_an_adr_changed_in_the_same_commit_satisfies_the_wall(self):
-        write(self.root, "src/Spatial.Contracts/IFeatureService.cs", "// v2\n")
-        write(self.root, "architecture/decisions/ADR-0152-a-decision.md", "# ADR\n")
-        commit(self.root, "Feature service gains a second parameter")
-        self.assertEqual(self.findings(), [])
-
-    def test_an_adr_cited_in_the_commit_body_satisfies_the_wall(self):
-        # The other half of the rule as the bead states it: a record the
-        # change amends without touching is cited, not rewritten.
-        write(self.root, "src/Spatial.Core/Envelope.cs", "// v2\n")
-        git(self.root, "commit", "-q", "--allow-empty", "-m",
-            "Core envelope gains a field\n\nEnvelope identity per ADR-0087.")
-        self.assertEqual(self.findings(), [])
-
-    def test_a_merge_commit_that_brings_the_change_is_judged(self):
-        # The acceptance case names a *merge* commit, and the merge itself is
-        # where the wall is judged: `git log base..HEAD` walks the merged-in
-        # commits too, so a wall change cannot be laundered by merging it.
-        git(self.root, "checkout", "-q", "-b", "bd/SpatialEngine-aaa.1")
-        write(self.root, "src/Spatial.Contracts/IFeatureService.cs", "// v2\n")
-        commit(self.root, "A contract change with no record\n\nTask: SpatialEngine-aaa.1")
-        git(self.root, "checkout", "-q", "main")
-        git(self.root, "merge", "-q", "--no-ff", "-m",
-            "Merge SpatialEngine-aaa.1: a contract change", "bd/SpatialEngine-aaa.1")
-        found = self.findings()
-        self.assertTrue(any("Spatial.Contracts" in finding for finding in found),
-                        f"a merged contract change with no ADR was not a finding: {found}")
-
-    def test_a_change_outside_the_walls_is_not_judged(self):
-        # The walls are two directories, not "every code change": a host change
-        # with no ADR is ordinary work and a gate that failed it would be a
-        # gate nobody ran.
-        write(self.root, "src/Spatial.Host/Host.cs", "// v2\n")
-        write(self.root, "tools/some-tool.py", "# v2\n")
-        commit(self.root, "Host wiring and a tool")
-        self.assertEqual(self.findings(), [])
-
-    def test_a_sibling_project_with_a_wall_prefix_is_not_a_wall(self):
-        # The rule is the two directories, not every name that begins with one:
-        # `Spatial.Contracts.Tests` holds no contract, so a test suite added
-        # there is ordinary work and a gate that failed it would be a gate
-        # nobody ran.
-        write(self.root, "src/Spatial.Contracts.Tests/ContractShapeTests.cs",
-              "// new suite\n")
-        commit(self.root, "A suite that pins the contract shape")
-        self.assertEqual(self.findings(), [])
 
 
 class TrailerTests(unittest.TestCase):
@@ -570,7 +485,7 @@ class ShippedRepositoryTests(unittest.TestCase):
     def test_the_repository_is_green_and_says_what_it_did_not_judge(self):
         # A gate that is red on `main` at the moment it lands is a gate that
         # gets disabled. Run over the range the gate itself introduced, with
-        # no queue: the wall check is judged and check 1 says out loud that it
+        # no queue: check 1 says out loud that it
         # had no bead list to read rather than passing silently. (`--no-queue`
         # rather than letting the test shell out to `bd`, and `--no-paseo`
         # rather than letting it shell out to `paseo`, which
@@ -593,20 +508,6 @@ class ShippedRepositoryTests(unittest.TestCase):
         spec.loader.exec_module(module)
         self.assertEqual(module.merge_message("SpatialEngine-aaa.1", "a fix"),
                          "Merge SpatialEngine-aaa.1: a fix\n\nTask: SpatialEngine-aaa.1")
-
-
-class ADRSharedTests(unittest.TestCase):
-    """Checks 3 and 4 are arch-index's, read through arch-index."""
-
-    def test_the_shared_reads_are_the_ones_arch_index_runs(self):
-        from tools import beads_gate
-        arch = beads_gate.load_arch_index(REPO_ROOT)
-        root = REPO_ROOT
-        corpus = arch.load_corpus(root)
-        shared = shared_adr_findings(root)
-        self.assertEqual(sorted(shared["citations"]), sorted(arch.dangling_citations(root, corpus)))
-        self.assertEqual(sorted(shared["register"]), sorted(arch.register_findings(root, corpus)))
-        self.assertEqual(sorted(shared["corpus"]), sorted(arch.corpus_findings(root, corpus)))
 
 
 class LaneWiringTests(unittest.TestCase):

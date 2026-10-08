@@ -5,7 +5,7 @@ Wms/Wfs surface, served from the public contracts. Two records bind it:
 **ADR-0035** (GeoServices REST is an adapter-owned boundary; parity is against
 `architecture/references/geoservices-compatibility.md`, not against memory)
 and **ADR-0112** (each read surface pushes what the store can answer and keeps
-what it must). Route by task: `architecture/distilled/host-and-clients.md`.
+what it must). Route by task: `architecture/principles.md`.
 
 ## Never
 

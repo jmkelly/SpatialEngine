@@ -352,7 +352,7 @@ def parse_routing(markdown: str) -> list[Row]:
     """The routing table out of the distilled index, ADR numbers included.
 
     Read from the document rather than restated here, so a routing change
-    lands by editing the routing table — which `tools/arch-index.py` generates
+    lands by editing the bead text it was read from
     and every lane gates (ADR-0141). Two answer to "what does this task read"
     is one too many, and the one nobody runs is the one that ships.
     """

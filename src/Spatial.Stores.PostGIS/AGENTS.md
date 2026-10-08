@@ -4,7 +4,7 @@ The PostGIS provider (`postgis@N`): Npgsql, raw parameterised SQL, spatial
 indexes created with the dataset. Two records bind it: **ADR-0074** (the
 feature-query plan is the contract a pushdown answers) and **ADR-0092** (a
 created dataset carries its own indexes, and an index that cannot be created
-rolls the create back). Route by task: `architecture/distilled/plugins.md`.
+rolls the create back). Route by task: `architecture/principles.md`.
 
 ## Never
 

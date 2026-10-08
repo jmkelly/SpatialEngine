@@ -5,7 +5,7 @@ rasters. Two records bind it: **ADR-0051** (rasters are provider-owned, so a
 contract carries an encoded image plus core-typed metadata and nothing that
 lives in this process) and **ADR-0044** (raster rendering is a pipeline over
 NetVips for imagery and Skia for vector). Route by task:
-`architecture/distilled/rendering.md`.
+`architecture/principles.md`.
 
 ## Never
 

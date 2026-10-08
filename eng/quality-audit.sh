@@ -26,13 +26,10 @@
 #
 # The documentation audit is `tools/doc-freshness.py`, and it is the reason this
 # script exists rather than a bare `scripts/quality-loop.py` invocation: the
-# skill audits code five ways and documentation zero, which is how a 22-row
-# register drift and a SKILL.md pointing at two files that do not exist survived
-# (SpatialEngine-imz.2). Three of its nine checks — the register row, the record
-# schema, the dangling `ADR-NNNN` citation — are read out of
-# `tools/arch-index.py`, which every lane of `eng/verify.sh` already gates on
-# (ADR-0141), so there is one implementation of each and not a second one to
-# disagree with it.
+# skill audits code five ways and documentation zero, which is how a SKILL.md
+# pointing at files that do not exist survived. The documentation audit
+# reports dead links, unresolvable skill pointers, bloated instruction files,
+# conflicting gate claims and walls the prose denies.
 #
 # REPORTING ONLY, everywhere in here. `doc-freshness.py` has no `--check` mode
 # on purpose: the queue has to drain before any of the six new checks is

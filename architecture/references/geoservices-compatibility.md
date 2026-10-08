@@ -2,7 +2,7 @@
 
 > **Status:** baseline review completed 2026-09-11. The follow-on
 > decisions live in
-> `architecture/decisions/ADR-0035-geoservices-rest-boundary-adapter.md`.
+> `architecture/principles.md`.
 > This document remains the gap analysis that decision builds on.
 
 Sources: `architecture/references/geoservices-rest-spec.pdf` (Esri, Sept
@@ -18,7 +18,7 @@ API online documentation, checked 2026-09-11:
 - Geometry Service — https://developers.arcgis.com/rest/services-reference/enterprise/geometry-service/
 
 The current engine state is the authored code in `src/` plus `README.md`,
-`architecture/distilled/*`, ADRs 0001/0005/0020/0033/0035/0036/0037,
+`architecture/principles.md`, ADRs 0001/0005/0020/0033/0035/0036/0037,
 `src/Spatial.Host/Api`, `src/Spatial.Contracts/Http`,
 `IGeometryOperations`. Review date: 2026-09-11; editing addendum: 2026-09-13.
 
@@ -73,7 +73,7 @@ engine is x-first for every CRS (`contracts.md`).
 ## 2. Geometry Service (spec §7)
 
 19 operations. The engine verb inventory behind them is
-`architecture/distilled/contracts.md` — `IGeometryOperations` (Buffer,
+`src/Spatial.Contracts` — `IGeometryOperations` (Buffer,
 Intersection, Validate, Simplify, Generalize), `IGeometryMeasures` (Area,
 Length, Distance, LabelPoint, Centroid), `IGeometryProcessing` (Union,
 Difference, ConvexHull, Densify, Repair), `IGeometryRelations` (Relate),
@@ -634,6 +634,6 @@ is rejected by name (never silently ignored) and named here with its reason:
 ## 8. Documentation baseline
 
 The retired `implementation-plan.md` (worker plugins, jobs, capability
-envelopes) has been removed. Target `architecture/decisions/` and
-`architecture/distilled/*` for all GeoServices work — ADR-0033's typed
+envelopes) has been removed. Target `architecture/` and
+`architecture/principles.md` for all GeoServices work — ADR-0033's typed
 per-route POST API with no job model.

@@ -3,7 +3,7 @@
 **Verdict: do not adopt now.** The speed claim is true and smaller than it
 looks; the price is a ~87,000-line reformat diff, a second owner of style, and
 four call sites in the gate. This is the evaluation
-[ADR-0109](../../architecture/decisions/ADR-0109-the-verification-lanes-implemented.md)
+[ADR-0109](../../architecture/principles.md)
 §"On a faster whole-repo formatter" deferred to its own bead
 (SpatialEngine-4h0). Nothing here is adopted: the repository still uses scoped
 `dotnet format`, and the `.config/dotnet-tools.json` this report evaluated

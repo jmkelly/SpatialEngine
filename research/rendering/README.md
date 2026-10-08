@@ -14,7 +14,7 @@ once its findings were promoted) proved the pipeline end to end and
 measured it.
 
 This directory is the research half of the change. The decision record is
-`architecture/decisions/ADR-0044-raster-rendering-pipeline.md` (proposed);
+`architecture/principles.md` (proposed);
 the production shape is a later, separately-verified change.
 
 ## Method

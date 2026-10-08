@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""The bead protocol and the hard walls are gates, not prose to remember.
+"""The bead protocol is a gate, not prose to remember.
 
     python3 tools/beads_gate.py                  # judge, as every lane does
     python3 tools/beads_gate.py --plan           # print what would be judged
     python3 tools/beads_gate.py --base origin/main
     python3 tools/beads_gate.py --beads closed.json --watermark <sha>
-    python3 tools/beads_gate.py --adr            # include the ADR shared reads
 
 The geometry and contract walls in this repository are already enforced in
 code, by tests in `Spatial.Architecture.Tests`. The protocol *around* them is
@@ -21,7 +20,7 @@ four separate ways, all of them recorded in git rather than hypothesised
     did not hold the workers' context;
   * three commits exist purely to rescue work the reclaim race orphaned.
 
-Prose that has already failed is advice. So five *mechanical* checks live here,
+Prose that has already failed is advice. So two *mechanical* checks live here,
 with no judgement in any of them:
 
   1. **the trailer.** A closed bead's merge records the bead it merged: the
@@ -35,18 +34,12 @@ with no judgement in any of them:
      merge body alone failed every lane in the repository from 7014ef4 on
      (SpatialEngine-5ak).
 
-  2. **the wall.** A commit touching `src/Spatial.Contracts/**` or
-     `src/Spatial.Core/**` changes an ADR, or cites `ADR-NNNN` in its body:
-     `AGENTS.md`'s "behaviour changes land contract, SDK, test and ADR updates
-     together", as a comparison rather than a review. Only those two
-     directories are walls; a host change with no record is ordinary work.
-
-  3. **the lease**, read against `paseo`: a bead with no lease while a live
+  2. **the lease**, read against `paseo`: a bead with no lease while a live
    agent is still in its worktree is the shape of the reclaim race — `bd
    reclaim` keys on lease age alone, one tick released eight leases whose
    agents were all still running, and three commits exist purely to rescue the
    work that orphaned. `bd` exposes no registration surface for a reclaim hook
-   (SpatialEngine-8oe, ADR-0162), so the policy is enforced from the other
+   so the policy is enforced from the other
    side: the damage is a finding rather than a hook, and the one question it
    asks — is this agent live — is asked through `tools/bd-safe-reclaim.py`, the
    documented fix, rather than answered a second time here.
@@ -59,8 +52,7 @@ with no judgement in any of them:
      promotes them to findings for a standalone run.
 
 Check 1 is judged from `GATE_FROM` — the merge commit that first brought this
-file onto `main` — onwards, the way ADR-0150's shape rule is judged from the
-number of the record that decided it. History written before the trailer
+file onto `main` — onwards. History written before the trailer
 existed cannot be given the trailer, and a gate red on all of it is a gate
 nobody runs. The grandfathered count is printed on every run, because a scope
 that is invisible is indistinguishable from a check that passed.
@@ -79,22 +71,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-
-#: The two directories `AGENTS.md` calls hard walls, and the rule that guards
-#: them: a behaviour change to either lands contract, SDK, test and ADR updates
-#: together. Matched as directory prefixes, so a file directly inside the wall
-#: counts and a project that merely starts with the same name (`src/
-#: Spatial.Contracts.Tests`) does not — the rule is about the wall's own
-#: surface, not about every directory whose name begins with it.
-WALL_PATHS = ("src/Spatial.Contracts/", "src/Spatial.Core/")
-
-#: Where a decision record lives. A commit that changes one of these has
-#: satisfied the wall by editing the record rather than citing it.
-DECISIONS_DIR = "architecture/decisions/"
-
-#: `ADR-NNNN` in a commit body: the other way to satisfy the wall, for the
-#: change that refines a record instead of rewriting it.
-ADR_CITATION = re.compile(r"\bADR-(\d{4})\b")
 
 #: A `Task:` trailer, as the commit protocol spells it: the bead the commit is
 #: work for. Read from the whole body rather than the last paragraph, because
@@ -150,17 +126,6 @@ class Commit:
     def trailers(self) -> list[str]:
         """The bead ids this commit's `Task:` trailers name."""
         return TASK_TRAILER.findall(self.body)
-
-    def cites_adr(self) -> bool:
-        return bool(ADR_CITATION.search(self.body))
-
-    def changes_a_record(self) -> bool:
-        return any(path.startswith(DECISIONS_DIR) and path.endswith(".md")
-                   for path in self.paths)
-
-    def touches_a_wall(self) -> list[str]:
-        """The wall paths this commit touches, in the order it touched them."""
-        return [path for path in self.paths if path.startswith(WALL_PATHS)]
 
 
 def walk(root: Path, revision: str = "HEAD", merges_only: bool = False) -> list[Commit]:
@@ -288,34 +253,7 @@ def closed_bead_findings(root: Path, beads, gate_from: str | None = None) -> lis
     return findings
 
 
-# --- check 2: the wall -----------------------------------------------------
-
-
-def wall_findings(root: Path, base: str, head: str = "HEAD") -> list[str]:
-    """Wall-touching commits in `base..head` that land with no decision record.
-
-    The range rather than the working tree, because the wall is a property of
-    what a commit says it did: a merge cannot launder it, and a change staged
-    in a worktree is not yet anybody's decision.
-    """
-    findings: list[str] = []
-    for commit in walk(root, revision=f"{base}..{head}"):
-        walls = commit.touches_a_wall()
-        if not walls:
-            continue
-        if commit.changes_a_record() or commit.cites_adr():
-            continue
-        # Named as the wall rather than as every file under it: a hundred
-        # changed files in Spatial.Core is one finding about Spatial.Core.
-        touched = ", ".join(sorted({"/".join(path.split("/")[:2]) for path in walls}))
-        findings.append(
-            f"{commit.short} changes {touched} and neither changes "
-            f"{DECISIONS_DIR}*.md nor cites ADR-NNNN in its body: a behaviour "
-            "change to a contract or to Core lands its decision record with it")
-    return findings
-
-
-# --- check 3: the lease ----------------------------------------------------
+# --- check 2: the lease ----------------------------------------------------
 
 
 #: The two statuses `paseo` reports for a session that is not over. The gate
@@ -328,7 +266,7 @@ PARKED_STATUS = "idle"
 
 
 def load_reclaim(root: Path):
-    """`tools/bd-safe-reclaim.py` as a module, loaded the way arch-index is.
+    """`tools/bd-safe-reclaim.py` as a module.
 
     The wrapper is the documented fix for the lease race (SpatialEngine-u2x.30)
     and it already answers the only question this check has to ask — is the
@@ -337,7 +275,7 @@ def load_reclaim(root: Path):
     recorded in the notes.
     Reimplementing that here would be a second answer to one question, and the
     second answer is the one nobody runs (the reason checks 4 and 5 are read
-    through arch-index rather than written again).
+    through one implementation rather than written again).
     """
     path = Path(root) / "tools" / "bd-safe-reclaim.py"
     spec = importlib.util.spec_from_file_location("bd_safe_reclaim", path)
@@ -473,41 +411,6 @@ def parked_lease_holds(beads, agents, workspaces, protect=None) -> list[str]:
     return held_beads
 
 
-# --- checks 4 and 5: shared with tools/arch-index.py -----------------------
-
-
-def load_arch_index(root: Path):
-    """`tools/arch-index.py` as a module, loaded the way doc-freshness loads it."""
-    path = Path(root) / "tools" / "arch-index.py"
-    spec = importlib.util.spec_from_file_location("arch_index", path)
-    if spec is None or spec.loader is None:
-        raise GitError(f"{path}: cannot load tools/arch-index.py")
-    module = importlib.util.module_from_spec(spec)
-    # Registered before it runs: arch-index's `@dataclass` reads
-    # `sys.modules[cls.__module__]`, and a module loaded without an entry there
-    # raises while the class body executes rather than at the call site.
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-def shared_adr_findings(root: Path) -> dict[str, list[str]]:
-    """Checks 4 and 5, read through arch-index's own entry points.
-
-    The bead's own instruction: implement once, have both call it. G1/G2 landed
-    that implementation and its gate (`arch-index.py --check`, which every lane
-    runs), so this reads it rather than growing a second answer to "does ADR-0141
-    exist" — and `tools/test_beads_gate.py` pins that the two agree.
-    """
-    arch = load_arch_index(root)
-    corpus = arch.load_corpus(Path(root))
-    return {
-        "citations": arch.dangling_citations(Path(root), corpus),
-        "register": arch.register_findings(Path(root), corpus),
-        "corpus": arch.corpus_findings(Path(root), corpus),
-    }
-
-
 # --- the queue -------------------------------------------------------------
 
 
@@ -570,8 +473,6 @@ def judge(root: Path, base: str, head: str = "HEAD", beads=None,
           agents=None, workspaces=None) -> dict:
     """Every finding, and the counts a reader needs to trust the scope."""
     result: dict = {"findings": [], "scope": {}}
-    result["findings"].extend(wall_findings(root, base=base, head=head))
-    result["scope"]["wall_commits"] = len(walk(root, revision=f"{base}..{head}"))
 
     if beads is None:
         result["scope"]["trailer"] = (
@@ -607,15 +508,8 @@ def judge(root: Path, base: str, head: str = "HEAD", beads=None,
                f"; {len(parked)} held by an idle session and reported rather "
                f"than failed ({', '.join(parked)})"))
 
-    if adr:
-        shared = shared_adr_findings(root)
-        for name, findings in shared.items():
-            result["findings"].extend(f"ADR {name}: {finding}" for finding in findings)
-        result["scope"]["adr"] = ", ".join(
-            f"{name}: {len(findings)}" for name, findings in shared.items())
-    else:
-        result["scope"]["adr"] = (
-            "shared with tools/arch-index.py --check, which every lane gates on")
+    result["scope"]["adr"] = (
+        "retired: decision records were removed")
     return result
 
 
@@ -640,8 +534,7 @@ def main(argv: list[str] | None = None) -> int:
                         help="the commit this gate arrived on; merge commits "
                              "before it are grandfathered rather than judged")
     parser.add_argument("--adr", action="store_true",
-                        help="also gate on the shared ADR citation and "
-                             "register reads (otherwise reported)")
+                        help="retired: accepted and ignored")
     parser.add_argument("--strict", action="store_true",
                         help="fail when the bead queue cannot be read")
     parser.add_argument("--json", action="store_true",
@@ -653,13 +546,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if arguments.plan:
-            print(f"beads-gate: would judge {arguments.base}..{arguments.head} "
-                  f"for the ADR wall, and every merge commit after the gate's "
+            print(f"beads-gate: would judge every merge commit after the gate's "
                   f"watermark for a `Task: <id>` trailer naming the bead it "
                   "merged, on the merge or on the work it brought in")
-            if arguments.adr:
-                print("beads-gate: would also gate the shared ADR citation and "
-                      "register reads")
+            # --adr is retired and ignored.
             if not arguments.no_paseo:
                 print("beads-gate: would read every unleased bead against the "
                       "live paseo agents and report one whose lease went while "
@@ -705,7 +595,7 @@ def main(argv: list[str] | None = None) -> int:
         if findings:
             print(f"beads-gate: {len(findings)} finding(s)", file=sys.stderr)
             return 1
-        print("beads-gate: the bead protocol and the ADR wall are clean")
+        print("beads-gate: the bead protocol is clean")
     return 1 if findings else 0
 
 

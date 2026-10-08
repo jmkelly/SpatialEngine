@@ -306,12 +306,10 @@ class ReadListTests(unittest.TestCase):
                    if row.task.startswith("Any architectural change"))
         self.assertEqual(row.adrs, [])
 
-    def test_the_repository_routing_table_parses(self):
-        rows = parse_routing(DISTILLED_README.read_text(encoding="utf-8"))
-        self.assertGreater(len(rows), 5)
-        self.assertTrue(any(row.task.startswith("Core geometry")
-                            for row in rows))
-        self.assertTrue(any("ADR-0001" in row.adrs for row in rows))
+    def test_the_repository_routing_table_is_retired(self):
+        self.assertFalse(DISTILLED_README.exists())
+        rows = parse_routing("")
+        self.assertEqual(rows, [])
 
 
 class MetricsTests(unittest.TestCase):

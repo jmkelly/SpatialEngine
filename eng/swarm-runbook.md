@@ -147,10 +147,8 @@ Each tick, do exactly this, in order, and stop early if you hit a stop condition
    that rebased commit; it skips nothing else, and the fact
    is written into the `bd close` reason.
    The merge commit the tool writes carries a `Task: <bead>` trailer, and every
-   lane of `eng/verify.sh` reads it back (`tools/beads_gate.py`, ADR-0152): a
-   closed bead's merge commit must name that bead, and a commit touching
-   `src/Spatial.Contracts/**` or `src/Spatial.Core/**` must change an ADR or
-   cite `ADR-NNNN` in its body. A hand-run `git merge --no-ff` on `main` is a
+   lane of `eng/verify.sh` reads it back (`tools/beads_gate.py`):
+   a closed bead's merge commit must name that bead. A hand-run `git merge --no-ff` on `main` is a
    red lane, which is the intent — the protocol above had already failed four
    ways in-tree (SpatialEngine-imz.4), and a rule only the merge tool follows
    is the rule the mis-dispatch got past.
@@ -289,15 +287,9 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
 
 1. `bd show BEAD_ID` and read the whole thing, plus the epic's coordination note.
    The description names the exact files and lines; trust them.
-2. Read `AGENTS.md`, then the relevant `architecture/distilled/*.md` digest and
-   the ADRs it routes to. The digests lose to the ADRs on conflict.
-3. If the bead writes a decision record, **reserve its number first**:
-   `python3 tools/adr-next-number.py --reserve --bead BEAD_ID` at the start of
-   the branch, and `--check NNNN` again immediately before writing. The
-   reservation is held in the repository's shared git dir, so a parallel branch
-   that takes the same number is turned away at allocation rather than at merge
-   (ADR-0090). Release it with `--release NNNN` if you renumber.
-4. TEST FIRST. Write the failing reproduction test the acceptance criteria name
+2. Read `AGENTS.md`, then `architecture/principles.md` for the standing shape.
+   The code is the documentation.
+3. TEST FIRST. Write the failing reproduction test the acceptance criteria name
    (most beads name the exact wrong-behaviour case). Run it, watch it fail for
    the right reason. Only then fix.
 5. Implement, staying inside the bead's scope. If you find a second problem, do
@@ -365,7 +357,7 @@ on branch `bd/BEAD_ID`. The bead is already claimed by you.
    labelled `needs-merge`. If they disagree, you worked the wrong bead — say so
    in your summary rather than papering over it.
 
-Rules that are not negotiable: no public contract change without an ADR first; no
+Rules that are not negotiable: no public contract change without contract, SDK and test updates together; no
 third-party type crossing a contract; raw SQL is never reachable from a
 client-supplied string; a parameter is either honoured or rejected by name, never
 accepted and ignored.

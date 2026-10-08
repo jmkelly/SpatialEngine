@@ -6,7 +6,7 @@ the datum-shift grid registry. Two records bind it: **ADR-0105** (grids are
 **ADR-0087** (transformations are contract values with area of use and
 accuracy, `findTransformations` a ranked, area-filtered search), with
 **ADR-0179** on the published-bundle comparison being an operator-run exercise
-rather than a CI gate. Route by task: `architecture/distilled/plugins.md`.
+rather than a CI gate. Route by task: `architecture/principles.md`.
 
 ## Never
 
