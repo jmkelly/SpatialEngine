@@ -55,9 +55,26 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine(SampleReport.Header);
 
+        var reports = await MeasureScenariosAsync(options, runner, loaded, cancellationToken);
+        WriteReports(reports);
+
+        if (options.Host is { } host)
+        {
+            await ReportHttpAsync(host, options, reports, cancellationToken);
+        }
+
+        if (options.Json is { } json)
+        {
+            await WriteJsonAsync(options, reports, json, cancellationToken);
+        }
+    }
+
+    /// <summary>Every scenario × variant measurement, in print order.</summary>
+    private static async Task<List<SampleReport>> MeasureScenariosAsync(
+        Options options, QueryRunner runner, LoadedStore loaded, CancellationToken cancellationToken)
+    {
         var reports = new List<SampleReport>();
-        var identityUnavailable = runner.IdentityUnavailable;
-        if (identityUnavailable is { } reason)
+        if (runner.IdentityUnavailable is { } reason)
         {
             Console.WriteLine($"# path C (IFeatureLookup by identity) is unavailable here: {reason}");
         }
@@ -77,33 +94,53 @@ internal static class Program
                 $"→ attribute pushdown {(attributePushdown ? "supported" : "NOT supported by this store (bbox only)")}");
             foreach (var variant in QueryRequest.Variants)
             {
-                reports.Add(await MeasureAsync(options, "A-scan", request, variant, where, token => runner.ScanAsync(request, variant, where, token), cancellationToken));
-                reports.Add(await MeasureAsync(options, attributePushdown ? "B-push" : "B-bbox", request, variant, where, Pushdown(runner, request, variant, where, storeFilter, paged: false), cancellationToken));
-                reports.Add(await MeasureAsync(options, "Bp-page", request, variant, where, Pushdown(runner, request, variant, where, storeFilter, paged: true), cancellationToken));
-                reports.Add(await MeasureAsync(options, "D-emul", request, variant, where, Emulated(runner, request, variant, where), cancellationToken));
-                if (identityUnavailable is null && !QueryRequest.IsCountOnly(variant) && !QueryRequest.IsStatistics(variant))
-                {
-                    reports.Add(await MeasureAsync(options, "C-lookup", request, variant, where, token => runner.IdentityAsync(request, token), cancellationToken));
-                }
+                reports.AddRange(await MeasureVariantAsync(options, runner, request, variant, where, storeFilter, attributePushdown, cancellationToken));
             }
         }
 
+        return reports;
+    }
+
+    /// <summary>The A/B/Bp/D arms for one scenario × variant, plus the C lookup where available.</summary>
+    private static async Task<List<SampleReport>> MeasureVariantAsync(
+        Options options,
+        QueryRunner runner,
+        QueryRequest request,
+        string variant,
+        Predicate? where,
+        Predicate? storeFilter,
+        bool attributePushdown,
+        CancellationToken cancellationToken)
+    {
+        var reports = new List<SampleReport>
+        {
+            await MeasureAsync(options, "A-scan", request, variant, where, token => runner.ScanAsync(request, variant, where, token), cancellationToken),
+            await MeasureAsync(options, attributePushdown ? "B-push" : "B-bbox", request, variant, where, Pushdown(runner, request, variant, where, storeFilter, paged: false), cancellationToken),
+            await MeasureAsync(options, "Bp-page", request, variant, where, Pushdown(runner, request, variant, where, storeFilter, paged: true), cancellationToken),
+            await MeasureAsync(options, "D-emul", request, variant, where, Emulated(runner, request, variant, where), cancellationToken),
+        };
+        if (runner.IdentityUnavailable is null && !QueryRequest.IsCountOnly(variant) && !QueryRequest.IsStatistics(variant))
+        {
+            reports.Add(await MeasureAsync(options, "C-lookup", request, variant, where, token => runner.IdentityAsync(request, token), cancellationToken));
+        }
+
+        return reports;
+    }
+
+    private static void WriteReports(IReadOnlyList<SampleReport> reports)
+    {
         foreach (var report in reports)
         {
             Console.WriteLine(report.ToRow());
         }
+    }
 
-        if (options.Host is { } host)
-        {
-            await ReportHttpAsync(host, options, reports, cancellationToken);
-        }
-
-        if (options.Json is { } json)
-        {
-            await File.WriteAllTextAsync(json, JsonSerializer.Serialize(new { options.Label, options.Store, reports }), cancellationToken);
-            Console.WriteLine();
-            Console.WriteLine($"# json written to {json}");
-        }
+    private static async Task WriteJsonAsync(
+        Options options, IReadOnlyList<SampleReport> reports, string json, CancellationToken cancellationToken)
+    {
+        await File.WriteAllTextAsync(json, JsonSerializer.Serialize(new { options.Label, options.Store, reports }), cancellationToken);
+        Console.WriteLine();
+        Console.WriteLine($"# json written to {json}");
     }
 
     /// <summary>

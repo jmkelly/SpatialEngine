@@ -73,103 +73,165 @@ internal static class Program
         }
     }
 
+    /// <summary>The run context: the store, renderer, working set and version every phase shares.</summary>
+    private sealed record SpikeSetup(
+        MemoryStore Store,
+        SingleRegistry Registry,
+        MapRenderer Renderer,
+        WebMercatorTileScheme Scheme,
+        CountingCache Cache,
+        IReadOnlyList<LayerSpec> Layers,
+        IReadOnlyList<TileCoordinate> Tiles,
+        IReadOnlyList<MapLayerSource> StyleSources,
+        string Style,
+        string Version)
+    {
+        internal static async Task<SpikeSetup> CreateAsync(Options options, CancellationToken cancellationToken)
+        {
+            var store = new MemoryStore();
+            var registry = new SingleRegistry(store, store);
+            var renderer = new MapRenderer(
+                new ProjNetTransforms(),
+                new NtsGeometryOperations(),
+                new VipsRasterOperations(new Dictionary<string, string>()));
+            var scheme = new WebMercatorTileScheme();
+            var cache = new CountingCache(options.MaxEntries, options.MaxBytes);
+
+            var layers = await Basemap.PublishAsync(store, WorkingTiles(options.Zoom).Count, options.Density, cancellationToken);
+            if (options.Layers < layers.Count)
+            {
+                layers = [.. layers.Take(options.Layers)];
+            }
+
+            var tiles = WorkingTiles(options.Zoom);
+            var styleSources = Mirror.Sources(registry, registry.Key, layers);
+            var style = ComposedStyle(layers);
+            var version = await VersionAsync(registry, layers, style, cancellationToken);
+            return new SpikeSetup(store, registry, renderer, scheme, cache, layers, tiles, styleSources, style, version);
+        }
+    }
+
+    /// <summary>Arm A outcome: the cold/warm whole-map samples and the warm working-set size.</summary>
+    private sealed record ArmAResult(SampleReport Cold, SampleReport Warm, int EntriesAfterWarm, long BytesAfterWarm);
+
+    /// <summary>Arm B outcome: per-layer renders, bytes, tile stacks and composite samples.</summary>
+    private sealed record ArmBResult(
+        List<SampleReport> PerLayerRenders,
+        List<long> PerLayerBytes,
+        List<byte[]>[] PerLayerTiles,
+        List<NetVips.Image>[] Decoded,
+        SampleReport Compose,
+        SampleReport ComposeRaw)
+    {
+        internal void DisposeDecoded()
+        {
+            foreach (var stack in Decoded)
+            {
+                foreach (var image in stack)
+                {
+                    image.Dispose();
+                }
+            }
+        }
+    }
+
     private static async Task RunAsync(Options options, CancellationToken cancellationToken)
     {
-        var store = new MemoryStore();
-        var registry = new SingleRegistry(store, store);
-        var renderer = new MapRenderer(
-            new ProjNetTransforms(),
-            new NtsGeometryOperations(),
-            new VipsRasterOperations(new Dictionary<string, string>()));
-        var scheme = new WebMercatorTileScheme();
-        var cache = new CountingCache(options.MaxEntries, options.MaxBytes);
+        var setup = await SpikeSetup.CreateAsync(options, cancellationToken);
+        WriteRunHeaders(options, setup);
 
-        var layers = await Basemap.PublishAsync(store, WorkingTiles(options.Zoom).Count, options.Density, cancellationToken);
-        if (options.Layers < layers.Count)
+        // ---------------------------------------------------------------- map
+        Console.WriteLine($"# version(V0) = {setup.Version[..16]}…  (service + composed style + folded data versions, ADR-0083)");
+        Console.WriteLine();
+
+        var armA = await MeasureArmAAsync(options, setup, cancellationToken);
+        var armB = await MeasureArmBAsync(options, setup, cancellationToken);
+
+        await ContentionProbeAsync(
+            options,
+            setup.Renderer,
+            setup.Cache,
+            setup.Scheme,
+            setup.Version,
+            setup.StyleSources,
+            setup.Style,
+            armB.Decoded,
+            setup.Tiles,
+            cancellationToken);
+
+        armB.DisposeDecoded();
+        ReportArmB(options, setup, armA, armB);
+
+        // ------------------------------------------ the two invalidation cases
+        var edits = await MeasureInvalidationAsync(options, setup, armB, cancellationToken);
+
+        // -------------------------------------------------- C and the flush
+        WriteArmC(options, setup, edits);
+
+        await FlushAsync(options, setup.Registry, setup.Renderer, setup.Cache, setup.Scheme, setup.Layers, setup.Tiles, setup.StyleSources, cancellationToken);
+
+        // ------------------------------------------------------ the decision
+        Decision(options, setup.Scheme.TileSize, setup.Layers, setup.Tiles, armA.Cold, armA.Warm, armB.PerLayerRenders, armB.Compose, armB.ComposeRaw, edits, armA.BytesAfterWarm, armB.PerLayerBytes);
+
+        if (options.Host is { } host)
         {
-            layers = [.. layers.Take(options.Layers)];
+            await HostCheck.RunAsync(options.Host, Service, setup.Layers, setup.Tiles, cancellationToken);
         }
+    }
 
-        var tiles = WorkingTiles(options.Zoom);
-        var styleSources = Mirror.Sources(registry, registry.Key, layers);
-        var style = ComposedStyle(layers);
-
+    private static void WriteRunHeaders(Options options, SpikeSetup setup)
+    {
         Console.WriteLine($"# SpatialEngine-u2x.21.2 tile invalidation fan-out — label={options.Label}");
-        Console.WriteLine($"# map '{Service}': {layers.Count} layers over a {Basemap.MaxLon - Basemap.MinLon:F2}deg x {Basemap.MaxLat - Basemap.MinLat:F2}deg metro extent");
-        Console.WriteLine($"#   " + string.Join(", ", layers.Select(layer => $"{layer.Dataset}({layer.PerTile * options.Density}/tile)")));
-        Console.WriteLine($"# working set: {tiles.Count} tiles at z={options.Zoom} covering that extent; iterations={options.Iterations} warmup={options.Warmup}");
+        Console.WriteLine($"# map '{Service}': {setup.Layers.Count} layers over a {Basemap.MaxLon - Basemap.MinLon:F2}deg x {Basemap.MaxLat - Basemap.MinLat:F2}deg metro extent");
+        Console.WriteLine($"#   " + string.Join(", ", setup.Layers.Select(layer => $"{layer.Dataset}({layer.PerTile * options.Density}/tile)")));
+        Console.WriteLine($"# working set: {setup.Tiles.Count} tiles at z={options.Zoom} covering that extent; iterations={options.Iterations} warmup={options.Warmup}");
         Console.WriteLine($"# A=whole-map entries (shipped)  B=per-layer entries composed at serve time (emulated)  C=per-layer style sub-key (emulated)");
         Console.WriteLine($"# cache bounds: maxEntries={options.MaxEntries} maxBytes={options.MaxBytes}");
         Console.WriteLine();
+    }
 
-        // ---------------------------------------------------------------- map
-        var version = await VersionAsync(registry, layers, style, cancellationToken);
-        Console.WriteLine($"# version(V0) = {version[..16]}…  (service + composed style + folded data versions, ADR-0083)");
-        Console.WriteLine();
-
-        // ------------------------------------------------------- A: whole map
+    /// <summary>Arm A: whole-map cache entries (the shipped design).</summary>
+    private static async Task<ArmAResult> MeasureArmAAsync(Options options, SpikeSetup setup, CancellationToken cancellationToken)
+    {
         Console.WriteLine("## A — whole-map cache entries (the shipped design)");
-        var cold = await MeasureAsync(options, "cold-render", "A whole-map", async token =>
-        {
-            await cache.ClearAsync(token);
-            foreach (var tile in tiles)
-            {
-                await Mirror.RenderAsync(renderer, cache, scheme, tile, version, Request(styleSources, style), token);
-            }
-        }, cancellationToken);
-        var warm = await MeasureAsync(options, "warm-hit", "A whole-map", async token =>
-        {
-            foreach (var tile in tiles)
-            {
-                await Mirror.RenderAsync(renderer, cache, scheme, tile, version, Request(styleSources, style), token);
-            }
-        }, cancellationToken);
+        var cold = await MeasureAsync(options, "cold-render", "A whole-map", token =>
+            RenderWholeMapAsync(setup, clearFirst: true, token), cancellationToken);
+        var warm = await MeasureAsync(options, "warm-hit", "A whole-map", token =>
+            RenderWholeMapAsync(setup, clearFirst: false, token), cancellationToken);
 
-        var entriesAfterWarm = cache.Entries;
-        var bytesAfterWarm = cache.Bytes;
+        var entriesAfterWarm = setup.Cache.Entries;
+        var bytesAfterWarm = setup.Cache.Bytes;
         Console.WriteLine(SampleReport.Header);
         Console.WriteLine(cold.ToRow());
         Console.WriteLine(warm.ToRow());
         Console.WriteLine($"# warm working set: {entriesAfterWarm} entries, {bytesAfterWarm / 1024.0 / 1024.0:F2} MB, {bytesAfterWarm / (double)entriesAfterWarm / 1024.0:F1} KB/tile average");
         Console.WriteLine();
+        return new ArmAResult(cold, warm, entriesAfterWarm, bytesAfterWarm);
+    }
 
-        // ----------------------------------------------- B: per-layer entries
+    private static async Task RenderWholeMapAsync(SpikeSetup setup, bool clearFirst, CancellationToken cancellationToken)
+    {
+        if (clearFirst)
+        {
+            await setup.Cache.ClearAsync(cancellationToken);
+        }
+
+        foreach (var tile in setup.Tiles)
+        {
+            await Mirror.RenderAsync(setup.Renderer, setup.Cache, setup.Scheme, tile, setup.Version, Request(setup.StyleSources, setup.Style), cancellationToken);
+        }
+    }
+
+    /// <summary>Arm B: per-layer entries rendered and composed at serve time (emulated, not shipped).</summary>
+    private static async Task<ArmBResult> MeasureArmBAsync(Options options, SpikeSetup setup, CancellationToken cancellationToken)
+    {
         Console.WriteLine("## B — per-layer cache entries, composed at serve time (emulated, not shipped)");
         var perLayerRenders = new List<SampleReport>();
         var perLayerBytes = new List<long>();
-        foreach (var layer in layers)
+        foreach (var layer in setup.Layers)
         {
-            var only = new List<LayerSpec> { layer };
-            var layerSources = Mirror.Sources(registry, registry.Key, only);
-            var layerStyle = MapStyle.Compose(Service, [new MapLayer(layer.Dataset, 0, layer.Dataset, layer.Style)]);
-            var report = await MeasureAsync(options, "cold-render", $"B {Short(layer.Dataset)}", async token =>
-            {
-                foreach (var tile in tiles)
-                {
-                    await renderer.RenderAsync(
-                        new MapRenderRequest(
-                            new RasterViewport(scheme.Bounds(tile), scheme.TileSize, scheme.TileSize, scheme.Crs),
-                            layerStyle,
-                            layerSources),
-                        token);
-                }
-            }, cancellationToken);
-            perLayerRenders.Add(report);
-
-            // The bytes one layer's tile would occupy, for the cache-size argument.
-            long bytes = 0;
-            foreach (var tile in tiles)
-            {
-                var image = await renderer.RenderAsync(
-                    new MapRenderRequest(
-                        new RasterViewport(scheme.Bounds(tile), scheme.TileSize, scheme.TileSize, scheme.Crs),
-                        layerStyle,
-                        layerSources),
-                    cancellationToken);
-                bytes += image.Content.LongLength;
-            }
-
-            perLayerBytes.Add(bytes);
+            perLayerRenders.Add(await MeasureLayerAsync(options, setup, layer, cancellationToken));
+            perLayerBytes.Add(await BytesForLayerAsync(setup, layer, cancellationToken));
         }
 
         Console.WriteLine(SampleReport.Header);
@@ -180,34 +242,13 @@ internal static class Program
 
         // The per-layer design's standing cost: composite the per-layer tiles
         // into the served tile, on every request, forever.
-        var perLayerTiles = new List<byte[]>[tiles.Count];
-        for (var t = 0; t < tiles.Count; t++)
-        {
-            perLayerTiles[t] = new List<byte[]>(layers.Count);
-        }
-
-        for (var l = 0; l < layers.Count; l++)
-        {
-            var only = new List<LayerSpec> { layers[l] };
-            var layerSources = Mirror.Sources(registry, registry.Key, only);
-            var layerStyle = MapStyle.Compose(Service, [new MapLayer(layers[l].Dataset, 0, layers[l].Dataset, layers[l].Style)]);
-            for (var t = 0; t < tiles.Count; t++)
-            {
-                var image = await renderer.RenderAsync(
-                    new MapRenderRequest(
-                        new RasterViewport(scheme.Bounds(tiles[t]), scheme.TileSize, scheme.TileSize, scheme.Crs),
-                        layerStyle,
-                        layerSources),
-                    cancellationToken);
-                perLayerTiles[t].Add(image.Content);
-            }
-        }
+        var perLayerTiles = await RenderPerLayerTilesAsync(setup, cancellationToken);
 
         var compose = await MeasureAsync(options, "serve-compose", "B composite+png", token =>
         {
             foreach (var stack in perLayerTiles)
             {
-                ServeComposite.Composite(stack, scheme.TileSize, scheme.TileSize);
+                ServeComposite.Composite(stack, setup.Scheme.TileSize, setup.Scheme.TileSize);
             }
 
             return Task.CompletedTask;
@@ -218,8 +259,94 @@ internal static class Program
         // rasters already decoded, which is what a per-layer cache holding raw
         // buffers would cost. The decode is hoisted out of the timed region
         // deliberately — it is the first arm's job to measure it.
-        var decoded = new List<NetVips.Image>[tiles.Count];
-        for (var t = 0; t < tiles.Count; t++)
+        var decoded = DecodeStacks(setup, perLayerTiles);
+
+        var composeRaw = await MeasureAsync(options, "serve-compose", "B composite+raw", token =>
+        {
+            foreach (var stack in decoded)
+            {
+                ServeComposite.CompositePreDecoded(stack, setup.Scheme.TileSize, setup.Scheme.TileSize);
+            }
+
+            return Task.CompletedTask;
+        }, cancellationToken);
+        Console.WriteLine(composeRaw.ToRow());
+        return new ArmBResult(perLayerRenders, perLayerBytes, perLayerTiles, decoded, compose, composeRaw);
+    }
+
+    private static Task<SampleReport> MeasureLayerAsync(Options options, SpikeSetup setup, LayerSpec layer, CancellationToken cancellationToken)
+    {
+        var only = new List<LayerSpec> { layer };
+        var layerSources = Mirror.Sources(setup.Registry, setup.Registry.Key, only);
+        var layerStyle = MapStyle.Compose(Service, [new MapLayer(layer.Dataset, 0, layer.Dataset, layer.Style)]);
+        return MeasureAsync(options, "cold-render", $"B {Short(layer.Dataset)}", async token =>
+        {
+            foreach (var tile in setup.Tiles)
+            {
+                await setup.Renderer.RenderAsync(
+                    new MapRenderRequest(
+                        new RasterViewport(setup.Scheme.Bounds(tile), setup.Scheme.TileSize, setup.Scheme.TileSize, setup.Scheme.Crs),
+                        layerStyle,
+                        layerSources),
+                    token);
+            }
+        }, cancellationToken);
+    }
+
+    private static async Task<long> BytesForLayerAsync(SpikeSetup setup, LayerSpec layer, CancellationToken cancellationToken)
+    {
+        var only = new List<LayerSpec> { layer };
+        var layerSources = Mirror.Sources(setup.Registry, setup.Registry.Key, only);
+        var layerStyle = MapStyle.Compose(Service, [new MapLayer(layer.Dataset, 0, layer.Dataset, layer.Style)]);
+
+        // The bytes one layer's tile would occupy, for the cache-size argument.
+        long bytes = 0;
+        foreach (var tile in setup.Tiles)
+        {
+            var image = await setup.Renderer.RenderAsync(
+                new MapRenderRequest(
+                    new RasterViewport(setup.Scheme.Bounds(tile), setup.Scheme.TileSize, setup.Scheme.TileSize, setup.Scheme.Crs),
+                    layerStyle,
+                    layerSources),
+                cancellationToken);
+            bytes += image.Content.LongLength;
+        }
+
+        return bytes;
+    }
+
+    private static async Task<List<byte[]>[]> RenderPerLayerTilesAsync(SpikeSetup setup, CancellationToken cancellationToken)
+    {
+        var perLayerTiles = new List<byte[]>[setup.Tiles.Count];
+        for (var t = 0; t < setup.Tiles.Count; t++)
+        {
+            perLayerTiles[t] = new List<byte[]>(setup.Layers.Count);
+        }
+
+        for (var l = 0; l < setup.Layers.Count; l++)
+        {
+            var only = new List<LayerSpec> { setup.Layers[l] };
+            var layerSources = Mirror.Sources(setup.Registry, setup.Registry.Key, only);
+            var layerStyle = MapStyle.Compose(Service, [new MapLayer(setup.Layers[l].Dataset, 0, setup.Layers[l].Dataset, setup.Layers[l].Style)]);
+            for (var t = 0; t < setup.Tiles.Count; t++)
+            {
+                var image = await setup.Renderer.RenderAsync(
+                    new MapRenderRequest(
+                        new RasterViewport(setup.Scheme.Bounds(setup.Tiles[t]), setup.Scheme.TileSize, setup.Scheme.TileSize, setup.Scheme.Crs),
+                        layerStyle,
+                        layerSources),
+                    cancellationToken);
+                perLayerTiles[t].Add(image.Content);
+            }
+        }
+
+        return perLayerTiles;
+    }
+
+    private static List<NetVips.Image>[] DecodeStacks(SpikeSetup setup, List<byte[]>[] perLayerTiles)
+    {
+        var decoded = new List<NetVips.Image>[setup.Tiles.Count];
+        for (var t = 0; t < setup.Tiles.Count; t++)
         {
             decoded[t] = [];
             foreach (var content in perLayerTiles[t])
@@ -233,56 +360,34 @@ internal static class Program
             }
         }
 
-        var composeRaw = await MeasureAsync(options, "serve-compose", "B composite+raw", token =>
-        {
-            foreach (var stack in decoded)
-            {
-                ServeComposite.CompositePreDecoded(stack, scheme.TileSize, scheme.TileSize);
-            }
+        return decoded;
+    }
 
-            return Task.CompletedTask;
-        }, cancellationToken);
-        Console.WriteLine(composeRaw.ToRow());
-
-        await ContentionProbeAsync(
-            options,
-            renderer,
-            cache,
-            scheme,
-            version,
-            styleSources,
-            style,
-            decoded,
-            tiles,
-            cancellationToken);
-
-        foreach (var stack in decoded)
-        {
-            foreach (var image in stack)
-            {
-                image.Dispose();
-            }
-        }
-
+    private static void ReportArmB(Options options, SpikeSetup setup, ArmAResult armA, ArmBResult armB)
+    {
         Console.WriteLine();
-        Console.WriteLine($"# B holds {tiles.Count * layers.Count} entries for the same {tiles.Count} tiles " +
-            $"({(tiles.Count * layers.Count) / (double)options.MaxEntries:P0} of the entry bound), " +
-            $"{perLayerBytes.Sum() / 1024.0 / 1024.0:F2} MB against A's {bytesAfterWarm / 1024.0 / 1024.0:F2} MB");
+        Console.WriteLine($"# B holds {setup.Tiles.Count * setup.Layers.Count} entries for the same {setup.Tiles.Count} tiles " +
+            $"({(setup.Tiles.Count * setup.Layers.Count) / (double)options.MaxEntries:P0} of the entry bound), " +
+            $"{armB.PerLayerBytes.Sum() / 1024.0 / 1024.0:F2} MB against A's {armA.BytesAfterWarm / 1024.0 / 1024.0:F2} MB");
         Console.WriteLine("# 'composite+png' decodes each cached layer on every request (cache stores PNG);");
         Console.WriteLine("# 'composite+raw' is the same blend and encode with the layers already decoded (cache stores raw buffers).");
         Console.WriteLine();
+    }
 
-        // ------------------------------------------ the two invalidation cases
+    /// <summary>The two invalidation cases: a single-layer data edit, then a single-layer style save.</summary>
+    private static async Task<List<FanOut>> MeasureInvalidationAsync(
+        Options options, SpikeSetup setup, ArmBResult armB, CancellationToken cancellationToken)
+    {
         Console.WriteLine("## Invalidation fan-out — how many of the warm entries a single-layer change throws out");
         var edits = new List<FanOut>();
-        foreach (var layer in layers)
+        foreach (var layer in setup.Layers)
         {
-            edits.Add(await FanOutAsync(options, "edit", layer, layers, styleSources, cache, renderer, scheme, tiles, style, version, perLayerRenders[edits.Count], cancellationToken));
+            edits.Add(await FanOutAsync(options, "edit", layer, setup.Layers, setup.StyleSources, setup.Cache, setup.Renderer, setup.Scheme, setup.Tiles, setup.Style, setup.Version, armB.PerLayerRenders[edits.Count], cancellationToken));
         }
 
-        foreach (var layer in layers)
+        foreach (var layer in setup.Layers)
         {
-            edits.Add(await StyleFanOutAsync(options, layer, layers, styleSources, cache, renderer, scheme, tiles, style, version, perLayerRenders[edits.Count - layers.Count], cancellationToken));
+            edits.Add(await StyleFanOutAsync(options, layer, setup.Layers, setup.StyleSources, setup.Cache, setup.Renderer, setup.Scheme, setup.Tiles, setup.Style, setup.Version, armB.PerLayerRenders[edits.Count - setup.Layers.Count], cancellationToken));
         }
 
         Console.WriteLine(FanOut.Header);
@@ -292,25 +397,19 @@ internal static class Program
         }
 
         Console.WriteLine();
+        return edits;
+    }
 
-        // -------------------------------------------------- C and the flush
+    private static void WriteArmC(Options options, SpikeSetup setup, List<FanOut> edits)
+    {
         Console.WriteLine("## C — per-layer style sub-key (emulated), and the global flush");
         Console.WriteLine("# C keeps ONE entry per tile and only changes how the version is folded, so the entry count and");
         Console.WriteLine("# therefore the fan-out are the same as A. The measured rows below are A's, re-labelled.");
-        var styleArm = edits.First(row => row.Case == "style" && row.Layer == layers[0].Dataset);
-        Console.WriteLine($"#   C style save on {layers[0].Dataset}: {styleArm.Invalidated} thrown out, {styleArm.Changed} genuinely changed — identical to A above");
+        var styleArm = edits.First(row => row.Case == "style" && row.Layer == setup.Layers[0].Dataset);
+        Console.WriteLine($"#   C style save on {setup.Layers[0].Dataset}: {styleArm.Invalidated} thrown out, {styleArm.Changed} genuinely changed — identical to A above");
         Console.WriteLine();
-
-        await FlushAsync(options, registry, renderer, cache, scheme, layers, tiles, styleSources, cancellationToken);
-
-        // ------------------------------------------------------ the decision
-        Decision(options, scheme.TileSize, layers, tiles, cold, warm, perLayerRenders, compose, composeRaw, edits, bytesAfterWarm, perLayerBytes);
-
-        if (options.Host is { } host)
-        {
-            await HostCheck.RunAsync(options.Host, Service, layers, tiles, cancellationToken);
-        }
     }
+
 
     /// <summary>A single-layer data write: how many warm entries does it throw out, and how many really changed?</summary>
     private static async Task<FanOut> FanOutAsync(
@@ -481,29 +580,72 @@ internal static class Program
         long wholeMapBytes,
         IReadOnlyList<long> perLayerBytes)
     {
-        var worst = fanOut.Where(row => row.Case == "edit").MaxBy(row => row.Invalidated)!;
-        var bestCase = fanOut.Where(row => row.Case == "edit").MinBy(row => row.Changed)!;
-        var perTileCompose = compose.P50Milliseconds / tiles.Count;
-        var perTileComposeRaw = composeRaw.P50Milliseconds / tiles.Count;
-        var perTileCold = cold.P50Milliseconds / tiles.Count;
-        var perTileWarm = warm.P50Milliseconds / tiles.Count;
-
         // The same three quantities on CPU time, which is the basis the
         // decision is made on (see the contention probe below).
-        var cpuCompose = compose.P50CpuMilliseconds / tiles.Count;
-        var cpuComposeRaw = composeRaw.P50CpuMilliseconds / tiles.Count;
-        var cpuCold = cold.P50CpuMilliseconds / tiles.Count;
-        var cpuWarm = warm.P50CpuMilliseconds / tiles.Count;
+        var cpu = ComputeCpuBasis(cold, warm, compose, composeRaw, tiles);
+        var edited = PerTileEdited(perLayer, tiles);
+
+        WriteDerivedHeader(tiles, layers, cold, warm, compose, composeRaw, fanOut, cpu);
+        WriteCacheBytes(options, tileSize, layers, tiles, wholeMapBytes, perLayerBytes);
+        WriteBreakEvenCpu(layers, cold, compose, composeRaw, perLayer, edited, cpu);
+        WriteBreakEvenAlloc(layers, tiles, cold, compose, composeRaw, perLayer);
+        WriteAmortisedTotals(options, layers, tiles, edited, cpu);
+    }
+
+    /// <summary>Per-tile CPU/wall figures both break-even tables share.</summary>
+    private sealed record CpuBasis(
+        double PerTileCompose, double PerTileComposeRaw, double PerTileCold, double PerTileWarm,
+        double CpuCompose, double CpuComposeRaw, double CpuCold, double CpuWarm);
+
+    private static CpuBasis ComputeCpuBasis(SampleReport cold, SampleReport warm, SampleReport compose, SampleReport composeRaw, IReadOnlyList<TileCoordinate> tiles) =>
+        new(
+            compose.P50Milliseconds / tiles.Count,
+            composeRaw.P50Milliseconds / tiles.Count,
+            cold.P50Milliseconds / tiles.Count,
+            warm.P50Milliseconds / tiles.Count,
+            compose.P50CpuMilliseconds / tiles.Count,
+            composeRaw.P50CpuMilliseconds / tiles.Count,
+            cold.P50CpuMilliseconds / tiles.Count,
+            warm.P50CpuMilliseconds / tiles.Count);
+
+    /// <summary>Per-layer re-render cost, per tile, on both bases.</summary>
+    private sealed record EditedCost(double[] PerTileEdited, double[] PerTileEditedCpu);
+
+    private static EditedCost PerTileEdited(List<SampleReport> perLayer, IReadOnlyList<TileCoordinate> tiles)
+    {
+        var perTileEdited = new double[perLayer.Count];
+        var perTileEditedCpu = new double[perLayer.Count];
+        for (var l = 0; l < perLayer.Count; l++)
+        {
+            perTileEdited[l] = perLayer[l].P50Milliseconds / tiles.Count;
+            perTileEditedCpu[l] = perLayer[l].P50CpuMilliseconds / tiles.Count;
+        }
+
+        return new EditedCost(perTileEdited, perTileEditedCpu);
+    }
+
+    private static void WriteDerivedHeader(
+        IReadOnlyList<TileCoordinate> tiles,
+        IReadOnlyList<LayerSpec> layers,
+        SampleReport cold,
+        SampleReport warm,
+        SampleReport compose,
+        SampleReport composeRaw,
+        List<FanOut> fanOut,
+        CpuBasis cpu)
+    {
+        var worst = fanOut.Where(row => row.Case == "edit").MaxBy(row => row.Invalidated)!;
+        var bestCase = fanOut.Where(row => row.Case == "edit").MinBy(row => row.Changed)!;
 
         Console.WriteLine("## Derived — the numbers the decision is made on");
         Console.WriteLine("# wall_ms is reported for continuity, but CPU_ms is the decision basis: the wall-time ORDERING of");
         Console.WriteLine("# these arms flipped with box load across three runs, while CPU time held (see the probe at the end).");
         Console.WriteLine($"tiles in the working set                 {tiles.Count}");
         Console.WriteLine($"layers in the published map             {layers.Count}");
-        Console.WriteLine($"whole-map warm hit, per tile            {perTileWarm:F2} ms wall   {cpuWarm:F2} ms cpu   alloc {(warm.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0):F3} MB");
-        Console.WriteLine($"whole-map cold re-render, per tile      {perTileCold:F2} ms wall   {cpuCold:F2} ms cpu   alloc {cold.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F2} MB");
-        Console.WriteLine($"serve-time composite+png, per tile      {perTileCompose:F2} ms wall   {cpuCompose:F2} ms cpu   alloc {compose.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB");
-        Console.WriteLine($"serve-time composite+raw, per tile      {perTileComposeRaw:F2} ms wall   {cpuComposeRaw:F2} ms cpu   alloc {composeRaw.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB");
+        Console.WriteLine($"whole-map warm hit, per tile            {cpu.PerTileWarm:F2} ms wall   {cpu.CpuWarm:F2} ms cpu   alloc {(warm.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0):F3} MB");
+        Console.WriteLine($"whole-map cold re-render, per tile      {cpu.PerTileCold:F2} ms wall   {cpu.CpuCold:F2} ms cpu   alloc {cold.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F2} MB");
+        Console.WriteLine($"serve-time composite+png, per tile      {cpu.PerTileCompose:F2} ms wall   {cpu.CpuCompose:F2} ms cpu   alloc {compose.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB");
+        Console.WriteLine($"serve-time composite+raw, per tile      {cpu.PerTileComposeRaw:F2} ms wall   {cpu.CpuComposeRaw:F2} ms cpu   alloc {composeRaw.AllocatedBytes / (double)tiles.Count / 1024.0 / 1024.0:F3} MB");
         Console.WriteLine($"over-invalidation, a single-layer edit  {worst.Invalidated / (double)Math.Max(1, worst.Changed):F1}x  (worst layer)");
         Console.WriteLine($"over-invalidation, a single-layer edit  {bestCase.Invalidated / (double)Math.Max(1, bestCase.Changed):F1}x  (sparsest layer)");
         var styleRows = fanOut.Where(row => row.Case == "style").ToList();
@@ -513,9 +655,19 @@ internal static class Program
         Console.WriteLine("# The fan-out counts warm entries DROPPED, not tiles re-rendered. Both arms are demand-filled: the");
         Console.WriteLine("# host's TileService (and this spike's Mirror.RenderAsync) look the key up and render only on a miss,");
         Console.WriteLine("# so a version move makes a tile cost something only if a client asks for that tile again.");
-        Console.WriteLine($"# So the price of a single-layer edit is (tiles re-requested) x {perTileCold:F1} ms, not {tiles.Count} x that. This harness");
+        Console.WriteLine($"# So the price of a single-layer edit is (tiles re-requested) x {cpu.PerTileCold:F1} ms, not {tiles.Count} x that. This harness");
         Console.WriteLine("# re-requests the whole working set to count the fan-out, which is the measurement's demand, not");
         Console.WriteLine("# the host's behaviour. The over-invalidation factor is an upper bound on the waste, not the bill.");
+    }
+
+    private static void WriteCacheBytes(
+        Options options,
+        int tileSize,
+        IReadOnlyList<LayerSpec> layers,
+        IReadOnlyList<TileCoordinate> tiles,
+        long wholeMapBytes,
+        IReadOnlyList<long> perLayerBytes)
+    {
         // The memory the two arms actually hold, and — critically — what the
         // cheap ('composite+raw') blend arm costs to store. The per-layer PNG
         // column above is the bytes arm B holds if it caches what arm A caches.
@@ -534,6 +686,18 @@ internal static class Program
         Console.WriteLine($"  'composite+raw' blend arm requires");
         Console.WriteLine($"entry-bound equivalent, raw per-layer    {options.MaxEntries / layers.Count} tiles' worth for the same {options.MaxEntries} entries");
         Console.WriteLine($"entry-bound equivalent, raw bytes        {(long)options.MaxEntries / layers.Count * layers.Count * tileSize * tileSize * 4 / 1024.0 / 1024.0:F2} MB against the {options.MaxBytes / 1024.0 / 1024.0:F0} MB byte bound");
+    }
+
+    /// <summary>Break-even on CPU time (the decision basis): tiles re-requested after one edit before arm B repays itself.</summary>
+    private static void WriteBreakEvenCpu(
+        IReadOnlyList<LayerSpec> layers,
+        SampleReport cold,
+        SampleReport compose,
+        SampleReport composeRaw,
+        List<SampleReport> perLayer,
+        EditedCost edited,
+        CpuBasis cpu)
+    {
 
         // Break-even: how many tiles must be re-requested after one edit before
         // per-layer composition has repaid itself.
@@ -546,42 +710,45 @@ internal static class Program
         // measured under the same conditions.
         //
         // After a single-layer edit, if the client re-requests K of the tiles:
-        //   arm A: K x perTileCold  (every one of them is a cache miss)
-        //   arm B: perTileEditedLayer (re-render the one edited layer, once)
+        //   arm A: K x cpu.PerTileCold  (every one of them is a cache miss)
+        //   arm B: edited.PerTileEditedLayer (re-render the one edited layer, once)
         //           + K x tax        (blend and encode on every serve)
-        // Break-even solves  perTileEditedLayer + K x tax = K x perTileCold,
+        // Break-even solves  edited.PerTileEditedLayer + K x tax = K x cpu.PerTileCold,
         // which is a LOWER bound being a better result for arm B: the fewer
         // tiles must be re-requested before B repays itself, the more B is
         // worth building. An infinity means B never repays, at any load.
-        var perTileEdited = new double[layers.Count];
-        var perTileEditedCpu = new double[layers.Count];
-        for (var l = 0; l < layers.Count; l++)
-        {
-            perTileEdited[l] = perLayer[l].P50Milliseconds / tiles.Count;
-            perTileEditedCpu[l] = perLayer[l].P50CpuMilliseconds / tiles.Count;
-        }
-
         Console.WriteLine();
         Console.WriteLine("## Break-even — tiles re-requested after one edit before per-layer composition repays itself");
         Console.WriteLine("# LOWER is better: the number of re-requested tiles arm B needs before it repays itself. ∞ = never repays.");
         Console.WriteLine("# Computed on CPU time (the decision basis). The wall-time version is below, unlabelled as authoritative,");
         Console.WriteLine("# because its ordering flipped with box load across the three runs of this spike.");
-        Console.WriteLine($"# per tile, CPU:  A pays {cpuCold:F1} ms per re-requested tile (all cold); B pays {Min(perTileEditedCpu):F1}-{Max(perTileEditedCpu):F1} ms once to re-render the edited layer,");
-        Console.WriteLine($"#                then {cpuComposeRaw:F1} ms (+raw) or {cpuCompose:F1} ms (+png) per tile served.");
+        Console.WriteLine($"# per tile, CPU:  A pays {cpu.CpuCold:F1} ms per re-requested tile (all cold); B pays {Min(edited.PerTileEditedCpu):F1}-{Max(edited.PerTileEditedCpu):F1} ms once to re-render the edited layer,");
+        Console.WriteLine($"#                then {cpu.CpuComposeRaw:F1} ms (+raw) or {cpu.CpuCompose:F1} ms (+png) per tile served.");
         Console.WriteLine($"{"edited layer",-22} {"edited layer cpu",17} {"tax+raw",9} {"tax+png",9} {"BE+raw",9} {"BE+png",9}   (wall: BE+raw / BE+png)");
         for (var l = 0; l < layers.Count; l++)
         {
-            var cpuHeadroom = cpuCold - cpuCompose;
-            var cpuHeadroomRaw = cpuCold - cpuComposeRaw;
-            var bePng = cpuHeadroom <= 0 ? double.PositiveInfinity : perTileEditedCpu[l] / cpuHeadroom;
-            var beRaw = cpuHeadroomRaw <= 0 ? double.PositiveInfinity : perTileEditedCpu[l] / cpuHeadroomRaw;
-            var wallHeadroom = perTileCold - perTileCompose;
-            var wallHeadroomRaw = perTileCold - perTileComposeRaw;
-            var wallPng = wallHeadroom <= 0 ? double.PositiveInfinity : perTileEdited[l] / wallHeadroom;
-            var wallRaw = wallHeadroomRaw <= 0 ? double.PositiveInfinity : perTileEdited[l] / wallHeadroomRaw;
-            Console.WriteLine($"{layers[l].Dataset,-22} {perTileEditedCpu[l],17:F1} {cpuComposeRaw,9:F1} {cpuCompose,9:F1} {Format(beRaw),9} {Format(bePng),9}   {Format(wallRaw)} / {Format(wallPng)}");
+            var cpuHeadroom = cpu.CpuCold - cpu.CpuCompose;
+            var cpuHeadroomRaw = cpu.CpuCold - cpu.CpuComposeRaw;
+            var bePng = cpuHeadroom <= 0 ? double.PositiveInfinity : edited.PerTileEditedCpu[l] / cpuHeadroom;
+            var beRaw = cpuHeadroomRaw <= 0 ? double.PositiveInfinity : edited.PerTileEditedCpu[l] / cpuHeadroomRaw;
+            var wallHeadroom = cpu.PerTileCold - cpu.PerTileCompose;
+            var wallHeadroomRaw = cpu.PerTileCold - cpu.PerTileComposeRaw;
+            var wallPng = wallHeadroom <= 0 ? double.PositiveInfinity : edited.PerTileEdited[l] / wallHeadroom;
+            var wallRaw = wallHeadroomRaw <= 0 ? double.PositiveInfinity : edited.PerTileEdited[l] / wallHeadroomRaw;
+            Console.WriteLine($"{layers[l].Dataset,-22} {edited.PerTileEditedCpu[l],17:F1} {cpu.CpuComposeRaw,9:F1} {cpu.CpuCompose,9:F1} {Format(beRaw),9} {Format(bePng),9}   {Format(wallRaw)} / {Format(wallPng)}");
         }
 
+    }
+
+    /// <summary>Break-even on allocation (load-independent proxy, reported for completeness).</summary>
+    private static void WriteBreakEvenAlloc(
+        IReadOnlyList<LayerSpec> layers,
+        IReadOnlyList<TileCoordinate> tiles,
+        SampleReport cold,
+        SampleReport compose,
+        SampleReport composeRaw,
+        List<SampleReport> perLayer)
+    {
         Console.WriteLine();
         Console.WriteLine("## Break-even on allocation (load-independent, but a PROXY — reported for completeness)");
         Console.WriteLine("# Allocation is load-independent and exactly reproducible, but it is not the cost: the composite's");
@@ -600,6 +767,16 @@ internal static class Program
             Console.WriteLine($"{layers[l].Dataset,-22} {allocPerTile / 1024.0 / 1024.0,20:F2} {Format(headroomRaw <= 0 ? double.PositiveInfinity : allocPerTile / headroomRaw),16} {Format(headroomPng <= 0 ? double.PositiveInfinity : allocPerTile / headroomPng),16}");
         }
 
+    }
+
+    /// <summary>Amortised total cost at several serve/edit ratios, plus the entry-bound note.</summary>
+    private static void WriteAmortisedTotals(
+        Options options,
+        IReadOnlyList<LayerSpec> layers,
+        IReadOnlyList<TileCoordinate> tiles,
+        EditedCost edited,
+        CpuBasis cpu)
+    {
         Console.WriteLine();
         Console.WriteLine("## Amortised total cost — what a deployment actually pays");
         Console.WriteLine("# The break-even above is 'tiles served per edit'. Read it that way: it is R, the ratio of tile");
@@ -611,9 +788,9 @@ internal static class Program
         Console.WriteLine($"{"tiles served per edit (R)",26} {"A total cpu ms",16} {"B total cpu ms (+raw)",22} {"B (+png)",14}   winner");
         foreach (var ratio in new[] { 1, 2, 5, tiles.Count, 100, 1000 })
         {
-            var a = ratio * cpuCold;
-            var bRaw = Max(perTileEditedCpu) + (ratio * cpuComposeRaw);
-            var bPng = Max(perTileEditedCpu) + (ratio * cpuCompose);
+            var a = ratio * cpu.CpuCold;
+            var bRaw = Max(edited.PerTileEditedCpu) + (ratio * cpu.CpuComposeRaw);
+            var bPng = Max(edited.PerTileEditedCpu) + (ratio * cpu.CpuCompose);
             var winner = bRaw < a && bPng < a ? "B (both)" : bRaw < a ? "B (+raw only)" : "A";
             Console.WriteLine($"{ratio,26} {a,16:F1} {bRaw,22:F1} {bPng,14:F1}   {winner}");
         }
