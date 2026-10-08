@@ -6127,6 +6127,16 @@
           },
           "geometryLayout": {
             "$ref": "#/components/schemas/CoordinateLayout"
+          },
+          "timeFields": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TemporalExtentFields"
+              }
+            ]
           }
         }
       },
@@ -6658,6 +6668,16 @@
             "items": {
               "$ref": "#/components/schemas/LayerRelationship"
             }
+          },
+          "timeFields": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TemporalExtentFields"
+              }
+            ]
           }
         }
       },
@@ -7044,6 +7064,30 @@
           "descending"
         ],
         "default": "ascending"
+      },
+      "TemporalExtentFields": {
+        "required": [
+          "startField",
+          "endField"
+        ],
+        "type": "object",
+        "properties": {
+          "startField": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "endField": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEmpty": {
+            "type": "boolean"
+          }
+        }
       },
       "TileBatchRequest": {
         "required": [
