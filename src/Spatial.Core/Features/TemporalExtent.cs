@@ -79,19 +79,31 @@ public readonly record struct TemporalExtent(DateTimeOffset? Start, DateTimeOffs
     /// </summary>
     public bool Matches(TemporalExtent window, TemporalRelation relation)
     {
-        if (Start is { } start && End is { } end && start > end)
+        if (IsEmpty())
         {
             return false;
         }
 
         return relation switch
         {
-            TemporalRelation.Overlaps => NotAfter(Start, window.End) && NotBefore(End, window.Start),
-            TemporalRelation.Contains => NotAfter(Start, window.Start) && NotBefore(End, window.End),
-            TemporalRelation.Within => NotBefore(Start, window.Start) && NotAfter(End, window.End),
+            TemporalRelation.Overlaps => OverlapsWindow(window),
+            TemporalRelation.Contains => ContainsWindow(window),
+            TemporalRelation.Within => WithinWindow(window),
             _ => throw new ArgumentOutOfRangeException(nameof(relation), relation, "Unknown temporal relation."),
         };
     }
+
+    /// <summary>Whether the extent is empty: a start after its end, matching nothing at all.</summary>
+    private bool IsEmpty() => Start is { } start && End is { } end && start > end;
+
+    private bool OverlapsWindow(TemporalExtent window) =>
+        NotAfter(Start, window.End) && NotBefore(End, window.Start);
+
+    private bool ContainsWindow(TemporalExtent window) =>
+        NotAfter(Start, window.Start) && NotBefore(End, window.End);
+
+    private bool WithinWindow(TemporalExtent window) =>
+        NotBefore(Start, window.Start) && NotAfter(End, window.End);
 
     /// <summary>One instant against the window's inclusive bounds, a null bound infinite.</summary>
     private static bool Inside(DateTimeOffset value, TemporalExtent window) =>

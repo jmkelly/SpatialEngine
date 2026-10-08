@@ -114,25 +114,28 @@ public static class FeaturePlanExecutor
         foreach (var feature in features)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (wanted is not null && !wanted.Contains(feature.Id))
+            if (Keep(schema, feature, query, wanted))
             {
-                continue;
+                selected.Add(feature);
             }
-
-            if (query.Where is { } predicate && !ReferencePredicate.Matches(predicate, feature))
-            {
-                continue;
-            }
-
-            if (query.BoundingBox is { } bbox && !Intersects(schema, feature, bbox))
-            {
-                continue;
-            }
-
-            selected.Add(feature);
         }
 
         return selected;
+    }
+
+    private static bool Keep(IFeatureSchema schema, Feature feature, FeatureQuery query, HashSet<FeatureId>? wanted)
+    {
+        if (wanted is not null && !wanted.Contains(feature.Id))
+        {
+            return false;
+        }
+
+        if (query.Where is { } predicate && !ReferencePredicate.Matches(predicate, feature))
+        {
+            return false;
+        }
+
+        return query.BoundingBox is not { } bbox || Intersects(schema, feature, bbox);
     }
 
     /// <summary>

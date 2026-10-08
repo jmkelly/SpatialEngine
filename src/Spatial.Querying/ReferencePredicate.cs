@@ -145,20 +145,37 @@ public static class ReferencePredicate
         if (literal.Kind == LiteralKind.Integer
             && long.TryParse(literal.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var whole))
         {
-            return comparison switch
-            {
-                ComparisonOperator.Equals => left == whole,
-                ComparisonOperator.NotEquals => left != whole,
-                ComparisonOperator.LessThan => left < whole,
-                ComparisonOperator.LessOrEqual => left <= whole,
-                ComparisonOperator.GreaterThan => left > whole,
-                ComparisonOperator.GreaterOrEqual => left >= whole,
-                _ => false,
-            };
+            return WholeComparison(left, whole, comparison);
         }
 
         return Number(left, comparison, literal);
     }
+
+    private static bool WholeComparison(long left, long whole, ComparisonOperator comparison)
+    {
+        if (comparison is ComparisonOperator.Equals or ComparisonOperator.NotEquals)
+        {
+            return WholeEquality(left, whole, comparison);
+        }
+
+        return WholeOrdering(left, whole, comparison);
+    }
+
+    private static bool WholeEquality(long left, long whole, ComparisonOperator comparison) => comparison switch
+    {
+        ComparisonOperator.Equals => left == whole,
+        ComparisonOperator.NotEquals => left != whole,
+        _ => false,
+    };
+
+    private static bool WholeOrdering(long left, long whole, ComparisonOperator comparison) => comparison switch
+    {
+        ComparisonOperator.LessThan => left < whole,
+        ComparisonOperator.LessOrEqual => left <= whole,
+        ComparisonOperator.GreaterThan => left > whole,
+        ComparisonOperator.GreaterOrEqual => left >= whole,
+        _ => false,
+    };
 
     private static bool Number(double left, ComparisonOperator comparison, Literal literal)
     {
@@ -175,10 +192,25 @@ public static class ReferencePredicate
         return literal.Kind == LiteralKind.Decimal && Ordering(left, literal.Number, comparison);
     }
 
-    private static bool Ordering(double left, double right, ComparisonOperator comparison) => comparison switch
+    private static bool Ordering(double left, double right, ComparisonOperator comparison)
+    {
+        if (comparison is ComparisonOperator.Equals or ComparisonOperator.NotEquals)
+        {
+            return EqualityOrdering(left, right, comparison);
+        }
+
+        return RelationalOrdering(left, right, comparison);
+    }
+
+    private static bool EqualityOrdering(double left, double right, ComparisonOperator comparison) => comparison switch
     {
         ComparisonOperator.Equals => left == right,
         ComparisonOperator.NotEquals => left != right,
+        _ => false,
+    };
+
+    private static bool RelationalOrdering(double left, double right, ComparisonOperator comparison) => comparison switch
+    {
         ComparisonOperator.LessThan => left < right,
         ComparisonOperator.LessOrEqual => left <= right,
         ComparisonOperator.GreaterThan => left > right,

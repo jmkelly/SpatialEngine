@@ -182,49 +182,79 @@ public static class FeatureQueryWire
         var op = dto.Op?.Trim() ?? string.Empty;
         switch (op.ToLowerInvariant())
         {
-            case "and":
-                Every(dto, "and");
-                return new Predicate.Every([.. Terms(dto, "and")]);
-            case "or":
-                Every(dto, "or");
-                return new Predicate.Some([.. Terms(dto, "or")]);
+            case "and" or "or":
+                Every(dto, op);
+                return TermsPredicate(dto, op);
             case "compare":
-                Only(dto, op, "field", "operator", "value");
-                return new Predicate.Compare(
-                    new FieldRef(Required(dto.Field, op, "field")),
-                    ToOperator(Required(dto.Operator, op, "operator")),
-                    ToLiteral(dto.Value, op));
+                return ComparePredicate(dto, op);
             case "isnull":
-                Only(dto, op, "field");
-                return new Predicate.IsNull(new FieldRef(Required(dto.Field, op, "field")), dto.Negated);
+                return IsNullPredicate(dto, op);
             case "isin":
-                Only(dto, op, "field", "values");
-                return new Predicate.IsIn(
-                    new FieldRef(Required(dto.Field, op, "field")),
-                    dto.Values is null or { Count: 0 }
-                        ? throw Bad("A predicate 'isIn' needs a non-empty 'values'.")
-                        : [.. dto.Values.Select(value => ToLiteral(value, "isIn"))],
-                    dto.Negated);
+                return IsInPredicate(dto, op);
             case "constant":
-                Only(dto, op, "truth");
-                if (dto.Truth is not { } truth)
-                {
-                    throw Bad("A predicate 'constant' needs a boolean 'truth'.");
-                }
-
-                return new Predicate.Constant(truth);
+                return ConstantPredicate(dto, op);
             default:
                 throw Bad(
                     $"Unknown predicate op '{dto.Op}'; expected one of and, or, compare, isNull, isIn, constant.");
         }
     }
 
+    private static Predicate TermsPredicate(PredicateDto dto, string op) =>
+        op == "and"
+            ? new Predicate.Every([.. Terms(dto, op)])
+            : new Predicate.Some([.. Terms(dto, op)]);
+
+    private static Predicate.Compare ComparePredicate(PredicateDto dto, string op)
+    {
+        Only(dto, op, "field", "operator", "value");
+        return new Predicate.Compare(
+            new FieldRef(Required(dto.Field, op, "field")),
+            ToOperator(Required(dto.Operator, op, "operator")),
+            ToLiteral(dto.Value, op));
+    }
+
+    private static Predicate.IsNull IsNullPredicate(PredicateDto dto, string op)
+    {
+        Only(dto, op, "field");
+        return new Predicate.IsNull(new FieldRef(Required(dto.Field, op, "field")), dto.Negated);
+    }
+
+    private static Predicate.IsIn IsInPredicate(PredicateDto dto, string op)
+    {
+        Only(dto, op, "field", "values");
+        return new Predicate.IsIn(
+            new FieldRef(Required(dto.Field, op, "field")),
+            dto.Values is null or { Count: 0 }
+                ? throw Bad("A predicate 'isIn' needs a non-empty 'values'.")
+                : [.. dto.Values.Select(value => ToLiteral(value, "isIn"))],
+            dto.Negated);
+    }
+
+    private static Predicate.Constant ConstantPredicate(PredicateDto dto, string op)
+    {
+        Only(dto, op, "truth");
+        if (dto.Truth is not { } truth)
+        {
+            throw Bad("A predicate 'constant' needs a boolean 'truth'.");
+        }
+
+        return new Predicate.Constant(truth);
+    }
+
     /// <summary>The wire of a predicate tree, for a client that sends one.</summary>
     public static PredicateDto? ToPredicateDto(Predicate? predicate) => predicate switch
     {
         null => null,
-        Predicate.Every every => new PredicateDto("and", [.. every.Terms.Select(term => ToPredicateDto(term)!)]),
-        Predicate.Some some => new PredicateDto("or", [.. some.Terms.Select(term => ToPredicateDto(term)!)]),
+        Predicate.Every every => CollectionDto("and", every.Terms),
+        Predicate.Some some => CollectionDto("or", some.Terms),
+        _ => TestDto(predicate),
+    };
+
+    private static PredicateDto CollectionDto(string op, IReadOnlyList<Predicate> terms) =>
+        new(op, [.. terms.Select(term => ToPredicateDto(term)!)]);
+
+    private static PredicateDto TestDto(Predicate predicate) => predicate switch
+    {
         Predicate.Compare compare => new PredicateDto(
             "compare",
             Field: compare.Field.Name,
@@ -263,33 +293,66 @@ public static class FeatureQueryWire
             throw Bad($"A predicate '{op}' needs a value literal.");
         }
 
-        var literal = dto.Kind switch
+        var literal = dto.Kind is LiteralKind.String or LiteralKind.Integer
+            ? TextLiteral(dto, op)
+            : OtherLiteral(dto, op);
+        CheckLiteralExtras(dto);
+        return literal;
+    }
+
+    private static Literal TextLiteral(LiteralDto dto, string op) => dto.Kind switch
+    {
+        LiteralKind.String => Literal.FromText(Present(dto, op, dto.Text, "text")),
+        LiteralKind.Integer => Literal.FromInteger(Present(dto, op, dto.Text, "text")),
+        _ => throw Bad($"Unknown literal kind '{dto.Kind}'."),
+    };
+
+    private static Literal OtherLiteral(LiteralDto dto, string op) => dto.Kind switch
+    {
+        LiteralKind.Decimal or LiteralKind.DateTime => NumberLiteral(dto, op),
+        LiteralKind.Boolean or LiteralKind.Null => FlagLiteral(dto, op),
+        _ => throw Bad($"Unknown literal kind '{dto.Kind}'."),
+    };
+
+    private static Literal NumberLiteral(LiteralDto dto, string op) => dto.Kind switch
+    {
+        LiteralKind.Decimal => Literal.FromNumber(Present(dto, op, dto.Number, "number")),
+        LiteralKind.DateTime => Literal.FromMilliseconds((long)Present(dto, op, dto.Number, "number")),
+        _ => throw Bad($"Unknown literal kind '{dto.Kind}'."),
+    };
+
+    private static Literal FlagLiteral(LiteralDto dto, string op)
+    {
+        if (dto.Kind == LiteralKind.Null)
         {
-            LiteralKind.String => Literal.FromText(Present(dto, op, dto.Text, "text")),
-            LiteralKind.Integer => Literal.FromInteger(Present(dto, op, dto.Text, "text")),
-            LiteralKind.Decimal => Literal.FromNumber(Present(dto, op, dto.Number, "number")),
-            LiteralKind.Boolean => dto.Boolean is { } flag
-                ? Literal.FromBoolean(flag)
-                : throw Bad($"A '{LiteralKind.Boolean}' literal needs a 'boolean'."),
-            LiteralKind.DateTime => Literal.FromMilliseconds((long)Present(dto, op, dto.Number, "number")),
-            LiteralKind.Null => Literal.Null,
-            _ => throw Bad($"Unknown literal kind '{dto.Kind}'."),
-        };
+            return Literal.Null;
+        }
+
+        return dto.Boolean is { } flag
+            ? Literal.FromBoolean(flag)
+            : throw Bad($"A '{LiteralKind.Boolean}' literal needs a 'boolean'.");
+    }
+
+    private static void CheckLiteralExtras(LiteralDto dto)
+    {
         Extra(dto.Kind, "text", dto.Text);
         Extra(dto.Kind, "number", dto.Number);
         Extra(dto.Kind, "boolean", dto.Boolean);
-        return literal;
     }
 
     private static LiteralDto ToLiteralDto(Literal literal) => literal.Kind switch
     {
-        LiteralKind.String => new LiteralDto(LiteralKind.String, Text: literal.Text),
-        LiteralKind.Integer => new LiteralDto(LiteralKind.Integer, Text: literal.Text),
-        LiteralKind.Decimal => new LiteralDto(LiteralKind.Decimal, Number: literal.Number),
+        LiteralKind.String or LiteralKind.Integer => TextLiteralDto(literal),
+        LiteralKind.Decimal or LiteralKind.DateTime => NumberLiteralDto(literal),
         LiteralKind.Boolean => new LiteralDto(LiteralKind.Boolean, Boolean: literal.Boolean),
-        LiteralKind.DateTime => new LiteralDto(LiteralKind.DateTime, Number: literal.Number),
         _ => new LiteralDto(LiteralKind.Null),
     };
+
+    private static LiteralDto TextLiteralDto(Literal literal) =>
+        new(literal.Kind, Text: literal.Text);
+
+    private static LiteralDto NumberLiteralDto(Literal literal) =>
+        new(literal.Kind, Number: literal.Number);
 
     private static ComparisonOperator ToOperator(string name) =>
         Enum.TryParse<ComparisonOperator>(name, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
@@ -304,16 +367,22 @@ public static class FeatureQueryWire
 
     private static IEnumerable<Predicate> Terms(PredicateDto dto, string op)
     {
-        if (dto.Terms is not { Count: > 0 } terms)
-        {
-            throw Bad($"A predicate '{op}' needs a non-empty 'terms'.");
-        }
-
+        var terms = RequireTerms(dto, op);
         foreach (var term in terms)
         {
             yield return ToPredicate(term)
                 ?? throw Bad($"A predicate '{op}' cannot carry a null term.");
         }
+    }
+
+    private static List<PredicateDto> RequireTerms(PredicateDto dto, string op)
+    {
+        if (dto.Terms is not { Count: > 0 } terms)
+        {
+            throw Bad($"A predicate '{op}' needs a non-empty 'terms'.");
+        }
+
+        return [.. terms];
     }
 
     /// <summary>
@@ -361,17 +430,19 @@ public static class FeatureQueryWire
 
     private static void Extra(LiteralKind kind, string member, object? value)
     {
-        if (value is not null && kind switch
-        {
-            LiteralKind.String or LiteralKind.Integer => member != "text",
-            LiteralKind.Decimal or LiteralKind.DateTime => member != "number",
-            LiteralKind.Boolean => member != "boolean",
-            _ => false,
-        })
+        if (value is not null && !CarriesMember(kind, member))
         {
             throw Bad($"A literal of kind '{kind}' does not take '{member}'.");
         }
     }
+
+    private static bool CarriesMember(LiteralKind kind, string member) => kind switch
+    {
+        LiteralKind.String or LiteralKind.Integer => member == "text",
+        LiteralKind.Decimal or LiteralKind.DateTime => member == "number",
+        LiteralKind.Boolean => member == "boolean",
+        _ => true,
+    };
 
     /// <summary>
     /// Folds the sugar onto the plan member it stands for: identical values are
@@ -386,10 +457,13 @@ public static class FeatureQueryWire
             return;
         }
 
+        RejectMismatch(sugarMember, planMember);
+    }
+
+    private static void RejectMismatch(string sugarMember, string planMember) =>
         throw Bad(
             $"The request sends both '{sugarMember}' (the sugar for the plan's '{planMember}') and "
             + $"'plan.{planMember}' with different values; send one spelling of each, or the same value twice.");
-    }
 
     private static SpatialException Bad(string message) => SpatialException.BadArguments($"The query plan is malformed: {message}");
 }

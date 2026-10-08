@@ -151,9 +151,19 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         AttributeKind.Boolean => _boolean == other._boolean,
         AttributeKind.Int64 => _int64 == other._int64,
         AttributeKind.Double => _double.Equals(other._double),
+        _ => EqualsCompound(other),
+    };
+
+    private bool EqualsCompound(AttributeValue other) => _kind switch
+    {
         AttributeKind.String => EqualsString(other),
         AttributeKind.Geometry => EqualsGeometry(other),
         AttributeKind.DateTimeOffset => EqualsDateTimeOffset(other),
+        _ => EqualsRest(other),
+    };
+
+    private bool EqualsRest(AttributeValue other) => _kind switch
+    {
         AttributeKind.Guid => _guid == other._guid,
         AttributeKind.Envelope => _reference is Envelope left && left.Equals((Envelope)other._reference!),
         _ => false,
@@ -179,9 +189,19 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         AttributeKind.Boolean => HashCode.Combine(_kind, _boolean),
         AttributeKind.Int64 => HashCode.Combine(_kind, _int64),
         AttributeKind.Double => HashCode.Combine(_kind, _double),
+        _ => HashCompound(),
+    };
+
+    private int HashCompound() => _kind switch
+    {
         AttributeKind.String => HashCode.Combine(_kind, StringComparer.Ordinal.GetHashCode((string)_reference!)),
         AttributeKind.Geometry => HashCode.Combine(_kind, GeometryComparer.GetHashCode((IGeometry)_reference!)),
         AttributeKind.DateTimeOffset => HashCode.Combine(_kind, _int64, _offsetMinutes),
+        _ => HashRest(),
+    };
+
+    private int HashRest() => _kind switch
+    {
         AttributeKind.Guid => HashCode.Combine(_kind, _guid),
         AttributeKind.Envelope => HashCode.Combine(_kind, ((Envelope)_reference!).GetHashCode()),
         _ => HashCode.Combine(_kind),
@@ -197,9 +217,19 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         AttributeKind.Boolean => $"Boolean({_boolean})",
         AttributeKind.Int64 => $"Int64({_int64})",
         AttributeKind.Double => FormattableString.Invariant($"Double({_double})"),
+        _ => ReferenceToString(),
+    };
+
+    private string ReferenceToString() => _kind switch
+    {
         AttributeKind.String => $"String({_reference})",
         AttributeKind.Geometry => $"Geometry({_reference})",
         AttributeKind.DateTimeOffset => FormattableString.Invariant($"DateTimeOffset({DateTimeOffsetValue:O})"),
+        _ => OtherToString(),
+    };
+
+    private string OtherToString() => _kind switch
+    {
         AttributeKind.Guid => $"Guid({_guid})",
         AttributeKind.Envelope => $"Envelope({_reference})",
         _ => FormattableString.Invariant($"Unknown({(int)_kind})"),

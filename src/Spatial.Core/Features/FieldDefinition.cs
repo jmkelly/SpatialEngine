@@ -11,7 +11,17 @@ public readonly record struct FieldDefinition : IFieldDefinition
     public FieldDefinition(string name, AttributeKind kind, bool nullable = false, string? description = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        RequireColumnKind(kind);
+        RequireDescription(description);
 
+        Name = name;
+        Kind = kind;
+        Nullable = nullable;
+        Description = description;
+    }
+
+    private static void RequireColumnKind(AttributeKind kind)
+    {
         if (kind == AttributeKind.Null)
         {
             throw new ArgumentException(
@@ -29,16 +39,14 @@ public readonly record struct FieldDefinition : IFieldDefinition
         {
             throw new ArgumentOutOfRangeException(nameof(kind), kind, $"Unknown attribute kind {(byte)kind}.");
         }
+    }
 
+    private static void RequireDescription(string? description)
+    {
         if (description is not null && string.IsNullOrWhiteSpace(description))
         {
             throw new ArgumentException("A field description must be null or a non-whitespace string.", nameof(description));
         }
-
-        Name = name;
-        Kind = kind;
-        Nullable = nullable;
-        Description = description;
     }
 
     public string Name { get; }

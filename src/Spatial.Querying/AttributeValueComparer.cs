@@ -45,6 +45,11 @@ public sealed class AttributeValueComparer : IComparer<AttributeValue>
         AttributeKind.Int64 => left.Int64Value.CompareTo(right.Int64Value),
         AttributeKind.Double => left.DoubleValue.CompareTo(right.DoubleValue),
         AttributeKind.String => string.CompareOrdinal(left.StringValue, right.StringValue),
+        _ => CompareCompound(left, right),
+    };
+
+    private static int CompareCompound(AttributeValue left, AttributeValue right) => left.Kind switch
+    {
         AttributeKind.DateTimeOffset => left.DateTimeOffsetValue.UtcTicks.CompareTo(right.DateTimeOffsetValue.UtcTicks),
         AttributeKind.Guid => left.GuidValue.CompareTo(right.GuidValue),
         AttributeKind.Envelope => Compare(left.EnvelopeValue, right.EnvelopeValue),

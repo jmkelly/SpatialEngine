@@ -81,9 +81,30 @@ public sealed record FeatureQuery(
 
     /// <summary>Whether the plan asks for anything beyond selecting every feature.</summary>
     public bool IsUnbounded =>
-        Where is null
-        && Projection is null && Order is null && Limit is null && Offset is null && Cursor is null
-        && Ids is null && BoundingBox is null;
+        IsUnboundedPlan(Where, Projection, Order, Limit, Offset, Cursor, Ids, BoundingBox);
+
+    private static bool IsUnboundedPlan(
+        Predicate? where,
+        IReadOnlyList<string>? projection,
+        IReadOnlyList<OrderTerm>? order,
+        int? limit,
+        int? offset,
+        string? cursor,
+        IReadOnlyList<FeatureId>? ids,
+        BoundingBox? boundingBox) =>
+        UnrestrictedSelection(where, projection, order, ids, boundingBox)
+        && UnpagedPlan(limit, offset, cursor);
+
+    private static bool UnrestrictedSelection(
+        Predicate? where,
+        IReadOnlyList<string>? projection,
+        IReadOnlyList<OrderTerm>? order,
+        IReadOnlyList<FeatureId>? ids,
+        BoundingBox? boundingBox) =>
+        where is null && projection is null && order is null && ids is null && boundingBox is null;
+
+    private static bool UnpagedPlan(int? limit, int? offset, string? cursor) =>
+        limit is null && offset is null && cursor is null;
 }
 
 /// <summary>

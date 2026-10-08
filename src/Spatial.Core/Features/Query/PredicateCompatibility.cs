@@ -47,9 +47,7 @@ public static class PredicateCompatibility
 
         if (kind == AttributeKind.Guid)
         {
-            return Equality(comparison)
-                && literal.Kind == LiteralKind.String
-                && Guid.TryParse(literal.Text, out _);
+            return GuidMatch(comparison, literal);
         }
 
         if (kind == AttributeKind.Boolean)
@@ -65,17 +63,27 @@ public static class PredicateCompatibility
             return kind == AttributeKind.String && literal.Kind == LiteralKind.String;
         }
 
-        return kind switch
-        {
-            AttributeKind.String => literal.Kind == LiteralKind.String,
-            // A date-time is an instant, so it answers a date-time literal and
-            // any number, the same way the reference evaluator reads both as
-            // the same epoch axis.
-            AttributeKind.DateTimeOffset or AttributeKind.Int64 or AttributeKind.Double =>
-                literal.Kind is LiteralKind.Integer or LiteralKind.Decimal or LiteralKind.DateTime,
-            _ => false,
-        };
+        return ValueMatch(kind, literal);
     }
+
+    private static bool GuidMatch(ComparisonOperator comparison, Literal literal) =>
+        Equality(comparison)
+        && literal.Kind == LiteralKind.String
+        && Guid.TryParse(literal.Text, out _);
+
+    private static bool ValueMatch(AttributeKind kind, Literal literal) => kind switch
+    {
+        AttributeKind.String => literal.Kind == LiteralKind.String,
+        AttributeKind.DateTimeOffset or AttributeKind.Int64 or AttributeKind.Double => NumericMatch(literal),
+        _ => false,
+    };
+
+    /// <summary>
+    /// Whether the literal reads on the same epoch axis the numeric and
+    /// date-time columns answer on: a whole number, a fraction or a date-time.
+    /// </summary>
+    private static bool NumericMatch(Literal literal) =>
+        literal.Kind is LiteralKind.Integer or LiteralKind.Decimal or LiteralKind.DateTime;
 
     /// <summary>
     /// Whether the operator is one the vocabulary answers for a total-ordered or unordered value alike.

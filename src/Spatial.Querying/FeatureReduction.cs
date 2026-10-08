@@ -388,17 +388,37 @@ public static class FeatureReduction
             AggregateStatistic.Count => AttributeValue.FromInt64(present.Count),
             AggregateStatistic.Minimum or AggregateStatistic.Maximum => Extreme(present, spec.Statistic),
             AggregateStatistic.Sum => Sum(schema[index].Kind, present),
+            AggregateStatistic.Envelope => BoundingRectangle(present),
+            _ => NumericValue(present, spec),
+        };
+    }
+
+    private static AttributeValue NumericValue(List<AttributeValue> present, AggregateSpec spec) =>
+        spec.Statistic switch
+        {
+            AggregateStatistic.Average or AggregateStatistic.Variance or AggregateStatistic.StdDev =>
+                MomentValue(present, spec),
+            _ => PercentileValue(present, spec),
+        };
+
+    private static AttributeValue MomentValue(List<AttributeValue> present, AggregateSpec spec) =>
+        spec.Statistic switch
+        {
             AggregateStatistic.Average => AttributeValue.FromDouble(present.Select(AsDouble).Average()),
             AggregateStatistic.Variance => Sample(present, out var variance) ? AttributeValue.FromDouble(variance) : AttributeValue.Null,
             AggregateStatistic.StdDev => Sample(present, out var deviation)
                 ? AttributeValue.FromDouble(Math.Sqrt(deviation))
                 : AttributeValue.Null,
-            AggregateStatistic.PercentileContinuous => Percentile(present, spec, continuous: true),
-            AggregateStatistic.PercentileDiscrete => Percentile(present, spec, continuous: false),
-            AggregateStatistic.Envelope => BoundingRectangle(present),
             _ => AttributeValue.Null,
         };
-    }
+
+    private static AttributeValue PercentileValue(List<AttributeValue> present, AggregateSpec spec) =>
+        spec.Statistic switch
+        {
+            AggregateStatistic.PercentileContinuous => Percentile(present, spec, continuous: true),
+            AggregateStatistic.PercentileDiscrete => Percentile(present, spec, continuous: false),
+            _ => AttributeValue.Null,
+        };
 
     /// <summary>
     /// The bounding rectangle of the group's non-null geometries, or the

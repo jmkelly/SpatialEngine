@@ -121,17 +121,38 @@ public static class FeatureFilterText
         }
 
         /// <summary>Reads the longest two-char symbol match at the front of the span, or null when none starts here.</summary>
-        private static TokenKind? SymbolKind(ReadOnlySpan<char> span) => span switch
+        private static TokenKind? SymbolKind(ReadOnlySpan<char> span) =>
+            span.IsEmpty ? null : TwoCharSymbol(span) ?? SingleCharSymbol(span);
+
+        private static TokenKind? TwoCharSymbol(ReadOnlySpan<char> span)
         {
-            ['(', ..] => TokenKind.LeftParen,
-            [')', ..] => TokenKind.RightParen,
-            [',', ..] => TokenKind.Comma,
-            ['=', ..] => TokenKind.Equals,
-            ['<', '>', ..] or ['!', '=', ..] => TokenKind.NotEquals,
-            ['<', '=', ..] => TokenKind.LessOrEqual,
-            ['>', '=', ..] => TokenKind.GreaterOrEqual,
-            ['<', ..] => TokenKind.LessThan,
-            ['>', ..] => TokenKind.GreaterThan,
+            if (span.Length < 2)
+            {
+                return null;
+            }
+
+            return (span[0], span[1]) switch
+            {
+                ('<', '>') or ('!', '=') => TokenKind.NotEquals,
+                ('<', '=') => TokenKind.LessOrEqual,
+                ('>', '=') => TokenKind.GreaterOrEqual,
+                _ => null,
+            };
+        }
+
+        private static TokenKind? SingleCharSymbol(ReadOnlySpan<char> span) => span[0] switch
+        {
+            '(' => TokenKind.LeftParen,
+            ')' => TokenKind.RightParen,
+            ',' => TokenKind.Comma,
+            _ => SingleComparison(span[0]),
+        };
+
+        private static TokenKind? SingleComparison(char first) => first switch
+        {
+            '=' => TokenKind.Equals,
+            '<' => TokenKind.LessThan,
+            '>' => TokenKind.GreaterThan,
             _ => null,
         };
 
@@ -155,20 +176,22 @@ public static class FeatureFilterText
         }
 
         /// <summary>Maps a keyword (case-insensitive) to its token kind; anything else is a field reference.</summary>
-        private static TokenKind KeywordKind(string word) => word.ToUpperInvariant() switch
+        private static TokenKind KeywordKind(string word) =>
+            Keywords.TryGetValue(word, out var kind) ? kind : TokenKind.Identifier;
+
+        private static readonly Dictionary<string, TokenKind> Keywords = new(StringComparer.OrdinalIgnoreCase)
         {
-            "AND" => TokenKind.And,
-            "OR" => TokenKind.Or,
-            "IS" => TokenKind.Is,
-            "NOT" => TokenKind.Not,
-            "NULL" => TokenKind.Null,
-            "LIKE" => TokenKind.Like,
-            "ILIKE" => TokenKind.LikeFolded,
-            "TRUE" => TokenKind.True,
-            "FALSE" => TokenKind.False,
-            "IN" => TokenKind.In,
-            "TIMESTAMP" => TokenKind.Timestamp,
-            _ => TokenKind.Identifier,
+            ["AND"] = TokenKind.And,
+            ["OR"] = TokenKind.Or,
+            ["IS"] = TokenKind.Is,
+            ["NOT"] = TokenKind.Not,
+            ["NULL"] = TokenKind.Null,
+            ["LIKE"] = TokenKind.Like,
+            ["ILIKE"] = TokenKind.LikeFolded,
+            ["TRUE"] = TokenKind.True,
+            ["FALSE"] = TokenKind.False,
+            ["IN"] = TokenKind.In,
+            ["TIMESTAMP"] = TokenKind.Timestamp,
         };
 
         private bool TryString()
@@ -522,30 +545,48 @@ public static class FeatureFilterText
 
         private bool TryOperator(out ComparisonOperator comparison, out string error)
         {
-            comparison = Current.Kind switch
+            if (Operators.TryGetValue(Current.Kind, out comparison))
             {
-                TokenKind.Equals => ComparisonOperator.Equals,
-                TokenKind.NotEquals => ComparisonOperator.NotEquals,
-                TokenKind.LessThan => ComparisonOperator.LessThan,
-                TokenKind.LessOrEqual => ComparisonOperator.LessOrEqual,
-                TokenKind.GreaterThan => ComparisonOperator.GreaterThan,
-                TokenKind.GreaterOrEqual => ComparisonOperator.GreaterOrEqual,
-                TokenKind.Like => ComparisonOperator.Like,
-                TokenKind.LikeFolded => ComparisonOperator.LikeFolded,
-                _ => (ComparisonOperator)(-1),
-            };
-            if ((int)comparison < 0)
+                _index++;
+                error = string.Empty;
+                return true;
+            }
+
+            comparison = (ComparisonOperator)(-1);
+            error = $"expected a comparison operator at position {Current.Position}, found '{Current.Text}'";
+            return false;
+        }
+
+        private static readonly Dictionary<TokenKind, ComparisonOperator> Operators = new()
+        {
+            [TokenKind.Equals] = ComparisonOperator.Equals,
+            [TokenKind.NotEquals] = ComparisonOperator.NotEquals,
+            [TokenKind.LessThan] = ComparisonOperator.LessThan,
+            [TokenKind.LessOrEqual] = ComparisonOperator.LessOrEqual,
+            [TokenKind.GreaterThan] = ComparisonOperator.GreaterThan,
+            [TokenKind.GreaterOrEqual] = ComparisonOperator.GreaterOrEqual,
+            [TokenKind.Like] = ComparisonOperator.Like,
+            [TokenKind.LikeFolded] = ComparisonOperator.LikeFolded,
+        };
+
+        private bool TryValue(out Literal literal, out string error)
+        {
+            if (Current.Kind == TokenKind.Timestamp)
             {
-                error = $"expected a comparison operator at position {Current.Position}, found '{Current.Text}'";
+                return TryTimestamp(out literal, out error);
+            }
+
+            if (Current.Kind == TokenKind.InvalidNumber)
+            {
+                error = $"'{Current.Text}' is not a valid filter number at position {Current.Position}";
+                literal = default;
                 return false;
             }
 
-            _index++;
-            error = string.Empty;
-            return true;
+            return TrySimpleValue(out literal, out error);
         }
 
-        private bool TryValue(out Literal literal, out string error)
+        private bool TrySimpleValue(out Literal literal, out string error)
         {
             switch (Current.Kind)
             {
@@ -558,6 +599,19 @@ public static class FeatureFilterText
                 case TokenKind.Decimal:
                     literal = Literal.FromNumber(double.Parse(Current.Text, NumberStyles.Float, CultureInfo.InvariantCulture));
                     break;
+                default:
+                    return TryFlagOrNull(out literal, out error);
+            }
+
+            _index++;
+            error = string.Empty;
+            return true;
+        }
+
+        private bool TryFlagOrNull(out Literal literal, out string error)
+        {
+            switch (Current.Kind)
+            {
                 case TokenKind.True:
                 case TokenKind.False:
                     literal = Literal.FromBoolean(Current.Kind == TokenKind.True);
@@ -565,12 +619,6 @@ public static class FeatureFilterText
                 case TokenKind.Null:
                     literal = Literal.Null;
                     break;
-                case TokenKind.Timestamp:
-                    return TryTimestamp(out literal, out error);
-                case TokenKind.InvalidNumber:
-                    error = $"'{Current.Text}' is not a valid filter number at position {Current.Position}";
-                    literal = default;
-                    return false;
                 default:
                     error = $"expected a filter value at position {Current.Position}, found '{Current.Text}'";
                     literal = default;

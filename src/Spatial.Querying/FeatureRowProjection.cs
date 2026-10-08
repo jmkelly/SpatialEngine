@@ -48,20 +48,30 @@ public sealed class FeatureRowProjection
             return;
         }
 
+        _indexes = ResolveIndexes(read, result);
+    }
+
+    private static int[] ResolveIndexes(FeatureSchema read, FeatureSchema result)
+    {
         var indexes = new int[result.Count];
         for (var i = 0; i < indexes.Length; i++)
         {
-            if (read.IndexOf(result[i].Name) is var index && index < 0)
-            {
-                throw new ArgumentException(
-                    $"The read schema has no field named '{result[i].Name}', which the result schema declares.",
-                    nameof(result));
-            }
-
-            indexes[i] = index;
+            indexes[i] = ResolveIndex(read, result, i);
         }
 
-        _indexes = indexes;
+        return indexes;
+    }
+
+    private static int ResolveIndex(FeatureSchema read, FeatureSchema result, int position)
+    {
+        if (read.IndexOf(result[position].Name) is var index && index < 0)
+        {
+            throw new ArgumentException(
+                $"The read schema has no field named '{result[position].Name}', which the result schema declares.",
+                nameof(result));
+        }
+
+        return index;
     }
 
     /// <summary>The schema the row was mapped against: every column the read needed.</summary>

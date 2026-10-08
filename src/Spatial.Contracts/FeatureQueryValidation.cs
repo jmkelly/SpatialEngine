@@ -145,12 +145,7 @@ public static class FeatureQueryValidation
         var label = $"statistic {position}";
         if (spec.Field == AggregateSpec.AllFields)
         {
-            if (spec.Statistic != AggregateStatistic.Count)
-            {
-                throw SpatialException.BadArguments(
-                    $"Aggregate {label} '{spec.Name}': only a count may reduce every row with '{AggregateSpec.AllFields}'.");
-            }
-
+            ValidateRowCount(spec, label);
             return;
         }
 
@@ -158,27 +153,54 @@ public static class FeatureQueryValidation
         var kind = schema[index].Kind;
         if (IsEnvelope(spec.Statistic))
         {
-            if (kind != AttributeKind.Geometry)
-            {
-                throw SpatialException.BadArguments(
-                    $"Aggregate {label} '{spec.Name}': an envelope needs a geometry field, but '{spec.Field}' is {kind}.");
-            }
-
+            ValidateEnvelope(spec, label, kind);
             return;
         }
 
+        ValidateFieldKind(spec, label, kind);
+    }
+
+    private static void ValidateRowCount(AggregateSpec spec, string label)
+    {
+        if (spec.Statistic != AggregateStatistic.Count)
+        {
+            throw SpatialException.BadArguments(
+                $"Aggregate {label} '{spec.Name}': only a count may reduce every row with '{AggregateSpec.AllFields}'.");
+        }
+    }
+
+    private static void ValidateEnvelope(AggregateSpec spec, string label, AttributeKind kind)
+    {
+        if (kind != AttributeKind.Geometry)
+        {
+            throw SpatialException.BadArguments(
+                $"Aggregate {label} '{spec.Name}': an envelope needs a geometry field, but '{spec.Field}' is {kind}.");
+        }
+    }
+
+    private static void ValidateFieldKind(AggregateSpec spec, string label, AttributeKind kind)
+    {
         if (kind == AttributeKind.Geometry)
         {
             throw SpatialException.BadArguments(
                 $"Aggregate {label} '{spec.Name}': a geometry field cannot be aggregated.");
         }
 
+        ValidateNumeric(spec, label, kind);
+        ValidatePercentile(spec, label);
+    }
+
+    private static void ValidateNumeric(AggregateSpec spec, string label, AttributeKind kind)
+    {
         if (IsNumeric(spec.Statistic) && kind is not (AttributeKind.Int64 or AttributeKind.Double))
         {
             throw SpatialException.BadArguments(
                 $"Aggregate {label} '{spec.Name}': {spec.Statistic} needs a numeric field, but '{spec.Field}' is {kind}.");
         }
+    }
 
+    private static void ValidatePercentile(AggregateSpec spec, string label)
+    {
         if (IsPercentile(spec.Statistic)
             && (spec.Percentile is < 0 or > 1 || double.IsNaN(spec.PercentileFraction)))
         {

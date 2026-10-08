@@ -350,19 +350,24 @@ public sealed class MapRegistry : IMapRegistry, IDisposable
 
     private static MapServiceKind ParseService(string mapName, string name)
     {
-        // Legacy declared-config names (pre-N5) still parse: the members were
-        // renamed to server names but configuration keeps working.
-        var canonical = name.ToLowerInvariant() switch
-        {
-            "feature" => nameof(MapServiceKind.FeatureServer),
-            "map" => nameof(MapServiceKind.MapServer),
-            "image" => nameof(MapServiceKind.ImageServer),
-            _ => name,
-        };
+        var canonical = CanonicalServiceName(name);
         return Enum.TryParse<MapServiceKind>(canonical, ignoreCase: true, out var service) && Enum.IsDefined(service)
             ? service
             : throw SpatialException.BadArguments($"Declared map '{mapName}' has unknown service '{name}'.");
     }
+
+    /// <summary>
+    /// The enum spelling of a declared service name. Legacy declared-config
+    /// names (pre-N5) still parse: the members were renamed to server names
+    /// but configuration keeps working.
+    /// </summary>
+    private static string CanonicalServiceName(string name) => name.ToLowerInvariant() switch
+    {
+        "feature" => nameof(MapServiceKind.FeatureServer),
+        "map" => nameof(MapServiceKind.MapServer),
+        "image" => nameof(MapServiceKind.ImageServer),
+        _ => name,
+    };
 
     private static MapLayer ParseLayer(string mapName, DeclaredLayerOptions layer)
     {
