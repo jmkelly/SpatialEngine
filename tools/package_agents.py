@@ -27,8 +27,7 @@ rules that hold:
     nearest; what belongs here is only what is local.
 3.  **Each carries its test command**, so a change here is verified the way the
     package is verified rather than the way the reader assumes.
-4.  **Each is under thirty lines**, counting everything the file says except
-    the generated orientation block `tools/orientation.py` owns. Under the
+4.  **Each is under thirty lines.** Under the
     root file's own bloat threshold a second context file is read; over it,
     it is skimmed.
 
@@ -78,21 +77,6 @@ NEVER_HEADING = re.compile(r"^##\s+Never\b", re.MULTILINE)
 COMMANDS_HEADING = re.compile(r"^##\s+Commands\b", re.MULTILINE)
 TEST_COMMAND = re.compile(r"^\s*[-*]?\s*`?[^`\n]*\b(?:dotnet|npm)\s+test\b", re.MULTILINE)
 
-ORIENTATION_BEGIN = "<!-- orientation:begin -->"
-ORIENTATION_END = "<!-- orientation:end -->"
-
-
-def body_of(text: str) -> str:
-    """The file minus the orientation block `tools/orientation.py` generates."""
-    start = text.find(ORIENTATION_BEGIN)
-    if start == -1:
-        return text
-    end = text.find(ORIENTATION_END, start)
-    if end == -1:
-        return text[:start]
-    return text[:start] + text[end + len(ORIENTATION_END):]
-
-
 def findings(root: Path) -> list[str]:
     found: list[str] = []
     for package in PACKAGES:
@@ -100,8 +84,7 @@ def findings(root: Path) -> list[str]:
         if not path.is_file():
             found.append(f"{package}: no nested AGENTS.md — the package owns a hazard and the file is what an agent reads")
             continue
-        text = path.read_text(encoding="utf-8")
-        body = body_of(text)
+        body = path.read_text(encoding="utf-8")
         lines = len([line for line in body.splitlines() if line.strip()])
         if lines > MAX_LINES:
             found.append(f"{package}/AGENTS.md: {lines} lines, over the {MAX_LINES}-line budget — split the file or say less")

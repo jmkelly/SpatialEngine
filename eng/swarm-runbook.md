@@ -362,24 +362,6 @@ third-party type crossing a contract; raw SQL is never reachable from a
 client-supplied string; a parameter is either honoured or rejected by name, never
 accepted and ignored.
 
-<!-- orientation:begin -->
-
-## Orientation
-
-One line per closed bead: where the first hour went (`SpatialEngine-rzq`).
-
-- Name the bead id in a worker prompt's first line and tell the worker to
-  `bd show` it before writing code: a worker handed `.2` spent five hours
-  building a duplicate of work already merged. (SpatialEngine-u2x.5)
-- Hand off with `bd update <id> --add-label needs-merge --append-notes "…"`;
-  `--label` and `--append-notes` with no `--notes` are the two spellings that
-  error. (SpatialEngine-u2x.41)
-- Read a lane that fails on `AdrNumberingTests` alone as inherited redness from
-  `main`, not as the branch's own failure: a collision with a record merged
-  after the branch-off only appears on rebase. (SpatialEngine-u2x.36)
-
-<!-- orientation:end -->
-
 ## Notes
 
 - `eng/verify.sh` (default, or `--fast`) is the fast gate, and it is the one that
