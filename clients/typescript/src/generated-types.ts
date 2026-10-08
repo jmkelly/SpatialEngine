@@ -87,6 +87,7 @@ export interface DatasetDescription {
   idColumns: string[];
   schema: FeatureSchema;
   geometryLayout?: CoordinateLayout;
+  timeFields?: TemporalExtentFields | null;
 }
 
 export interface DatasetSummary {
@@ -213,6 +214,7 @@ export interface MapLayer {
   kind?: MapLayerKind;
   store?: null | string;
   relationships?: null | LayerRelationship[];
+  timeFields?: TemporalExtentFields | null;
 }
 
 export type MapLayerKind = "feature" | "image";
@@ -299,6 +301,12 @@ export interface SleepResponse {
 }
 
 export type SortDirection = "ascending" | "descending";
+
+export interface TemporalExtentFields {
+  startField: null | string;
+  endField: null | string;
+  isEmpty?: boolean;
+}
 
 export interface TileBatchRequest {
   request: TileRenderRequest;
