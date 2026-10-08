@@ -82,6 +82,13 @@ DOC_SURFACE_GATE = "python3 tools/doc_surface.py"
 # than a `tools/test_*.py` the tooling suite discovers, because a nested
 # `AGENTS.md` is a `src/**` change -- the same hole ADR-0148 closes.
 PACKAGE_AGENTS_GATE = "python3 tools/package_agents.py"
+# The changelog gate: nothing hand-merges the release section between
+# releases, because it is generated once per release from the `Task:`
+# trailers and the narratives the work commits already carry (`RELEASING.md`
+# step 3, ADR-0173). A repo check called directly rather than a
+# `tools/test_*.py` the tooling suite discovers, because hand-merging is a
+# **docs** change -- the same hole ADR-0146 closes.
+CHANGELOG_GATE = "python3 tools/changelog.py --check"
 # The harness build: every `*.csproj` under `eng/` that the solution does not
 # name is compiled by every lane, because being outside the solution is also
 # what kept a harness out of every build (ADR-0190). A repository check called
@@ -806,6 +813,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
+            CHANGELOG_GATE,
             DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
@@ -865,6 +873,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
+            CHANGELOG_GATE,
             DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
@@ -883,6 +892,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
+            CHANGELOG_GATE,
             DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
@@ -902,6 +912,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
+            CHANGELOG_GATE,
             DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
@@ -937,6 +948,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
+            CHANGELOG_GATE,
             DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
@@ -957,6 +969,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
+            CHANGELOG_GATE,
             DOC_GATE,
             beads_gate_gate(),
             SPIKE_HARNESS_GATE,
@@ -977,6 +990,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
+            CHANGELOG_GATE,
             DOC_GATE,
             beads_gate_gate("origin/does-not-exist"),
             SPIKE_HARNESS_GATE,
@@ -994,6 +1008,7 @@ class ScriptLaneTests(unittest.TestCase):
             CONFLICT_MARKER_GATE,
             DOC_SURFACE_GATE,
             PACKAGE_AGENTS_GATE,
+            CHANGELOG_GATE,
             DOC_GATE,
             beads_gate_gate("origin/does-not-exist"),
             SPIKE_HARNESS_GATE,

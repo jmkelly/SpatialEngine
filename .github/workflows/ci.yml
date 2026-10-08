@@ -100,6 +100,16 @@ jobs:
       - name: Doc surface
         run: python3 tools/doc_surface.py
 
+      # The release section of `docs/CHANGELOG.md` is generated from the
+      # `Task:` trailers and the narrative the work commits carry, once per
+      # release (`RELEASING.md` step 3), because a merge-scoped generated
+      # section would be a `--write` and a red lane on every merge (ADR-0173).
+      # What the lanes can gate is the hand-merge that rotted: 1038 lines of it,
+      # edited across 107 merges by no rule. Hand-merging is a `docs` change,
+      # so this job spells the step out rather than trusting the tooling suite.
+      - name: Changelog
+        run: python3 tools/changelog.py --check
+
       # The bead protocol — a closed bead's merge commit carries `Task: <id>`,
       # and a change to `src/Spatial.Contracts/**` or `src/Spatial.Core/**`
       # lands its decision record with it — was prose in AGENTS.md and the
