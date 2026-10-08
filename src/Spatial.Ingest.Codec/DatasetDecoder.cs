@@ -272,21 +272,38 @@ public static class DatasetDecoder
 
     private static void Validate(DecodeOptions options)
     {
+        CheckBatchSize(options);
+        CheckInferSampleSize(options);
+        CheckSourceSrid(options);
+        CheckGeometryField(options);
+    }
+
+    private static void CheckBatchSize(DecodeOptions options)
+    {
         if (options.BatchSize <= 0)
         {
             throw new IngestFormatException($"BatchSize must be positive, got {options.BatchSize}.");
         }
+    }
 
+    private static void CheckInferSampleSize(DecodeOptions options)
+    {
         if (options.InferSampleSize is { } sample && sample <= 0)
         {
             throw new IngestFormatException($"InferSampleSize must be positive when set, got {sample}.");
         }
+    }
 
+    private static void CheckSourceSrid(DecodeOptions options)
+    {
         if (options.SourceSrid is { } source && source <= 0)
         {
             throw new IngestFormatException($"SourceSrid must be a positive EPSG code when set, got {source}.");
         }
+    }
 
+    private static void CheckGeometryField(DecodeOptions options)
+    {
         if (string.IsNullOrWhiteSpace(options.GeometryField))
         {
             throw new IngestFormatException("GeometryField must be a non-empty name.");

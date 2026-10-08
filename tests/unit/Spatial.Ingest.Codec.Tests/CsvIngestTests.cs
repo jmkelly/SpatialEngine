@@ -142,4 +142,24 @@ public sealed class CsvIngestTests
 
         Assert.Equal("1", decoded.Pages[0][0].Id.Value);
     }
+
+    [Fact]
+    public void A_quoted_header_row_still_names_the_geometry_columns()
+    {
+        var decoded = Decode("\"x\",\"y\",name\n1,2,A\n");
+
+        var point = Assert.IsType<Point>(decoded.Pages[0][0]["geometry"].GeometryValue);
+        Assert.Equal(1, point.X);
+        Assert.Equal(2, point.Y);
+        Assert.Equal("A", decoded.Pages[0][0]["name"].StringValue);
+    }
+
+    [Fact]
+    public void A_header_with_commas_and_doubled_quotes_inside_quotes_decodes_verbatim()
+    {
+        var decoded = Decode("\"note, x\",\"q\"\"q\",x,y\n\"a, b\",\"c\"\"d\",1,2\n");
+
+        Assert.Equal("a, b", decoded.Pages[0][0]["note, x"].StringValue);
+        Assert.Equal("c\"d", decoded.Pages[0][0]["q\"q"].StringValue);
+    }
 }

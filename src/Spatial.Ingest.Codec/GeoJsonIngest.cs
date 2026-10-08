@@ -141,52 +141,98 @@ internal sealed class GeoJsonRecordReader : IRawRecordReader
             }
 
             var name = _json.ValueText ?? string.Empty;
-            if (name == "features" && type != "Feature")
+            var decided = TryDecideOnFeatures(name, type);
+            if (decided is not null)
             {
                 // A collection's features may appear before its type, so an
                 // undeclared type is a collection rather than an error.
-                return type ?? "FeatureCollection";
+                return decided;
             }
 
-            if (type == "Feature")
+            var typed = await TryReadTypeMemberAsync(name, type, cancellationToken).ConfigureAwait(false);
+            if (typed is { Exhausted: true })
             {
-                if (name == "features")
-                {
-                    throw new IngestFormatException("A GeoJSON Feature has no 'features' member.");
-                }
+                break;
             }
-            else if (name == "features")
+
+            if (typed is { IsString: true, Value: var value })
             {
-                return type ?? "FeatureCollection";
+                type = value;
+                continue;
             }
 
-            if (name == "type" && type is null)
-            {
-                if (await _json.ReadAsync(cancellationToken).ConfigureAwait(false) is false)
-                {
-                    break;
-                }
-
-                if (_json.TokenType == JsonTokenType.String)
-                {
-                    type = _json.ValueText;
-                    continue;
-                }
-            }
-
-            var value = await _json.ReadValueAsync(cancellationToken).ConfigureAwait(false);
-            if (name == "crs")
-            {
-                _declaredCrs = NameOf(value.RootElement)
-                    ?? throw new IngestFormatException("The document's 'crs' member has no 'name' property.");
-            }
-
-            // Ownership of the document moves into the preamble, which either
-            // builds a bare Feature from it or releases it on disposal.
-            _root.Add(new KeyValuePair<string, JsonDocument>(name, value));
+            await StashMemberAsync(name, cancellationToken).ConfigureAwait(false);
         }
 
         return type;
+    }
+
+    /// <summary>
+    /// The preamble's decision on the <c>features</c> member, if it makes one:
+    /// a collection's features end the preamble, while a <c>Feature</c> carrying
+    /// one is malformed. Returns null when the member decides nothing.
+    /// </summary>
+    private static string? TryDecideOnFeatures(string name, string? type)
+    {
+        if (name != "features")
+        {
+            return null;
+        }
+
+        if (type == "Feature")
+        {
+            throw new IngestFormatException("A GeoJSON Feature has no 'features' member.");
+        }
+
+        return type ?? "FeatureCollection";
+    }
+
+    /// <summary>
+    /// What reading the value after a first <c>type</c> member found: the end
+    /// of the document, a string type, or something else the caller must stash
+    /// as an ordinary value.
+    /// </summary>
+    private readonly record struct TypeMemberRead(bool Exhausted, bool IsString, string? Value);
+
+    /// <summary>
+    /// Reads the value after a first <c>type</c> member. Returns null when the
+    /// member is not a first <c>type</c> and the caller must stash it instead.
+    /// </summary>
+    private async ValueTask<TypeMemberRead?> TryReadTypeMemberAsync(string name, string? type, CancellationToken cancellationToken)
+    {
+        if (name != "type" || type is not null)
+        {
+            return null;
+        }
+
+        if (await _json.ReadAsync(cancellationToken).ConfigureAwait(false) is false)
+        {
+            return new TypeMemberRead(Exhausted: true, IsString: false, Value: null);
+        }
+
+        if (_json.TokenType == JsonTokenType.String)
+        {
+            return new TypeMemberRead(Exhausted: false, IsString: true, Value: _json.ValueText);
+        }
+
+        return new TypeMemberRead(Exhausted: false, IsString: false, Value: null);
+    }
+
+    /// <summary>
+    /// Stashes one preamble member, taking the <c>crs</c> declaration on the
+    /// way. Ownership of the document moves into the preamble, which either
+    /// builds a bare Feature from it or releases it on disposal.
+    /// </summary>
+    private async ValueTask StashMemberAsync(string name, CancellationToken cancellationToken)
+    {
+        var value = await _json.ReadValueAsync(cancellationToken).ConfigureAwait(false);
+        if (name == "crs")
+        {
+            _declaredCrs = NameOf(value.RootElement)
+                ?? throw new IngestFormatException("The document's 'crs' member has no 'name' property.");
+        }
+
+        _root.Add(new KeyValuePair<string, JsonDocument>(name, value));
     }
 
     private async ValueTask<RawRecord?> EnterFeaturesAsync(int sourceSrid, CancellationToken cancellationToken)
@@ -282,18 +328,35 @@ internal sealed class GeoJsonRecordReader : IRawRecordReader
                 continue;
             }
 
-            var declared = NameOf(value.RootElement)
-                ?? throw new IngestFormatException("The document's 'crs' member has no 'name' property.");
-            var code = IngestCrsName.Resolve(declared);
-            if (code != sourceSrid)
-            {
-                throw new IngestFormatException(
-                    $"The document declares CRS '{declared}' (EPSG:{code}) after its 'features', which were read as EPSG:{sourceSrid}; a declared CRS must precede the features it describes.");
-            }
-
-            _declaredCrs ??= declared;
+            CheckTailCrs(value.RootElement, sourceSrid);
         }
 
+        await FinishTailAsync(closed, cancellationToken).ConfigureAwait(false);
+        return null;
+    }
+
+    /// <summary>
+    /// Checks a <c>crs</c> found after the features against what the features
+    /// were already read as. A declaration that disagrees is a failure rather
+    /// than a retroactive reprojection nobody asked for.
+    /// </summary>
+    private void CheckTailCrs(JsonElement crs, int sourceSrid)
+    {
+        var declared = NameOf(crs)
+            ?? throw new IngestFormatException("The document's 'crs' member has no 'name' property.");
+        var code = IngestCrsName.Resolve(declared);
+        if (code != sourceSrid)
+        {
+            throw new IngestFormatException(
+                $"The document declares CRS '{declared}' (EPSG:{code}) after its 'features', which were read as EPSG:{sourceSrid}; a declared CRS must precede the features it describes.");
+        }
+
+        _declaredCrs ??= declared;
+    }
+
+    /// <summary>Closes the root object, rejecting truncation and trailing content.</summary>
+    private async ValueTask FinishTailAsync(bool closed, CancellationToken cancellationToken)
+    {
         if (closed is false)
         {
             throw new IngestFormatException("The document ended in the middle of a GeoJSON object.");
@@ -305,7 +368,6 @@ internal sealed class GeoJsonRecordReader : IRawRecordReader
         }
 
         _phase = Phase.Done;
-        return null;
     }
 
     /// <summary>Converts one feature, or the typed reason it was dropped.</summary>
@@ -387,10 +449,7 @@ internal sealed class NdGeoJsonRecordReader : IRawRecordReader
             _position++;
             if (TryParse(line, _position, out var document))
             {
-                _declaredCrs = GeoJsonRecordReader.CrsOf(document!.RootElement);
-                _pending = document.RootElement.Clone();
-                document.Dispose();
-                return _declaredCrs;
+                return StashFirst(document!);
             }
 
             if (!_skipMalformed)
@@ -400,6 +459,15 @@ internal sealed class NdGeoJsonRecordReader : IRawRecordReader
 
             return null;
         }
+    }
+
+    /// <summary>Holds the first record and takes the document's declaration from it.</summary>
+    private string? StashFirst(JsonDocument document)
+    {
+        _declaredCrs = GeoJsonRecordReader.CrsOf(document.RootElement);
+        _pending = document.RootElement.Clone();
+        document.Dispose();
+        return _declaredCrs;
     }
 
     private string? _parseFailure;
@@ -462,15 +530,18 @@ internal sealed class NdGeoJsonRecordReader : IRawRecordReader
         if (code != sourceSrid)
         {
             var line = position == 1 ? "Line 1" : $"Line {position}";
-            var conflict = _declaredCrs is not null && _declaredCrs != declared
-                ? $" but the document declared '{_declaredCrs}' on its first record"
-                : string.Empty;
             throw new IngestFormatException(
-                $"{line} declares CRS '{declared}' (EPSG:{code}){conflict}; the decode is reading EPSG:{sourceSrid} and one upload cannot mix coordinate systems.");
+                $"{line} declares CRS '{declared}' (EPSG:{code}){ConflictNote(declared)}; the decode is reading EPSG:{sourceSrid} and one upload cannot mix coordinate systems.");
         }
 
         _declaredCrs ??= declared;
     }
+
+    /// <summary>The suffix naming the document's first-record declaration, if it differs.</summary>
+    private string ConflictNote(string declared) =>
+        _declaredCrs is not null && _declaredCrs != declared
+            ? $" but the document declared '{_declaredCrs}' on its first record"
+            : string.Empty;
 
     private RawRecord? Convert(JsonElement element, int position, int sourceSrid)
     {
@@ -542,14 +613,24 @@ internal sealed class NdGeoJsonRecordReader : IRawRecordReader
 internal static class GeoJsonFeatures
 {
     /// <summary>Whether a record was dropped, in words a caller can act on.</summary>
-    public static string Describe(IngestSkipReason reason) => reason switch
+    public static string Describe(IngestSkipReason reason) =>
+        DescribeFailure(reason) ?? DescribeScope(reason) ?? reason.ToString();
+
+    /// <summary>Record and geometry failures, or null when the reason is not one.</summary>
+    private static string? DescribeFailure(IngestSkipReason reason) => reason switch
     {
         IngestSkipReason.RecordMalformed => "the record is malformed",
         IngestSkipReason.GeometryInvalid => "the geometry is invalid",
         IngestSkipReason.AttributeInvalid => "an attribute value is invalid",
+        _ => null,
+    };
+
+    /// <summary>Schema and CRS conflicts, or null when the reason is not one.</summary>
+    private static string? DescribeScope(IngestSkipReason reason) => reason switch
+    {
         IngestSkipReason.FieldNotInferred => "a field is not in the inferred schema",
         IngestSkipReason.CrsConflict => "a declared CRS conflicts with the decode",
-        _ => reason.ToString(),
+        _ => null,
     };
 
     /// <summary>

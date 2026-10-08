@@ -27,28 +27,36 @@ internal static class IngestCrsName
         }
 
         var trimmed = name.Trim();
-        if (trimmed.Equals("CRS84", StringComparison.OrdinalIgnoreCase)
-            || trimmed.Equals("urn:ogc:def:crs:OGC:1.3:CRS84", StringComparison.OrdinalIgnoreCase)
-            || trimmed.Equals("urn:ogc:def:crs:OGC::CRS84", StringComparison.OrdinalIgnoreCase))
+        if (IsCrs84(trimmed))
         {
             return Crs84;
         }
 
+        return TryResolveEpsg(trimmed);
+    }
+
+    /// <summary>Whether the name is CRS 84, the GeoJSON lon/lat default, in any spelling.</summary>
+    private static bool IsCrs84(string trimmed) =>
+        trimmed.Equals("CRS84", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("urn:ogc:def:crs:OGC:1.3:CRS84", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("urn:ogc:def:crs:OGC::CRS84", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The EPSG code an authority-and-code name denotes. The authority is
+    /// checked, not just the trailing number: "…crs:ESRI:102100" ends in
+    /// digits and would otherwise be read as EPSG:100.
+    /// </summary>
+    private static int? TryResolveEpsg(string trimmed)
+    {
         // "EPSG:4326", "urn:ogc:def:crs:EPSG::4326", "urn:ogc:def:crs:EPSG:9.9.1:4326",
-        // "http://www.opengis.net/def/crs/EPSG/0/4326". The authority is
-        // checked, not just the trailing number: "…crs:ESRI:102100" ends in
-        // digits and would otherwise be read as EPSG:100.
+        // "http://www.opengis.net/def/crs/EPSG/0/4326".
         var segments = trimmed.Split([':', '/'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (segments.Length < 2)
         {
             return null;
         }
 
-        // "…:crs:EPSG::3857" and "…/crs/EPSG/0/3857" name the authority right
-        // after "crs"; a bare "EPSG:3857" leads with it.
-        var crs = Array.FindIndex(segments, segment => segment.Equals("crs", StringComparison.OrdinalIgnoreCase));
-        var authority = segments[crs < 0 ? 0 : crs + 1];
-        if (authority.Equals("EPSG", StringComparison.OrdinalIgnoreCase) is false)
+        if (AuthorityOf(segments).Equals("EPSG", StringComparison.OrdinalIgnoreCase) is false)
         {
             return null;
         }
@@ -56,6 +64,17 @@ internal static class IngestCrsName
         return int.TryParse(segments[^1], NumberStyles.None, CultureInfo.InvariantCulture, out var code) && code > 0
             ? code
             : null;
+    }
+
+    /// <summary>
+    /// The authority a segmented CRS name speaks for: right after
+    /// <c>crs</c> in "…:crs:EPSG::3857" and "…/crs/EPSG/0/3857", leading in
+    /// a bare "EPSG:3857".
+    /// </summary>
+    private static string AuthorityOf(string[] segments)
+    {
+        var crs = Array.FindIndex(segments, segment => segment.Equals("crs", StringComparison.OrdinalIgnoreCase));
+        return segments[crs < 0 ? 0 : crs + 1];
     }
 
     /// <summary>

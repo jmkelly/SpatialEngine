@@ -1,5 +1,6 @@
 using System.Text;
 using Spatial.Core.Features;
+using Spatial.Core.Features.Ingest;
 using Spatial.Core.Geometry;
 
 namespace Spatial.Ingest.Codec.Tests;
@@ -264,5 +265,93 @@ public sealed class GeoJsonIngestTests
     {
         Assert.Throws<IngestFormatException>(
             () => Decode(Collection(Feature("{}", """{"type":"Point","coordinates":[1,"x"]}"""))));
+    }
+
+    [Fact]
+    public void A_feature_carrying_a_features_member_fails()
+    {
+        var failure = Assert.Throws<IngestFormatException>(
+            () => Decode("""{"type":"Feature","features":[],"properties":{},"geometry":null}"""));
+
+        Assert.Contains("has no 'features' member", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_document_ending_right_after_its_type_member_fails()
+    {
+        var failure = Assert.Throws<IngestFormatException>(() => Decode("""{"type":"""));
+
+        Assert.Contains("not a GeoJSON Feature or FeatureCollection", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Every_skip_reason_describes_itself_in_words()
+    {
+        Assert.Equal("the record is malformed", GeoJsonFeatures.Describe(IngestSkipReason.RecordMalformed));
+        Assert.Equal("the geometry is invalid", GeoJsonFeatures.Describe(IngestSkipReason.GeometryInvalid));
+        Assert.Equal("an attribute value is invalid", GeoJsonFeatures.Describe(IngestSkipReason.AttributeInvalid));
+        Assert.Equal("a field is not in the inferred schema", GeoJsonFeatures.Describe(IngestSkipReason.FieldNotInferred));
+        Assert.Equal("a declared CRS conflicts with the decode", GeoJsonFeatures.Describe(IngestSkipReason.CrsConflict));
+        Assert.Equal("99", GeoJsonFeatures.Describe((IngestSkipReason)99));
+    }
+
+    [Fact]
+    public async Task A_crs_after_the_features_that_disagrees_with_the_decode_fails()
+    {
+        var body = new MemoryStream(
+            Encoding.UTF8.GetBytes(
+                """{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},"geometry":null}],"crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:EPSG::3857"}}}"""));
+
+        using var reader = new GeoJsonRecordReader(body, skipMalformed: false);
+        Assert.Null(await reader.InitialiseAsync(CancellationToken.None));
+        Assert.NotNull(await reader.ReadAsync(4326, CancellationToken.None));
+        Assert.Null(await reader.ReadAsync(4326, CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<IngestFormatException>(() => reader.ReadAsync(4326, CancellationToken.None).AsTask());
+
+        Assert.Contains("after its 'features'", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("3857", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_nameless_crs_after_the_features_fails()
+    {
+        var body = new MemoryStream(
+            Encoding.UTF8.GetBytes(
+                """{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},"geometry":null}],"crs":{"type":"name","properties":{}}}"""));
+
+        using var reader = new GeoJsonRecordReader(body, skipMalformed: false);
+        Assert.Null(await reader.InitialiseAsync(CancellationToken.None));
+        Assert.NotNull(await reader.ReadAsync(4326, CancellationToken.None));
+        Assert.Null(await reader.ReadAsync(4326, CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<IngestFormatException>(() => reader.ReadAsync(4326, CancellationToken.None).AsTask());
+
+        Assert.Contains("has no 'name' property", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_collection_without_a_closing_brace_fails_in_the_tail()
+    {
+        var body = new MemoryStream(Encoding.UTF8.GetBytes("""{"type":"FeatureCollection","features":[]"""));
+
+        using var reader = new GeoJsonRecordReader(body, skipMalformed: false);
+        Assert.Null(await reader.InitialiseAsync(CancellationToken.None));
+        Assert.Null(await reader.ReadAsync(4326, CancellationToken.None));
+        var failure = await Assert.ThrowsAsync<IngestFormatException>(() => reader.ReadAsync(4326, CancellationToken.None).AsTask());
+
+        Assert.Contains("ended in the middle", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Trailing_whitespace_after_the_collection_is_tolerated()
+    {
+        var body = new MemoryStream(
+            Encoding.UTF8.GetBytes(
+                """{"type":"FeatureCollection","features":[{"type":"Feature","properties":{},"geometry":null}]}  """));
+
+        using var reader = new GeoJsonRecordReader(body, skipMalformed: false);
+        Assert.Null(await reader.InitialiseAsync(CancellationToken.None));
+        Assert.NotNull(await reader.ReadAsync(4326, CancellationToken.None));
+        Assert.Null(await reader.ReadAsync(4326, CancellationToken.None));
+        Assert.Null(await reader.ReadAsync(4326, CancellationToken.None));
     }
 }

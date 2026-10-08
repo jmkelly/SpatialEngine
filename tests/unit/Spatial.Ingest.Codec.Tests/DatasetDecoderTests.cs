@@ -36,6 +36,24 @@ public sealed class DatasetDecoderTests
     }
 
     [Fact]
+    public void A_non_positive_infer_sample_size_is_rejected()
+    {
+        var failure = Assert.Throws<IngestFormatException>(
+            () => DatasetDecoder.Decode(Stream(OneFeature), IngestFormat.GeoJson, new DecodeOptions { InferSampleSize = 0 }));
+
+        Assert.Contains("InferSampleSize", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_non_positive_source_srid_is_rejected()
+    {
+        var failure = Assert.Throws<IngestFormatException>(
+            () => DatasetDecoder.Decode(Stream(OneFeature), IngestFormat.GeoJson, new DecodeOptions { SourceSrid = -5 }));
+
+        Assert.Contains("SourceSrid", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_geometry_field_defaults_to_geometry()
     {
         var decoded = DatasetDecoder.Decode(Stream(OneFeature), IngestFormat.GeoJson);

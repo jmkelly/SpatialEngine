@@ -163,6 +163,43 @@ public sealed class DeclaredCrsTests
         Assert.Equal(WebMercator, decoded.Report.Crs.Declared);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("EPSG")]
+    [InlineData("urn:ogc:def:crs:NOPE::1")]
+    [InlineData("urn:ogc:def:crs:ESRI::102100")]
+    [InlineData("EPSG:0")]
+    [InlineData("EPSG:-3857")]
+    [InlineData("EPSG:not-a-code")]
+    public void TryResolve_returns_null_for_blank_non_epsg_and_malformed_names(string? name)
+    {
+        Assert.Null(IngestCrsName.TryResolve(name));
+    }
+
+    [Theory]
+    [InlineData("CRS84")]
+    [InlineData("crs84")]
+    [InlineData("urn:ogc:def:crs:OGC:1.3:CRS84")]
+    [InlineData("urn:ogc:def:crs:OGC::CRS84")]
+    public void TryResolve_reads_crs84_as_wgs84(string name)
+    {
+        Assert.Equal(4326, IngestCrsName.TryResolve(name));
+    }
+
+    [Theory]
+    [InlineData("EPSG:3857", 3857)]
+    [InlineData("epsg:27700", 27700)]
+    [InlineData("urn:ogc:def:crs:EPSG::3857", 3857)]
+    [InlineData("urn:ogc:def:crs:EPSG:9.9.1:4326", 4326)]
+    [InlineData("http://www.opengis.net/def/crs/EPSG/0/3857", 3857)]
+    [InlineData("  EPSG:3857  ", 3857)]
+    public void TryResolve_reads_epsg_names_in_every_spelling(string name, int expected)
+    {
+        Assert.Equal(expected, IngestCrsName.TryResolve(name));
+    }
+
     /// <summary>One ND-GeoJSON record, optionally declaring a CRS.</summary>
     private static string NdRecord(string? crs, bool point = false) =>
         "{\"type\":\"Feature\"" + (crs is null ? string.Empty : ",\"crs\":{\"type\":\"name\",\"properties\":{\"name\":\"" + crs + "\"}}")

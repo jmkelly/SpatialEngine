@@ -176,4 +176,23 @@ public sealed class DecodeReportTests
         Assert.Equal(decoded.Schema, decoded.Report.Schema);
         Assert.Equal("geom", decoded.Report.Schema[^1].Name);
     }
+
+    [Fact]
+    public void An_inferred_field_names_its_kind_and_the_evidence_behind_it()
+    {
+        Assert.Equal(
+            "count → Int64 (saw Int64, 0 null(s))",
+            new InferredField("count", AttributeKind.Int64, Nullable: false, Nulls: 0, Observed: [AttributeKind.Int64]).ToString());
+        Assert.Equal(
+            "v → String nullable (saw Int64+Double+String, 1 null(s))",
+            new InferredField(
+                "v",
+                AttributeKind.String,
+                Nullable: true,
+                Nulls: 1,
+                Observed: [AttributeKind.Int64, AttributeKind.Double, AttributeKind.String]).ToString());
+        Assert.Equal(
+            "note → String nullable (saw no values, 1 null(s))",
+            new InferredField("note", AttributeKind.String, Nullable: true, Nulls: 1, Observed: []).ToString());
+    }
 }

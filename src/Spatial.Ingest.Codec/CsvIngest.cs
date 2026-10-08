@@ -285,43 +285,55 @@ internal sealed class CsvRecordReader : IRawRecordReader
         var quoted = false;
         for (var i = 0; i < line.Length; i++)
         {
-            var c = line[i];
             if (quoted)
             {
-                if (c != '"')
-                {
-                    field.Append(c);
-                }
-                else if (i + 1 < line.Length && line[i + 1] == '"')
-                {
-                    field.Append('"');
-                    i++;
-                }
-                else
-                {
-                    quoted = false;
-                }
-
+                AppendQuoted(field, line, ref i, ref quoted);
                 continue;
             }
 
-            if (c == '"')
-            {
-                quoted = true;
-            }
-            else if (c == ',')
-            {
-                fields.Add(field.ToString());
-                field.Clear();
-            }
-            else
-            {
-                field.Append(c);
-            }
+            AppendBare(fields, field, line[i], ref quoted);
         }
 
         fields.Add(field.ToString());
         return fields;
+    }
+
+    /// <summary>Appends one character of a quoted header field, honouring doubled quotes.</summary>
+    private static void AppendQuoted(StringBuilder field, string line, ref int index, ref bool quoted)
+    {
+        var c = line[index];
+        if (c != '"')
+        {
+            field.Append(c);
+            return;
+        }
+
+        if (index + 1 < line.Length && line[index + 1] == '"')
+        {
+            field.Append('"');
+            index++;
+            return;
+        }
+
+        quoted = false;
+    }
+
+    /// <summary>Appends one character of a bare header field, honouring commas and quotes.</summary>
+    private static void AppendBare(List<string> fields, StringBuilder field, char c, ref bool quoted)
+    {
+        if (c == '"')
+        {
+            quoted = true;
+        }
+        else if (c == ',')
+        {
+            fields.Add(field.ToString());
+            field.Clear();
+        }
+        else
+        {
+            field.Append(c);
+        }
     }
 
     /// <summary>The CRS named by a <c># crs=…</c> preamble directive, if any.</summary>
