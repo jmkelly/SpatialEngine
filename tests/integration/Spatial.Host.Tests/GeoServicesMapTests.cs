@@ -543,6 +543,21 @@ public sealed class GeoServicesMapTests : IDisposable
     }
 
     [Fact]
+    public async Task A_tile_for_an_unknown_service_is_a_404_envelope()
+    {
+        // The tile is rendered-or-failed inside one handler, so a service that
+        // was never published fails as the envelope rather than escaping it.
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync($"{Root}/nope/MapServer/tile/0/0/0?f=image");
+        var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("error");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(404, error.GetProperty("code").GetInt32());
+        Assert.Equal(JsonValueKind.Array, error.GetProperty("details").ValueKind);
+    }
+
+    [Fact]
     public async Task The_layer_metadata_carries_a_unique_value_renderer_and_coded_domain()
     {
         var client = await MapServiceAsync(CountryUniqueValueStyle, dataset: "demo.world_cities");

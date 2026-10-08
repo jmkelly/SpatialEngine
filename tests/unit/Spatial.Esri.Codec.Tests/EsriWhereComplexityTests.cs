@@ -37,6 +37,9 @@ public sealed class EsriWhereComplexityTests
     [InlineData("NULL = NULL", false)]
     [InlineData("1 = NULL", false)]
     [InlineData("1 LIKE 2", false)]
+    [InlineData("'a' = 1", false)]
+    [InlineData("TRUE = 1", false)]
+    [InlineData("'a' LIKE 1", false)]
     public void A_literal_comparison_folds_to_its_truth(string text, bool expected)
     {
         Assert.Equal(expected, ConstantOf(text).Value);

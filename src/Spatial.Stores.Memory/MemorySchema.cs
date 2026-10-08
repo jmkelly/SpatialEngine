@@ -151,6 +151,19 @@ internal static class MemorySchema
         {
             AttributeKind.Int64 => identity.Int64Value.ToString(CultureInfo.InvariantCulture),
             AttributeKind.String => identity.StringValue,
+            _ => IdentityTextOther(stored, identityIndex, identity),
+        };
+    }
+
+    /// <summary>
+    /// The identity arms outside the two common key kinds: a guid in the
+    /// round-trip form the contract's id string carries, and a typed refusal
+    /// for a kind that cannot key a feature.
+    /// </summary>
+    private static string IdentityTextOther(Feature stored, int identityIndex, AttributeValue identity)
+    {
+        return identity.Kind switch
+        {
             AttributeKind.Guid => identity.GuidValue.ToString("D"),
             _ => throw SpatialException.BadArguments(
                 $"The identity column '{stored.Schema[identityIndex].Name}' is {identity.Kind}, which cannot key a feature."),

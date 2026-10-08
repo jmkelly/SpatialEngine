@@ -100,6 +100,54 @@ public sealed class QueryingSeamTests
             feature));
     }
 
+    [Theory]
+    [InlineData(ComparisonOperator.LessThan, "8", true)]
+    [InlineData(ComparisonOperator.LessThan, "7", false)]
+    [InlineData(ComparisonOperator.LessThan, "6", false)]
+    [InlineData(ComparisonOperator.LessOrEqual, "8", true)]
+    [InlineData(ComparisonOperator.LessOrEqual, "7", true)]
+    [InlineData(ComparisonOperator.LessOrEqual, "6", false)]
+    [InlineData(ComparisonOperator.GreaterThan, "6", true)]
+    [InlineData(ComparisonOperator.GreaterThan, "7", false)]
+    [InlineData(ComparisonOperator.GreaterOrEqual, "7", true)]
+    [InlineData(ComparisonOperator.GreaterOrEqual, "8", false)]
+    public void Whole_numbers_order_on_both_sides(ComparisonOperator comparison, string bound, bool expected)
+    {
+        // The population is 7: the lower pair and the upper pair both answer,
+        // exactly past 2^53 as below it.
+        var schema = new FeatureSchema([new FieldDefinition("population", AttributeKind.Int64)]);
+        var feature = new Feature(new FeatureId("row"), schema, [AttributeValue.FromInt64(7)]);
+
+        Assert.Equal(
+            expected,
+            ReferencePredicate.Matches(
+                new Predicate.Compare(new FieldRef("population"), comparison, Literal.FromInteger(bound)),
+                feature));
+    }
+
+    [Theory]
+    [InlineData(false, true, -1)]
+    [InlineData(true, true, 0)]
+    [InlineData(7L, 8L, -1)]
+    [InlineData(8L, 8L, 0)]
+    [InlineData(2.5, 2.5, 0)]
+    [InlineData("a", "b", -1)]
+    public void Values_of_one_kind_order_by_payload(object left, object right, int expected)
+    {
+        Assert.Equal(
+            Math.Sign(expected),
+            Math.Sign(AttributeValueComparer.Instance.Compare(Value(left), Value(right))));
+    }
+
+    private static AttributeValue Value(object payload) => payload switch
+    {
+        bool flag => AttributeValue.FromBoolean(flag),
+        long whole => AttributeValue.FromInt64(whole),
+        double fraction => AttributeValue.FromDouble(fraction),
+        string text => AttributeValue.FromString(text),
+        _ => AttributeValue.Null,
+    };
+
     [Fact]
     public void The_empty_reduction_is_one_group_of_nulls()
     {

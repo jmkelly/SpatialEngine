@@ -170,10 +170,20 @@ public static class ReferencePredicate
 
     private static bool WholeOrdering(long left, long whole, ComparisonOperator comparison) => comparison switch
     {
-        ComparisonOperator.LessThan => left < whole,
-        ComparisonOperator.LessOrEqual => left <= whole,
         ComparisonOperator.GreaterThan => left > whole,
         ComparisonOperator.GreaterOrEqual => left >= whole,
+        _ => WholeLower(left, whole, comparison),
+    };
+
+    /// <summary>
+    /// The lower half of the whole-number ordering: a smaller value, a value
+    /// no larger, and false for an operator the whole comparison never sends
+    /// here — equality is decided before the ordering is reached.
+    /// </summary>
+    private static bool WholeLower(long left, long whole, ComparisonOperator comparison) => comparison switch
+    {
+        ComparisonOperator.LessThan => left < whole,
+        ComparisonOperator.LessOrEqual => left <= whole,
         _ => false,
     };
 

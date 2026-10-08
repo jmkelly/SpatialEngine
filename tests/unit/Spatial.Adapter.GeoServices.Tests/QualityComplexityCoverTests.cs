@@ -147,6 +147,143 @@ public sealed class QualityComplexityCoverTests
         Assert.Contains("nope", failure.Message);
     }
 
+    // ---- EsriWhereResolver.Rename ----
+
+    private static readonly FeatureSchema IdentityPushdownSchema = new(
+    [
+        new FieldDefinition("id", AttributeKind.Int64),
+        new FieldDefinition("name", AttributeKind.String, nullable: true),
+    ]);
+
+    private static DatasetDescription IdentityLayer() =>
+        new("demo.places", "demo", "places", "geometry", 4326, "Point", 0, ["id"], IdentityPushdownSchema);
+
+    private static EsriWhere Clause(string text)
+    {
+        Assert.True(EsriWhere.TryParse(text, out var where, out var error), error);
+        return where!;
+    }
+
+    private static Predicate Renamed(string text)
+    {
+        var dataset = IdentityLayer();
+        var pushed = EsriWhereResolver.Pushdown(Clause(text), EsriObjectIdScheme.For(dataset), dataset);
+
+        Assert.NotNull(pushed);
+        return pushed!;
+    }
+
+    [Fact]
+    public void Rename_rewrites_every_arm_of_a_conjunction()
+    {
+        var pushed = Assert.IsType<Predicate.Every>(Renamed("OBJECTID = 9 AND name = 'alpha'"));
+
+        Assert.Equal(2, pushed.Terms.Count);
+        var identity = Assert.IsType<Predicate.Compare>(pushed.Terms[0]);
+        Assert.Equal("id", identity.Field.Name);
+        Assert.Equal(ComparisonOperator.Equals, identity.Operator);
+        Assert.Equal(Literal.FromInteger("9"), identity.Value);
+        var name = Assert.IsType<Predicate.Compare>(pushed.Terms[1]);
+        Assert.Equal("name", name.Field.Name);
+        Assert.Equal(Literal.FromText("alpha"), name.Value);
+    }
+
+    [Fact]
+    public void Rename_rewrites_every_arm_of_a_disjunction()
+    {
+        var pushed = Assert.IsType<Predicate.Some>(Renamed("OBJECTID = 9 OR OBJECTID = 10"));
+
+        Assert.Equal(2, pushed.Terms.Count);
+        foreach (var term in pushed.Terms)
+        {
+            Assert.Equal("id", Assert.IsType<Predicate.Compare>(term).Field.Name);
+        }
+
+        Assert.Equal(
+            [Literal.FromInteger("9"), Literal.FromInteger("10")],
+            pushed.Terms.Cast<Predicate.Compare>().Select(term => term.Value));
+    }
+
+    [Fact]
+    public void Rename_rewrites_a_null_test_on_the_object_id()
+    {
+        var pushed = Renamed("OBJECTID IS NULL");
+
+        var isNull = Assert.IsType<Predicate.IsNull>(pushed);
+        Assert.Equal("id", isNull.Field.Name);
+        Assert.False(isNull.Negated);
+    }
+
+    [Fact]
+    public void Rename_rewrites_a_membership_test_on_the_object_id()
+    {
+        var pushed = Renamed("OBJECTID IN (9, 10)");
+
+        var isIn = Assert.IsType<Predicate.IsIn>(pushed);
+        Assert.Equal("id", isIn.Field.Name);
+        Assert.False(isIn.Negated);
+        Assert.Equal([Literal.FromInteger("9"), Literal.FromInteger("10")], isIn.Values);
+    }
+
+    [Fact]
+    public void Rename_leaves_a_plain_field_reference_on_its_column()
+    {
+        // The null test names a real column, so only the object-id comparison
+        // beside it is rewritten; the other field keeps its own reference.
+        var pushed = Assert.IsType<Predicate.Every>(Renamed("name IS NULL AND OBJECTID = 9"));
+
+        Assert.Equal(2, pushed.Terms.Count);
+        var isNull = Assert.IsType<Predicate.IsNull>(pushed.Terms[0]);
+        Assert.Equal("name", isNull.Field.Name);
+        var identity = Assert.IsType<Predicate.Compare>(pushed.Terms[1]);
+        Assert.Equal("id", identity.Field.Name);
+        Assert.Equal(Literal.FromInteger("9"), identity.Value);
+    }
+
+    [Fact]
+    public void Rename_carries_a_constant_through_unchanged()
+    {
+        // A folded literal comparison is not a field reference at all, so the
+        // rename passes it through rather than refusing the pushdown.
+        var pushed = Assert.IsType<Predicate.Every>(Renamed("1 = 1 AND OBJECTID = 9"));
+
+        Assert.Equal(2, pushed.Terms.Count);
+        Assert.Equal(new Predicate.Constant(true), Assert.IsType<Predicate.Constant>(pushed.Terms[0]));
+        var identity = Assert.IsType<Predicate.Compare>(pushed.Terms[1]);
+        Assert.Equal("id", identity.Field.Name);
+        Assert.Equal(Literal.FromInteger("9"), identity.Value);
+    }
+
+    // ---- EsriPredicateEvaluator.OrderingInequality ----
+
+    [Theory]
+    [InlineData(ComparisonOperator.LessThan, "8", true)]
+    [InlineData(ComparisonOperator.LessThan, "7", false)]
+    [InlineData(ComparisonOperator.LessThan, "6", false)]
+    [InlineData(ComparisonOperator.LessThan, "7000000000000000000", true)]
+    [InlineData(ComparisonOperator.LessThan, "99999999999999999999", false)]
+    [InlineData(ComparisonOperator.LessThan, "7.5", true)]
+    [InlineData(ComparisonOperator.LessThan, "6.5", false)]
+    [InlineData(ComparisonOperator.LessOrEqual, "8", true)]
+    [InlineData(ComparisonOperator.LessOrEqual, "7", true)]
+    [InlineData(ComparisonOperator.LessOrEqual, "6", false)]
+    [InlineData(ComparisonOperator.LessOrEqual, "7.0", true)]
+    [InlineData(ComparisonOperator.LessOrEqual, "6.5", false)]
+    [InlineData(ComparisonOperator.GreaterThan, "6", true)]
+    [InlineData(ComparisonOperator.GreaterThan, "7", false)]
+    [InlineData(ComparisonOperator.GreaterOrEqual, "7", true)]
+    [InlineData(ComparisonOperator.GreaterOrEqual, "8", false)]
+    public void The_evaluator_orders_whole_numbers_on_both_sides(ComparisonOperator comparison, string bound, bool expected)
+    {
+        // Row id is 7: every inequality arm answers, including the lower pair
+        // the stores' pushdown has to agree with.
+        var literal = bound.Contains('.')
+            ? Literal.FromNumber(double.Parse(bound, CultureInfo.InvariantCulture))
+            : Literal.FromInteger(bound);
+
+        Assert.Equal(expected, EsriPredicateEvaluator.Matches(Term("id", comparison, literal), Row()));
+    }
+
     // ---- FeatureRelationshipKeys ----
 
     [Fact]

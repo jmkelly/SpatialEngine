@@ -216,6 +216,12 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
         AttributeKind.Null => "Null",
         AttributeKind.Boolean => $"Boolean({_boolean})",
         AttributeKind.Int64 => $"Int64({_int64})",
+        _ => ScalarOrReferenceToString(),
+    };
+
+    /// <summary>The scalar arm past the common identifiers, then the reference arms.</summary>
+    private string ScalarOrReferenceToString() => _kind switch
+    {
         AttributeKind.Double => FormattableString.Invariant($"Double({_double})"),
         _ => ReferenceToString(),
     };
@@ -223,6 +229,12 @@ public readonly struct AttributeValue : IEquatable<AttributeValue>
     private string ReferenceToString() => _kind switch
     {
         AttributeKind.String => $"String({_reference})",
+        _ => NonStringToString(),
+    };
+
+    /// <summary>The reference arms past text: a shape, an instant, and everything else.</summary>
+    private string NonStringToString() => _kind switch
+    {
         AttributeKind.Geometry => $"Geometry({_reference})",
         AttributeKind.DateTimeOffset => FormattableString.Invariant($"DateTimeOffset({DateTimeOffsetValue:O})"),
         _ => OtherToString(),

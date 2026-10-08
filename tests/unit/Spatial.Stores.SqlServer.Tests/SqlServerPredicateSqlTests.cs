@@ -205,6 +205,18 @@ public sealed class SqlServerPredicateSqlTests
     }
 
     [Fact]
+    public void Boolean_and_decimal_literals_bind_typed()
+    {
+        var flag = new List<object?>();
+        Assert.Equal("[active] = @p0", Build("active = TRUE", flag));
+        Assert.Equal([true], flag);
+
+        var fraction = new List<object?>();
+        Assert.Equal("[score] > @p0", Build("score > 2.5", fraction));
+        Assert.Equal([2.5], fraction);
+    }
+
+    [Fact]
     public void A_whole_number_wider_than_a_double_keeps_every_digit()
     {
         // 2^53 + 1 is not representable as a double: the literal is carried

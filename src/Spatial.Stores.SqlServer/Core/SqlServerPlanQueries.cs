@@ -921,6 +921,17 @@ internal static class SqlServerPlanQueries
         {
             AttributeKind.Int64 => $"CONVERT(nvarchar(max), {Quote(column)})",
             AttributeKind.String => $"CONVERT(nvarchar(max), {Quote(column)})",
+            _ => RenderedOther(column, kind),
+        };
+
+    /// <summary>
+    /// The identity arms T-SQL spells its own way: a guid lower-cased the way
+    /// the contract's id string carries it, and <c>null</c> for a kind whose
+    /// server rendering is some other text than the id string.
+    /// </summary>
+    private static string? RenderedOther(string column, AttributeKind kind) =>
+        kind switch
+        {
             AttributeKind.Guid => $"LOWER(CONVERT(nvarchar(36), {Quote(column)}))",
             _ => null,
         };

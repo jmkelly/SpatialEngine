@@ -41,8 +41,19 @@ public sealed class AttributeValueComparer : IComparer<AttributeValue>
 
     private static int CompareSameKind(AttributeValue left, AttributeValue right) => left.Kind switch
     {
-        AttributeKind.Boolean => left.BooleanValue.CompareTo(right.BooleanValue),
         AttributeKind.Int64 => left.Int64Value.CompareTo(right.Int64Value),
+        _ => CompareRest(left, right),
+    };
+
+    /// <summary>
+    /// The same-kind ordering past the identifier fast path: flags, fractions
+    /// and text compare inline, and the compound kinds keep their own cases.
+    /// The split keeps the residual dispatch a dispatch, so a run that sorts
+    /// identifiers never walks the other arms.
+    /// </summary>
+    private static int CompareRest(AttributeValue left, AttributeValue right) => left.Kind switch
+    {
+        AttributeKind.Boolean => left.BooleanValue.CompareTo(right.BooleanValue),
         AttributeKind.Double => left.DoubleValue.CompareTo(right.DoubleValue),
         AttributeKind.String => string.CompareOrdinal(left.StringValue, right.StringValue),
         _ => CompareCompound(left, right),

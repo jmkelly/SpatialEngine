@@ -150,6 +150,18 @@ public sealed class FeatureQueryWireTests
     }
 
     [Fact]
+    public void The_same_bounding_box_sent_twice_is_used_once()
+    {
+        // The sugar and the plan spelling of the box agree, so the refusal
+        // for two spellings of one member does not fire: the plan's box wins.
+        var box = new BboxDto(0, 0, 1, 1);
+
+        var query = FeatureQueryWire.ToQuery(new FeatureQueryDto(Bbox: box), null, box);
+
+        Assert.Equal(new BoundingBox(0, 0, 1, 1), query.BoundingBox);
+    }
+
+    [Fact]
     public void A_plan_without_sugar_reads_the_sugar_members()
     {
         var query = FeatureQueryWire.ToQuery(null, "a = 1", new BboxDto(0, 0, 1, 1));

@@ -452,13 +452,14 @@ public static class FeatureQueryWire
     private static void Reject<T>(string sugarMember, string planMember, T? sugar, T? plan, bool planSent)
         where T : notnull
     {
-        if (sugar is null || !planSent || Equals(sugar, plan))
+        if (ShouldReject(sugar is null, planSent, Equals(sugar, plan)))
         {
-            return;
+            RejectMismatch(sugarMember, planMember);
         }
-
-        RejectMismatch(sugarMember, planMember);
     }
+
+    private static bool ShouldReject(bool sugarMissing, bool planSent, bool equal) =>
+        !sugarMissing && planSent && !equal;
 
     private static void RejectMismatch(string sugarMember, string planMember) =>
         throw Bad(

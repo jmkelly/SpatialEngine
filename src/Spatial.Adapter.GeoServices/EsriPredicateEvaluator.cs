@@ -244,10 +244,21 @@ internal static class EsriPredicateEvaluator
 
     private static bool OrderingInequality(double left, double right, ComparisonOperator comparison) => comparison switch
     {
-        ComparisonOperator.LessThan => left < right,
-        ComparisonOperator.LessOrEqual => left <= right,
         ComparisonOperator.GreaterThan => left > right,
         ComparisonOperator.GreaterOrEqual => left >= right,
+        _ => OrderingLowerInequality(left, right, comparison),
+    };
+
+    /// <summary>
+    /// The lower half of the ordering inequalities, stated once so the
+    /// residual dispatch stays a dispatch: a smaller value, a value no
+    /// larger, and false for an operator the ordering never sends here —
+    /// equality is decided before the inequalities are reached.
+    /// </summary>
+    private static bool OrderingLowerInequality(double left, double right, ComparisonOperator comparison) => comparison switch
+    {
+        ComparisonOperator.LessThan => left < right,
+        ComparisonOperator.LessOrEqual => left <= right,
         _ => false,
     };
 

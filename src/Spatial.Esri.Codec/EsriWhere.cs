@@ -955,6 +955,15 @@ public static class EsriWhereText
             return false;
         }
 
+        return ConstantPairs(left, comparison, right);
+    }
+
+    /// <summary>
+    /// The typed pair dispatches: two flags compare as flags, two texts as
+    /// text, and everything else reads on the numeric axis.
+    /// </summary>
+    private static bool ConstantPairs(Literal left, ComparisonOperator comparison, Literal right)
+    {
         if (left.Kind == LiteralKind.Boolean && right.Kind == LiteralKind.Boolean)
         {
             return ConstantBoolean(left, comparison, right);
@@ -965,8 +974,16 @@ public static class EsriWhereText
             return ConstantText(left, comparison, right);
         }
 
-        return ConstantNumeric(left, right, comparison);
+        return ConstantNumbers(left, right, comparison);
     }
+
+    /// <summary>
+    /// The numeric arm of the truth table, stated once so the dispatch above
+    /// stays a dispatch: a date-time, a fraction and a whole number all read
+    /// on the same axis.
+    /// </summary>
+    private static bool ConstantNumbers(Literal left, Literal right, ComparisonOperator comparison) =>
+        ConstantNumeric(left, right, comparison);
 
     private static bool ConstantBoolean(Literal left, ComparisonOperator comparison, Literal right) =>
         comparison switch

@@ -538,6 +538,18 @@ internal static class PostgisPredicateSql
             LiteralKind.Integer => BindInteger(value),
             LiteralKind.Decimal => value.Number,
             LiteralKind.Boolean => value.Boolean,
+            _ => BindExtended(value),
+        };
+
+        /// <summary>
+        /// The rarely-bound arms: the UTC instant for a date-time,
+        /// <see cref="DBNull"/> for an explicit NULL, and a typed refusal for
+        /// a kind no column binds. The compatibility table admits only the
+        /// arms above to a comparison, so the last two are the refusal the
+        /// compiler keeps rather than a second classification of the vocabulary.
+        /// </summary>
+        private static object BindExtended(Literal value) => value.Kind switch
+        {
             LiteralKind.DateTime => BindDateTime(value),
             LiteralKind.Null => DBNull.Value,
             _ => throw SpatialException.BadArguments($"the filter literal '{value.Text}' is not a bindable value."),
