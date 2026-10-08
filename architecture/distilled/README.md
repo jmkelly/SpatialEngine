@@ -280,8 +280,9 @@ date and cross-reference)
 | 0192 | The register marks a `status: proposed` row, the gate refuses an accepted record that amends a proposal, and seven load-bearing proposals are ratified. |
 | 0193 | The container fixtures refuse a connection string while Docker is unavailable, so an unguarded fact fails loudly; the source-reading guard becomes a backstop that fails when its fixture literal stops matching. |
 | 0194 | The adapter offers a grouped `outStatistics` reduction to the store whether or not the request names a group order: "no `orderByFields` asked for" is not "an order the store cannot return". An unordered reduction owes the response the store's own order — the reference's first-seen order over the rows the restriction selected (ADR-0098 §3, ADR-0128 §8) — not the scan order of a whole-layer read, so the natural `outStatistics` + `groupByFieldsForStatistics` request stops reading the layer and reaches `IFeatureAggregateStore`, whose grouped reduction over the restricted read is the reference's answer (ADR-0184 §1). A requested order the plan cannot state as a total order over the groups still keeps the match path (amends 0098). |
+| 0196 | The host integration suite's xunit collection cap is **generated at build time** from the building machine's core count — `max(2, nproc/3)` written into `xunit.runner.json` beside the test assembly — instead of a shipped fixed 4, because a fixed number cannot sit below nproc on every box and the shipped 4 fails the suite's own ceiling on anything under twelve cores. |
 
-181 records on disk. The full index — status, date and every
+182 records on disk. The full index — status, date and every
 cross-reference — is `architecture/decisions/README.md`.
 
 <!-- arch-index:register:end -->
