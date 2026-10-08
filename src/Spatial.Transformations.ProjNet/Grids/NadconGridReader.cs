@@ -284,6 +284,20 @@ internal static class NadconGridReader
         subGridHeaderSize = 0;
         subGridCount = 0;
         var overview = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!ReadOverviewRecords(bytes, ref offset, overview, out error)
+            || !RequireOverviewCounts(overview, out subGridHeaderSize, out subGridCount, out error))
+        {
+            return false;
+        }
+
+        subGridHeaderSize *= RecordLength;
+        error = null;
+        return true;
+    }
+
+    /// <summary>The overview's own records, the first of which keys the header itself.</summary>
+    private static bool ReadOverviewRecords(byte[] bytes, ref int offset, Dictionary<string, string> overview, out string? error)
+    {
         for (var index = 0; index < OverviewRecordCount; index++)
         {
             if (!TryReadRecord(bytes, ref offset, out var key, out var value))
@@ -301,6 +315,16 @@ internal static class NadconGridReader
             overview[key] = value;
         }
 
+        error = null;
+        return true;
+    }
+
+    /// <summary>Whether the overview's counts describe headers that can follow.</summary>
+    private static bool RequireOverviewCounts(
+        Dictionary<string, string> overview, out int subGridHeaderSize, out int subGridCount, out string? error)
+    {
+        subGridHeaderSize = 0;
+        subGridCount = 0;
         if (!TryCount(overview, OverviewKey, out var overviewRecords)
             || overviewRecords < OverviewRecordCount)
         {
@@ -317,7 +341,6 @@ internal static class NadconGridReader
             return false;
         }
 
-        subGridHeaderSize *= RecordLength;
         error = null;
         return true;
     }
@@ -331,43 +354,9 @@ internal static class NadconGridReader
     {
         error = null;
         var headerEnd = offset + subGridHeaderSize;
-        var name = string.Empty;
         var numbers = new List<double>();
-        while (offset < headerEnd)
+        if (!CollectSubGridHeader(bytes, ref offset, headerEnd, out var name, numbers, out error))
         {
-            if (!TryReadRecord(bytes, ref offset, out var key, out var value))
-            {
-                error = "A NADCON sub-grid header stops before its last record.";
-                return null;
-            }
-
-            if (IsKey(key, IdentityKey))
-            {
-                name = Clean(value);
-                continue;
-            }
-
-            // Everything that is not the identity contributes numbers where it
-            // states them; the text between them — a source, a date, a unit —
-            // is not this reader's business.
-            foreach (var token in value.Split(Separators, StringSplitOptions.RemoveEmptyEntries))
-            {
-                if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
-                {
-                    numbers.Add(number);
-                }
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            error = "A NADCON sub-grid header does not name itself (ID).";
-            return null;
-        }
-
-        if (numbers.Count != BlockNumberCount)
-        {
-            error = $"The NADCON sub-grid '{name}' states {numbers.Count} numbers for its block where {BlockNumberCount} are expected.";
             return null;
         }
 
@@ -382,6 +371,60 @@ internal static class NadconGridReader
         }
 
         return new Half(block, shifts);
+    }
+
+    /// <summary>
+    /// The sub-grid header's identity and the numbers it states its block in.
+    /// Everything that is not the identity contributes numbers where it states
+    /// them; the text between them — a source, a date, a unit — is not this
+    /// reader's business.
+    /// </summary>
+    private static bool CollectSubGridHeader(
+        byte[] bytes, ref int offset, int headerEnd, out string name, List<double> numbers, out string? error)
+    {
+        name = string.Empty;
+        while (offset < headerEnd)
+        {
+            if (!TryReadRecord(bytes, ref offset, out var key, out var value))
+            {
+                error = "A NADCON sub-grid header stops before its last record.";
+                return false;
+            }
+
+            if (IsKey(key, IdentityKey))
+            {
+                name = Clean(value);
+                continue;
+            }
+
+            CollectNumbers(value, numbers);
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            error = "A NADCON sub-grid header does not name itself (ID).";
+            return false;
+        }
+
+        if (numbers.Count != BlockNumberCount)
+        {
+            error = $"The NADCON sub-grid '{name}' states {numbers.Count} numbers for its block where {BlockNumberCount} are expected.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    private static void CollectNumbers(string value, List<double> numbers)
+    {
+        foreach (var token in value.Split(Separators, StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+            {
+                numbers.Add(number);
+            }
+        }
     }
 
     /// <summary>
@@ -428,60 +471,122 @@ internal static class NadconGridReader
     private static bool TryBlock(string name, List<double> numbers, out Block block, out string? error)
     {
         block = default;
-        var (south, north) = (numbers[0], numbers[1]);
+        var shape = NormaliseBlock(numbers);
+        if (shape.LatitudeIncrement == 0.0 || shape.LongitudeIncrement == 0.0)
+        {
+            error = $"The NADCON sub-grid '{name}' declares a zero increment, so its block has no nodes.";
+            return false;
+        }
 
+        if (!CheckBlockShape(name, shape, out error))
+        {
+            return false;
+        }
+
+        block = new Block(
+            name,
+            shape.South,
+            shape.North,
+            shape.West,
+            shape.East,
+            shape.LatitudeIncrement,
+            shape.LongitudeIncrement,
+            shape.Rows,
+            shape.Columns);
+        error = null;
+        return true;
+    }
+
+    /// <summary>
+    /// The block with its edges ordered, its longitudes negated out of the
+    /// container's positive-west convention, and its node counts derived from
+    /// the header's own numbers.
+    /// </summary>
+    private static BlockShape NormaliseBlock(List<double> numbers)
+    {
         // Every longitude a NADCON header states is positive west, for the
         // same reason the .los values are: the edges of a block, the corner
         // the increments are measured from and the shifts tabulated over it
         // are all in the convention of the datum the grid was built from, not
         // the datum it reaches. Negated on the way in, so the block the grid
         // is built over is the block the datums are tabulated over.
-        (var east, var west) = (-numbers[2], -numbers[3]);
+        var (east, west) = (-numbers[2], -numbers[3]);
+        var (south, north) = (numbers[0], numbers[1]);
+        (south, north) = (Math.Min(south, north), Math.Max(south, north));
+        (west, east) = (Math.Min(west, east), Math.Max(west, east));
+
         var latitudeIncrement = Math.Abs(numbers[4]);
         var longitudeIncrement = Math.Abs(numbers[5]);
         var rows = (int)Math.Round(numbers[6]);
         var columns = (int)Math.Round(numbers[7]);
-        var (anchorLatitude, anchorLongitude) = (numbers[8], -numbers[9]);
+        return new BlockShape(
+            south,
+            north,
+            west,
+            east,
+            latitudeIncrement,
+            longitudeIncrement,
+            rows,
+            columns,
+            numbers[8],
+            -numbers[9]);
+    }
 
-        (south, north) = (Math.Min(south, north), Math.Max(south, north));
-        (west, east) = (Math.Min(west, east), Math.Max(west, east));
-
-        if (latitudeIncrement == 0.0 || longitudeIncrement == 0.0)
+    /// <summary>
+    /// Whether the header's three statements of its block agree: the counts
+    /// against the shape the edges and increments imply, the anchor corner
+    /// against the block, and the counts against the stated north and east
+    /// edges from that anchor.
+    /// </summary>
+    private static bool CheckBlockShape(string name, BlockShape shape, out string? error)
+    {
+        if (!CheckNodeCounts(name, shape, out error) || !CheckAnchor(name, shape, out error))
         {
-            error = $"The NADCON sub-grid '{name}' declares a zero increment, so its block has no nodes.";
             return false;
         }
 
-        var impliedRows = (int)Math.Round((north - south) / latitudeIncrement) + 1;
-        var impliedColumns = (int)Math.Round((east - west) / longitudeIncrement) + 1;
-        if (rows != impliedRows || columns != impliedColumns)
+        var spanLatitude = shape.South + ((shape.Rows - 1) * shape.LatitudeIncrement);
+        var spanLongitude = shape.West + ((shape.Columns - 1) * shape.LongitudeIncrement);
+        if (!Same(spanLatitude, shape.North) || !Same(spanLongitude, shape.East))
         {
-            error = $"The NADCON sub-grid '{name}' states {rows} by {columns} nodes, but its edges and {latitudeIncrement} by {longitudeIncrement} degree increments describe {impliedRows} by {impliedColumns}.";
+            error = $"The NADCON sub-grid '{name}' counts {shape.Rows} by {shape.Columns} nodes, which does not reach its stated north and east edges from its anchor.";
             return false;
         }
 
-        if (rows < 2 || columns < 2)
+        error = null;
+        return true;
+    }
+
+    /// <summary>Whether the stated counts match the shape the edges and increments imply, with cells to interpolate from.</summary>
+    private static bool CheckNodeCounts(string name, BlockShape shape, out string? error)
+    {
+        var impliedRows = (int)Math.Round((shape.North - shape.South) / shape.LatitudeIncrement) + 1;
+        var impliedColumns = (int)Math.Round((shape.East - shape.West) / shape.LongitudeIncrement) + 1;
+        if (shape.Rows != impliedRows || shape.Columns != impliedColumns)
         {
-            error = $"The NADCON sub-grid '{name}' states a {rows} by {columns} block, which has no cell to interpolate from.";
+            error = $"The NADCON sub-grid '{name}' states {shape.Rows} by {shape.Columns} nodes, but its edges and {shape.LatitudeIncrement} by {shape.LongitudeIncrement} degree increments describe {impliedRows} by {impliedColumns}.";
             return false;
         }
 
-        if (!Same(anchorLatitude, south) || !Same(anchorLongitude, west))
+        if (shape.Rows < 2 || shape.Columns < 2)
         {
-            error = $"The NADCON sub-grid '{name}' anchors its block at {anchorLatitude}, {anchorLongitude}, which is not its south-west corner.";
+            error = $"The NADCON sub-grid '{name}' states a {shape.Rows} by {shape.Columns} block, which has no cell to interpolate from.";
             return false;
         }
 
-        var spanLatitude = south + ((rows - 1) * latitudeIncrement);
-        var spanLongitude = west + ((columns - 1) * longitudeIncrement);
-        if (!Same(spanLatitude, north) || !Same(spanLongitude, east))
+        error = null;
+        return true;
+    }
+
+    /// <summary>Whether the anchor corner is the block's own south-west corner.</summary>
+    private static bool CheckAnchor(string name, BlockShape shape, out string? error)
+    {
+        if (!Same(shape.AnchorLatitude, shape.South) || !Same(shape.AnchorLongitude, shape.West))
         {
-            error = $"The NADCON sub-grid '{name}' counts {rows} by {columns} nodes, which does not reach its stated north and east edges from its anchor.";
+            error = $"The NADCON sub-grid '{name}' anchors its block at {shape.AnchorLatitude}, {shape.AnchorLongitude}, which is not its south-west corner.";
             return false;
         }
 
-        block = new Block(
-            name, south, north, west, east, latitudeIncrement, longitudeIncrement, rows, columns);
         error = null;
         return true;
     }
@@ -535,6 +640,19 @@ internal static class NadconGridReader
 
     /// <summary>One sub-grid of one half: the block it covers and the shifts its file carries.</summary>
     private readonly record struct Half(Block Block, double[] Shifts);
+
+    /// <summary>The block as the header states it, ordered and converted but not yet cross-checked.</summary>
+    private readonly record struct BlockShape(
+        double South,
+        double North,
+        double West,
+        double East,
+        double LatitudeIncrement,
+        double LongitudeIncrement,
+        int Rows,
+        int Columns,
+        double AnchorLatitude,
+        double AnchorLongitude);
 
     /// <summary>The block a sub-grid header describes, cross-checked and normalised.</summary>
     private readonly record struct Block(

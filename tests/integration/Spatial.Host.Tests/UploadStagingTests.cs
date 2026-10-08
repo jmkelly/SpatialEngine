@@ -164,6 +164,37 @@ public sealed class UploadStagingTests : IDisposable
     }
 
     [Fact]
+    public async Task An_append_to_a_faulted_upload_is_refused_until_it_is_discarded()
+    {
+        var staging = Staging();
+        await staging.StartAsync("faulted", 6, Sha256("abcdef"));
+        await staging.AppendAsync("faulted", Chunk("abc"), new UploadAppend(0, 6));
+        await Assert.ThrowsAsync<SpatialException>(() =>
+            staging.AppendAsync("faulted", Chunk("dEf"), new UploadAppend(3, 6)));
+
+        // The upload is faulted: the staged bytes are not the declared
+        // document, so no further append is accepted.
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            staging.AppendAsync("faulted", Chunk("dEf"), new UploadAppend(3, 6)));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Contains("faulted", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_append_at_a_negative_offset_is_rejected()
+    {
+        var staging = Staging();
+        await staging.StartAsync("backwards", 6, null);
+
+        var failure = await Assert.ThrowsAsync<SpatialException>(() =>
+            staging.AppendAsync("backwards", Chunk("abc"), new UploadAppend(-1, 6)));
+
+        Assert.Equal(SpatialException.InvalidArguments, failure.Code);
+        Assert.Equal(0, (await staging.DescribeAsync("backwards")).Received);
+    }
+
+    [Fact]
     public async Task An_upload_id_that_is_not_a_safe_token_is_rejected()
     {
         var staging = Staging();

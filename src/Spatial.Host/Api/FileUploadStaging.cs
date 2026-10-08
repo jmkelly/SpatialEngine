@@ -71,7 +71,7 @@ public sealed class FileUploadStaging : IUploadStaging
             return Describe(Live(existing) with
             {
                 TotalBytes = RequireSame(existing.TotalBytes, total, "total size"),
-                Sha256 = RequireSame(existing.Sha256, digest, "digest"),
+                Sha256 = RequireSameText(existing.Sha256, digest, "digest"),
             });
         }
 
@@ -86,26 +86,11 @@ public sealed class FileUploadStaging : IUploadStaging
         ArgumentNullException.ThrowIfNull(chunk);
         ArgumentNullException.ThrowIfNull(append);
         var id = RequireSafeId(uploadId);
-        var state = Read(id) ?? throw Missing(id);
-        if (state.Fault is { } existingFault)
-        {
-            throw SpatialException.BadArguments(
-                $"Upload '{id}' is faulted ({existingFault}); discard it and stage the document again.");
-        }
-
+        var state = ReadLive(id);
         var total = RequireSame(state.TotalBytes, RequireTotal(append.TotalBytes), "total size");
-        var digest = RequireSame(state.Sha256, RequireDigest(append.Sha256), "digest");
-        if (append.Offset < 0)
-        {
-            throw SpatialException.BadArguments($"The upload offset must not be negative, got {append.Offset}.");
-        }
-
+        var digest = RequireSameText(state.Sha256, RequireDigest(append.Sha256), "digest");
         var received = Length(id);
-        if (append.Offset > received)
-        {
-            throw SpatialException.BadArguments(
-                $"Upload '{id}' holds {received} byte(s); the chunk was addressed at {append.Offset}. Resume from {received}.");
-        }
+        RequireChunkAddressing(id, append, received);
 
         var limit = total is { } declared ? Math.Min(declared, MaxBytes) : MaxBytes;
         // Room is measured from the offset the chunk was addressed at, not from
@@ -120,6 +105,44 @@ public sealed class FileUploadStaging : IUploadStaging
         // The chunk's first byte belongs at `offset`, so the bytes before the
         // staged length are the re-sent overlap and are not written twice.
         var after = Append(id, staged, received - append.Offset);
+        return await FinalizeAppendAsync(id, state, after, total, digest, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The live upload an append lands on: started, and not faulted.</summary>
+    private StagedUpload ReadLive(string id)
+    {
+        var state = Read(id) ?? throw Missing(id);
+        if (state.Fault is { } existingFault)
+        {
+            throw SpatialException.BadArguments(
+                $"Upload '{id}' is faulted ({existingFault}); discard it and stage the document again.");
+        }
+
+        return state;
+    }
+
+    /// <summary>Whether the chunk is addressed where the staging can take it: at or behind what is staged.</summary>
+    private static void RequireChunkAddressing(string id, UploadAppend append, long received)
+    {
+        if (append.Offset < 0)
+        {
+            throw SpatialException.BadArguments($"The upload offset must not be negative, got {append.Offset}.");
+        }
+
+        if (append.Offset > received)
+        {
+            throw SpatialException.BadArguments(
+                $"Upload '{id}' holds {received} byte(s); the chunk was addressed at {append.Offset}. Resume from {received}.");
+        }
+    }
+
+    /// <summary>
+    /// Records the append: the fault when the completed bytes are not the
+    /// declared document, otherwise the new length.
+    /// </summary>
+    private async Task<UploadState> FinalizeAppendAsync(
+        string id, StagedUpload state, long after, long? total, string? digest, CancellationToken cancellationToken)
+    {
         var completed = total is { } final && after == final;
         var fault = (string?)null;
         if (completed && digest is { } expected && !await MatchesAsync(id, expected, cancellationToken).ConfigureAwait(false))
@@ -408,9 +431,8 @@ public sealed class FileUploadStaging : IUploadStaging
             ? throw SpatialException.BadArguments("A 'sha256' must be 64 hexadecimal characters.")
             : sha256?.ToLowerInvariant();
 
-    private static T? RequireSame<T>(T? staged, T? declared, string what)
-        where T : class =>
-        staged is not null && declared is not null && !EqualityComparer<T>.Default.Equals(staged, declared)
+    private static string? RequireSameText(string? staged, string? declared, string what) =>
+        staged is not null && declared is not null && !string.Equals(staged, declared, StringComparison.Ordinal)
             ? throw SpatialException.BadArguments(
                 $"The upload already declares a different {what}; discard it and stage the document again.")
             : declared ?? staged;

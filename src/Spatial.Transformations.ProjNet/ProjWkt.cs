@@ -403,6 +403,22 @@ internal static class ProjWkt
         string crsName, WktNode crs, GeodeticDefinition geodetic, ResolvedMethod resolved, out string? error)
     {
         var parameters = new List<(string Name, double Value)>();
+        if (!CollectDeclared(crsName, crs, resolved, parameters, out error))
+        {
+            return null;
+        }
+
+        return ApplyMethodAdjustments(crsName, parameters, geodetic, resolved, out error);
+    }
+
+    /// <summary>
+    /// The parameters the document states, in the order it lists them: WKT1
+    /// hangs them off the PROJCS itself, WKT2 off the CONVERSION, and a few
+    /// documents nest them inside the METHOD, so all three are read.
+    /// </summary>
+    private static bool CollectDeclared(
+        string crsName, WktNode crs, ResolvedMethod resolved, List<(string Name, double Value)> parameters, out string? error)
+    {
         var declared = Children(crs, "PARAMETER")
             .Concat(Children(resolved.Conversion, "PARAMETER"))
             .Concat(Children(resolved.MethodNode, "PARAMETER"));
@@ -414,21 +430,57 @@ internal static class ProjWkt
                 continue;
             }
 
-            if (!Parameters.TryGetValue(Normalise(raw), out var name))
+            if (!MapParameter(crsName, raw, resolved, parameters, value.Value, out error))
             {
-                error = $"'{crsName}' uses the projection parameter '{raw}', which is not one the engine's projections read.";
-                return null;
+                return false;
             }
-
-            if (name == "rectified_grid_angle" && resolved.AzimuthNaturalOrigin)
-            {
-                error = $"'{crsName}' states a '{raw}' angle, which the ESRI oblique Mercator's own WKT1 dialect has no parameter for: the dialect's skew grid angle is its azimuth of the initial line, and the two are read as the same number.";
-                return null;
-            }
-
-            parameters.Add((name, value.Value));
         }
 
+        error = null;
+        return true;
+    }
+
+    /// <summary>
+    /// One stated parameter, mapped onto the name the projection reads. A name
+    /// no projection reads is refused, as is the skew grid angle on the ESRI
+    /// oblique Mercator spelling, which the dialect reads from the azimuth.
+    /// </summary>
+    private static bool MapParameter(
+        string crsName, string raw, ResolvedMethod resolved, List<(string Name, double Value)> parameters, double value, out string? error)
+    {
+        if (!Parameters.TryGetValue(Normalise(raw), out var name))
+        {
+            error = $"'{crsName}' uses the projection parameter '{raw}', which is not one the engine's projections read.";
+            return false;
+        }
+
+        if (name == "rectified_grid_angle" && resolved.AzimuthNaturalOrigin)
+        {
+            error = $"'{crsName}' states a '{raw}' angle, which the ESRI oblique Mercator's own WKT1 dialect has no parameter for: the dialect's skew grid angle is its azimuth of the initial line, and the two are read as the same number.";
+            return false;
+        }
+
+        parameters.Add((name, value));
+        error = null;
+        return true;
+    }
+
+    /// <summary>
+    /// What the method does with the stated parameters beyond reading them: a
+    /// Pseudo-Mercator intercept gets the four standard parameters even when
+    /// the document's dialect omits them, which is what the ESRI spelling
+    /// does; and the polar stereographic variant B's latitude of standard
+    /// parallel becomes the pole and the scale factor at that pole, on the
+    /// definition's own ellipsoid, rather than a parameter the projection does
+    /// not read.
+    /// </summary>
+    private static (string Name, double Value)[]? ApplyMethodAdjustments(
+        string crsName,
+        List<(string Name, double Value)> parameters,
+        GeodeticDefinition geodetic,
+        ResolvedMethod resolved,
+        out string? error)
+    {
         if (resolved.AzimuthNaturalOrigin && !AzimuthIsTheSkewGridAngle(crsName, parameters, out error))
         {
             return null;
@@ -439,9 +491,8 @@ internal static class ProjWkt
             return PolarStereographicVariantB(crsName, parameters, geodetic, out error);
         }
 
-        if (parameters.Exists(parameter => parameter.Name == StandardParallelParameter))
+        if (RejectMisplacedStandardParallel(crsName, parameters, out error))
         {
-            error = $"'{crsName}' states a latitude of standard parallel, which only the polar stereographic variant B method reads.";
             return null;
         }
 
@@ -452,6 +503,23 @@ internal static class ProjWkt
 
         error = null;
         return [.. parameters];
+    }
+
+    /// <summary>
+    /// Whether the definition states a latitude of standard parallel outside
+    /// the one method that reads it: the polar stereographic variant B.
+    /// </summary>
+    private static bool RejectMisplacedStandardParallel(
+        string crsName, List<(string Name, double Value)> parameters, out string? error)
+    {
+        if (parameters.Exists(parameter => parameter.Name == StandardParallelParameter))
+        {
+            error = $"'{crsName}' states a latitude of standard parallel, which only the polar stereographic variant B method reads.";
+            return true;
+        }
+
+        error = null;
+        return false;
     }
 
     /// <summary>

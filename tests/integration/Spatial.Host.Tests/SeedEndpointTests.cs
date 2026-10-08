@@ -71,6 +71,8 @@ public sealed class SeedEndpointTests : IDisposable
 
     private static readonly string[] FeatureService = ["feature"];
 
+    private static readonly string[] OnlySeedCities = ["public.cities", "SeedCities"];
+
     private static object SeedDocument(bool force = false) => new
     {
         store = "memory",
@@ -231,6 +233,55 @@ public sealed class SeedEndpointTests : IDisposable
         var failure = Assert.Single(failures);
         Assert.Equal("Empty", failure.GetProperty("target").GetString());
         Assert.Equal("invalid.arguments", failure.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Seed_runs_only_the_selected_sources_and_maps()
+    {
+        using var factory = Factory();
+        var client = factory.CreateClient();
+        var document = JsonSerializer.Serialize(new
+        {
+            store = "memory",
+            only = OnlySeedCities,
+            sources = new[]
+            {
+                new { id = "public.cities", url = "https://example.test/cities.geojson", format = "geojson", srid = 4326, identity = "auto" },
+                new { id = "public.rivers", url = "https://example.test/rivers.geojson", format = "geojson", srid = 4326, identity = "auto" },
+            },
+            maps = new[]
+            {
+                new
+                {
+                    name = "SeedCities",
+                    services = FeatureService,
+                    layers = new[]
+                    {
+                        new { dataset = "public.cities", name = "Cities", geometry = "point", style = new { color = "#ffd54f", opacity = 0.9, lineWidth = 2, radius = 3, visible = true } },
+                    },
+                },
+                new
+                {
+                    name = "SeedRivers",
+                    services = FeatureService,
+                    layers = new[]
+                    {
+                        new { dataset = "public.rivers", name = "Rivers", geometry = "line", style = new { color = "#1e88e5", opacity = 0.9, lineWidth = 2, radius = 5, visible = true } },
+                    },
+                },
+            },
+        });
+
+        var response = await client.PostAsync("/api/seed", Json(document));
+
+        // Sources and maps selected out by `only` are skipped, not failed:
+        // one source ingested, one map published, nothing recorded.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await BodyAsync(response);
+        Assert.Equal(1, body.GetProperty("ingested").GetInt32());
+        Assert.Equal(0, body.GetProperty("reused").GetInt32());
+        Assert.Equal(1, body.GetProperty("published").GetInt32());
+        Assert.Empty(body.GetProperty("failures").EnumerateArray());
     }
 
     [Fact]

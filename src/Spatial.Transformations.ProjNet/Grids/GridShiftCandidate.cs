@@ -42,27 +42,54 @@ internal static class GridShiftCandidate
             return null;
         }
 
+        if (!ResolveTargets(fromOperation, toOperation, fromGrid, toGrid, out var fromTarget, out var toTarget))
+        {
+            return null;
+        }
+
+        return Assemble(from, to, fromGrid, toGrid, Legs(from, to, fromGrid, toGrid, fromTarget, toTarget));
+    }
+
+    /// <summary>
+    /// The datums the two bundles' shifts land in. A row naming a datum the
+    /// catalogue does not serve cannot be published at all, because the only
+    /// way to carry on from a datum this engine has no node for is to pretend
+    /// the bundle reached the pivot — which is the invented claim the
+    /// catalogue exists to avoid. The Helmert candidates stand instead, and
+    /// say so themselves.
+    /// </summary>
+    private static bool ResolveTargets(
+        EpsgGridShiftOperations.GridShiftOperation? fromOperation,
+        EpsgGridShiftOperations.GridShiftOperation? toOperation,
+        DatumShiftGrid? fromGrid,
+        DatumShiftGrid? toGrid,
+        out DatumNode? fromTarget,
+        out DatumNode? toTarget)
+    {
+        fromTarget = null;
+        toTarget = null;
         // A row names the datum its bundle's shifts land in, and that is not
         // always the pivot: NADCON is registered for NAD27 to NAD83
         // (EPSG:1241), so the path continues from NAD83 rather than from WGS
-        // 84. A row naming a datum the catalogue does not serve cannot be
-        // published at all, because the only way to carry on from a datum this
-        // engine has no node for is to pretend the bundle reached the pivot —
-        // which is the invented claim the catalogue exists to avoid. The
-        // Helmert candidates stand instead, and say so themselves.
-        DatumNode? fromTarget = null;
-        DatumNode? toTarget = null;
+        // 84.
         if (fromGrid is not null && !TargetOf(fromOperation, out fromTarget))
         {
-            return null;
+            return false;
         }
 
         if (toGrid is not null && !TargetOf(toOperation, out toTarget))
         {
-            return null;
+            return false;
         }
 
-        var legs = Legs(from, to, fromGrid, toGrid, fromTarget, toTarget); return new CrsTransformation(
+        return true;
+    }
+
+    /// <summary>The candidate over its legs: the grid's own worst-node accuracy replaces that datum's
+    /// registered Helmert accuracy and the legs still combine in quadrature.</summary>
+    private static CrsTransformation Assemble(
+        DatumNode from, DatumNode to, DatumShiftGrid? fromGrid, DatumShiftGrid? toGrid, List<Leg> legs) =>
+        new(
             $"{from.Code}_To_{to.Code}_Grid_{fromGrid?.Name ?? toGrid!.Name}",
             Method(legs),
             [.. legs.Select(leg => leg.Step)],
@@ -76,7 +103,6 @@ internal static class GridShiftCandidate
             // operation EPSG registers for that pair, priced at the accuracy
             // it states (ADR-0163, ADR-0180).
             Approximate: legs.Any(leg => leg.IsHelmert));
-    }
 
     /// <summary>
     /// The node for the datum a grid operation's shifts land in, or false when
@@ -115,6 +141,14 @@ internal static class GridShiftCandidate
     {
         var world = DatumTransformationGraph.WorldCode;
         var legs = new List<Leg>();
+        AddFromLeg(legs, from, fromGrid, fromTarget, world);
+        AddToLeg(legs, to, toGrid, toTarget, world);
+        return legs;
+    }
+
+    /// <summary>The source datum's leg: the grid where a bundle serves it, the Helmert where it does not.</summary>
+    private static void AddFromLeg(List<Leg> legs, DatumNode from, DatumShiftGrid? fromGrid, DatumNode? fromTarget, string world)
+    {
         if (fromGrid is not null)
         {
             legs.Add(Leg.FromGrid(fromGrid, from.Code, fromTarget!.Code, transformForward: true));
@@ -127,7 +161,11 @@ internal static class GridShiftCandidate
         {
             legs.Add(Leg.FromHelmert(from, to: null, from.ToWgs84));
         }
+    }
 
+    /// <summary>The target datum's leg: the grid where a bundle serves it, the Helmert where it does not.</summary>
+    private static void AddToLeg(List<Leg> legs, DatumNode to, DatumShiftGrid? toGrid, DatumNode? toTarget, string world)
+    {
         if (toGrid is not null)
         {
             legs.Add(Leg.FromGrid(toGrid, toTarget!.Code, to.Code, transformForward: false));
@@ -140,8 +178,6 @@ internal static class GridShiftCandidate
         {
             legs.Add(Leg.FromHelmert(from: null, to, HelmertAlgebra.Invert(to.ToWgs84)));
         }
-
-        return legs;
     }
 
     /// <summary>

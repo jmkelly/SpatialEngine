@@ -23,43 +23,12 @@ internal sealed class HttpSeedFetcher(HttpClient client) : ISeedSourceFetcher
 {
     public async Task<byte[]> FetchAsync(string url, long maxBytes, CancellationToken cancellationToken)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-        {
-            throw SpatialException.BadArguments($"Seed source URL '{url}' must be an absolute http(s) URL.");
-        }
-
+        var uri = RequireHttpUrl(url);
         try
         {
             using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                throw SpatialException.Missing($"Download failed (404) for {url}.");
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw SpatialException.BadArguments($"Download failed ({(int)response.StatusCode}) for {url}.");
-            }
-
-            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var buffer = new MemoryStream();
-            var chunk = new byte[64 * 1024];
-            long total = 0;
-            int read;
-            while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
-            {
-                total += read;
-                if (total > maxBytes)
-                {
-                    throw SpatialException.BadArguments(
-                        $"The download from '{url}' exceeds the configured maximum of {maxBytes} bytes.");
-                }
-
-                buffer.Write(chunk, 0, read);
-            }
-
-            return buffer.ToArray();
+            RequireDownloadable(url, response);
+            return await ReadCappedAsync(url, response, maxBytes, cancellationToken);
         }
         catch (TaskCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
@@ -69,6 +38,53 @@ internal sealed class HttpSeedFetcher(HttpClient client) : ISeedSourceFetcher
         {
             throw SpatialException.BadArguments($"Download failed for {url}: {exception.Message}");
         }
+    }
+
+    private static Uri RequireHttpUrl(string url)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            return uri;
+        }
+
+        throw SpatialException.BadArguments($"Seed source URL '{url}' must be an absolute http(s) URL.");
+    }
+
+    private static void RequireDownloadable(string url, HttpResponseMessage response)
+    {
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw SpatialException.Missing($"Download failed (404) for {url}.");
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw SpatialException.BadArguments($"Download failed ({(int)response.StatusCode}) for {url}.");
+        }
+    }
+
+    private static async Task<byte[]> ReadCappedAsync(
+        string url, HttpResponseMessage response, long maxBytes, CancellationToken cancellationToken)
+    {
+        using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[64 * 1024];
+        long total = 0;
+        int read;
+        while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            total += read;
+            if (total > maxBytes)
+            {
+                throw SpatialException.BadArguments(
+                    $"The download from '{url}' exceeds the configured maximum of {maxBytes} bytes.");
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        return buffer.ToArray();
     }
 }
 
@@ -85,71 +101,95 @@ internal static class SeedStyle
     public static string Lower(SeedMapLayer layer)
     {
         var style = layer.Style;
-        var color = string.IsNullOrWhiteSpace(style?.Color) ? DefaultColor : style!.Color;
-        var opacity = style?.Opacity ?? 1;
-        var lineWidth = style?.LineWidth ?? 2;
-        var radius = style?.Radius ?? 5;
-        var visibility = style?.Visible == false ? "none" : "visible";
-        var geometry = (layer.Geometry ?? "mixed").Trim().ToLowerInvariant();
+        var recipe = new LayerRecipe(
+            string.IsNullOrWhiteSpace(style?.Color) ? DefaultColor : style!.Color,
+            style?.Opacity ?? 1,
+            style?.LineWidth ?? 2,
+            style?.Radius ?? 5,
+            style?.Visible == false ? "none" : "visible",
+            RequireGeometry(layer));
         var specs = new JsonArray();
-
-        switch (geometry)
-        {
-            case "polygon":
-            case "mixed":
-                specs.Add(new JsonObject
-                {
-                    ["type"] = "fill",
-                    ["layout"] = new JsonObject { ["visibility"] = visibility },
-                    ["paint"] = new JsonObject
-                    {
-                        ["fill-color"] = color,
-                        ["fill-opacity"] = opacity,
-                        ["fill-outline-color"] = color,
-                    },
-                });
-                break;
-            case "point":
-            case "line":
-                break;
-            default:
-                throw SpatialException.BadArguments(
-                    $"Seed layer '{layer.Dataset}' has an unknown geometry '{layer.Geometry}'; expected point, line, polygon or mixed.");
-        }
-
-        if (geometry is "line" or "polygon" or "mixed")
-        {
-            specs.Add(new JsonObject
-            {
-                ["type"] = "line",
-                ["layout"] = new JsonObject { ["visibility"] = visibility },
-                ["paint"] = new JsonObject
-                {
-                    ["line-color"] = color,
-                    ["line-width"] = lineWidth,
-                    ["line-opacity"] = opacity,
-                },
-            });
-        }
-
-        if (geometry is "point" or "mixed")
-        {
-            specs.Add(new JsonObject
-            {
-                ["type"] = "circle",
-                ["layout"] = new JsonObject { ["visibility"] = visibility },
-                ["paint"] = new JsonObject
-                {
-                    ["circle-color"] = color,
-                    ["circle-radius"] = radius,
-                    ["circle-opacity"] = opacity,
-                    ["circle-stroke-color"] = "#0b0f14",
-                    ["circle-stroke-width"] = 1,
-                },
-            });
-        }
-
+        AddFillSpec(specs, recipe);
+        AddLineSpec(specs, recipe);
+        AddCircleSpec(specs, recipe);
         return specs.ToJsonString();
+    }
+
+    /// <summary>The layer's draw values with the style defaults applied.</summary>
+    private sealed record LayerRecipe(string Color, double Opacity, double LineWidth, double Radius, string Visibility, string Geometry);
+
+    /// <summary>The layer's geometry as the lowering reads it: trimmed, lowered, and refused by name when unknown.</summary>
+    private static string RequireGeometry(SeedMapLayer layer)
+    {
+        var geometry = (layer.Geometry ?? "mixed").Trim().ToLowerInvariant();
+        return geometry switch
+        {
+            "polygon" or "mixed" or "point" or "line" => geometry,
+            _ => throw SpatialException.BadArguments(
+                $"Seed layer '{layer.Dataset}' has an unknown geometry '{layer.Geometry}'; expected point, line, polygon or mixed."),
+        };
+    }
+
+    private static void AddFillSpec(JsonArray specs, LayerRecipe recipe)
+    {
+        if (recipe.Geometry is not ("polygon" or "mixed"))
+        {
+            return;
+        }
+
+        specs.Add(new JsonObject
+        {
+            ["type"] = "fill",
+            ["layout"] = new JsonObject { ["visibility"] = recipe.Visibility },
+            ["paint"] = new JsonObject
+            {
+                ["fill-color"] = recipe.Color,
+                ["fill-opacity"] = recipe.Opacity,
+                ["fill-outline-color"] = recipe.Color,
+            },
+        });
+    }
+
+    private static void AddLineSpec(JsonArray specs, LayerRecipe recipe)
+    {
+        if (recipe.Geometry is not ("line" or "polygon" or "mixed"))
+        {
+            return;
+        }
+
+        specs.Add(new JsonObject
+        {
+            ["type"] = "line",
+            ["layout"] = new JsonObject { ["visibility"] = recipe.Visibility },
+            ["paint"] = new JsonObject
+            {
+                ["line-color"] = recipe.Color,
+                ["line-width"] = recipe.LineWidth,
+                ["line-opacity"] = recipe.Opacity,
+            },
+        });
+    }
+
+    private static void AddCircleSpec(JsonArray specs, LayerRecipe recipe)
+    {
+        if (recipe.Geometry is not ("point" or "mixed"))
+        {
+            return;
+        }
+
+        specs.Add(new JsonObject
+        {
+            ["type"] = "circle",
+            ["layout"] = new JsonObject { ["visibility"] = recipe.Visibility },
+            ["paint"] = new JsonObject
+            {
+                ["circle-color"] = recipe.Color,
+                ["circle-radius"] = recipe.Radius,
+                ["circle-opacity"] = recipe.Opacity,
+                ["circle-stroke-color"] = "#0b0f14",
+                ["circle-stroke-width"] = 1,
+            },
+        });
     }
 }
 
@@ -174,11 +214,17 @@ internal sealed class SeedRunner(
 
         var store = string.IsNullOrWhiteSpace(request.Store) ? AdminEndpoints.DefaultIngestStore : request.Store;
         var only = request.Only is null ? null : new HashSet<string>(request.Only, StringComparer.Ordinal);
-        var ingested = 0;
-        var reused = 0;
-        var published = 0;
-        var failures = new List<SeedFailure>();
+        var counters = new SeedCounters();
 
+        await RunSourcesAsync(store, request, only, counters, cancellationToken);
+        await RunMapsAsync(store, request, only, counters, cancellationToken);
+
+        return counters.ToResponse(store);
+    }
+
+    private async Task RunSourcesAsync(
+        string store, SeedRequest request, HashSet<string>? only, SeedCounters counters, CancellationToken cancellationToken)
+    {
         foreach (var source in request.Sources)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -191,19 +237,23 @@ internal sealed class SeedRunner(
             {
                 if (await SeedSourceAsync(store, source, request.Force, cancellationToken))
                 {
-                    ingested++;
+                    counters.Ingested++;
                 }
                 else
                 {
-                    reused++;
+                    counters.Reused++;
                 }
             }
             catch (SpatialException exception)
             {
-                failures.Add(new SeedFailure(source.Id, exception.Code, exception.Message));
+                counters.Fail(source.Id, exception);
             }
         }
+    }
 
+    private async Task RunMapsAsync(
+        string store, SeedRequest request, HashSet<string>? only, SeedCounters counters, CancellationToken cancellationToken)
+    {
         foreach (var map in request.Maps)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -215,15 +265,30 @@ internal sealed class SeedRunner(
             try
             {
                 await SeedMapAsync(store, map, cancellationToken);
-                published++;
+                counters.Published++;
             }
             catch (SpatialException exception)
             {
-                failures.Add(new SeedFailure(map.Name, exception.Code, exception.Message));
+                counters.Fail(map.Name, exception);
             }
         }
+    }
 
-        return new SeedResponse(store, ingested, reused, published, failures);
+    /// <summary>The run's running tally: per-item counters plus the failures the run records and continues past.</summary>
+    private sealed class SeedCounters
+    {
+        public int Ingested { get; set; }
+
+        public int Reused { get; set; }
+
+        public int Published { get; set; }
+
+        private readonly List<SeedFailure> _failures = [];
+
+        public void Fail(string target, SpatialException exception) =>
+            _failures.Add(new SeedFailure(target, exception.Code, exception.Message));
+
+        public SeedResponse ToResponse(string store) => new(store, Ingested, Reused, Published, _failures);
     }
 
     private async Task<bool> SeedSourceAsync(

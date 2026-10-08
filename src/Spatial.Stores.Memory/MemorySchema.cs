@@ -118,20 +118,36 @@ internal static class MemorySchema
     public static Feature Rekey(Feature stored, int identityIndex)
     {
         ArgumentNullException.ThrowIfNull(stored);
+        RequireIdentityIndex(stored, identityIndex);
+
+        var identity = stored[identityIndex];
+        RequireKeyedValue(stored, identityIndex, identity);
+
+        var id = IdentityText(stored, identityIndex, identity);
+        return id == stored.Id.Value ? stored : new Feature(new FeatureId(id), stored.Schema, stored.Attributes);
+    }
+
+    private static void RequireIdentityIndex(Feature stored, int identityIndex)
+    {
         if (identityIndex < 0 || identityIndex >= stored.Schema.Count)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(identityIndex), identityIndex, "The feature has no identity column at that index.");
         }
+    }
 
-        var identity = stored[identityIndex];
+    private static void RequireKeyedValue(Feature stored, int identityIndex, AttributeValue identity)
+    {
         if (identity.IsNull)
         {
             throw SpatialException.BadArguments(
                 $"The identity column '{stored.Schema[identityIndex].Name}' of feature '{stored.Id}' carries no value to key it by.");
         }
+    }
 
-        var id = identity.Kind switch
+    private static string IdentityText(Feature stored, int identityIndex, AttributeValue identity)
+    {
+        return identity.Kind switch
         {
             AttributeKind.Int64 => identity.Int64Value.ToString(CultureInfo.InvariantCulture),
             AttributeKind.String => identity.StringValue,
@@ -139,7 +155,5 @@ internal static class MemorySchema
             _ => throw SpatialException.BadArguments(
                 $"The identity column '{stored.Schema[identityIndex].Name}' is {identity.Kind}, which cannot key a feature."),
         };
-
-        return id == stored.Id.Value ? stored : new Feature(new FeatureId(id), stored.Schema, stored.Attributes);
     }
 }

@@ -120,6 +120,23 @@ internal static class Ntv2GridReader
     {
         offset = 0;
         subGridHeaderSize = 0;
+        var overview = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!ReadOverviewRecords(bytes, ref offset, overview, out error)
+            || !RequireOverviewCounts(overview, bytes.Length, offset, out subGridHeaderSize, out error))
+        {
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    /// <summary>
+    /// The overview's own records: the first keys the header itself and the
+    /// rest are looked up by name rather than counted into position.
+    /// </summary>
+    private static bool ReadOverviewRecords(byte[] bytes, ref int offset, Dictionary<string, string> overview, out string? error)
+    {
         if (!TryReadRecord(bytes, ref offset, out var firstKey, out var firstValue))
         {
             error = "The file is shorter than one NTv2 header record.";
@@ -135,10 +152,7 @@ internal static class Ntv2GridReader
         // Both header sizes are stated by the overview rather than assumed: a
         // reader that counted records itself would only agree with the writer
         // that happened to agree with it.
-        var overview = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["NUM_OREC"] = firstValue,
-        };
+        overview["NUM_OREC"] = firstValue;
         for (var index = 1; index < OverviewRecordCount; index++)
         {
             if (!TryReadRecord(bytes, ref offset, out var key, out var value))
@@ -150,6 +164,15 @@ internal static class Ntv2GridReader
             overview[key] = value;
         }
 
+        error = null;
+        return true;
+    }
+
+    /// <summary>Whether the overview's counts describe sub-grids the file can hold.</summary>
+    private static bool RequireOverviewCounts(
+        Dictionary<string, string> overview, int fileLength, int offset, out int subGridHeaderSize, out string? error)
+    {
+        subGridHeaderSize = 0;
         if (!TryCount(overview, "NUM_OREC", out var overviewRecords)
             || overviewRecords < OverviewRecordCount)
         {
@@ -167,7 +190,7 @@ internal static class Ntv2GridReader
         }
 
         subGridHeaderSize = subGridRecords * RecordLength;
-        if (bytes.Length < offset + (subGridCount * BytesPerNode))
+        if (fileLength < offset + (subGridCount * BytesPerNode))
         {
             error = $"The NTv2 bundle declares {subGridCount} sub-grid(s) but the file is too short to hold them.";
             return false;
@@ -188,6 +211,93 @@ internal static class Ntv2GridReader
         grid = null!;
         var header = new Dictionary<string, string>(StringComparer.Ordinal);
         var headerEnd = offset + subGridHeaderSize;
+        if (!CollectSubGridHeader(bytes, ref offset, headerEnd, header, out error))
+        {
+            return false;
+        }
+
+        if (!TryGetName(header, out var name))
+        {
+            error = $"A sub-grid header in '{fileName}' does not name itself (SUB_NAME).";
+            return false;
+        }
+
+        if (!TryExtents(header, name, out var extents, out error))
+        {
+            return false;
+        }
+
+        // A bundle may store its block from the north down or from the west
+        // back, and the extents are normalised to south-first, west-first so
+        // the rest of the reader has one order to think in. The walk direction
+        // is remembered before normalising, because the node block has to be
+        // reversed by exactly the amount the edges were.
+        var walk = new NodeWalk(extents.North < extents.South, extents.East < extents.West);
+        extents = extents.Normalised();
+
+        if (!RequireNodeBlock(header, name, extents, out var block, out error))
+        {
+            return false;
+        }
+
+        if (!CheckDataLength(bytes, offset, block.Count, name, out error))
+        {
+            return false;
+        }
+
+        var nodes = ReadNodes(bytes, ref offset, block, walk, name, out error);
+        if (nodes is null)
+        {
+            return false;
+        }
+
+        var (latitudeShifts, longitudeShifts, accuracy) = nodes.Value;
+        grid = new DatumShiftGrid(
+            name,
+            Path.GetFileName(fileName),
+            GridFormat.Ntv2,
+            extents.South, extents.North, extents.West, extents.East,
+            extents.LatitudeIncrement, extents.LongitudeIncrement,
+            accuracy,
+            latitudeShifts,
+            longitudeShifts);
+        error = null;
+        return true;
+    }
+
+    /// <summary>The block a sub-grid header states, before normalising.</summary>
+    private readonly record struct SubGridExtents(
+        double South,
+        double North,
+        double West,
+        double East,
+        double LatitudeIncrement,
+        double LongitudeIncrement)
+    {
+        /// <summary>The same block south-first and west-first, with magnitudes for increments.</summary>
+        public SubGridExtents Normalised() => new(
+            Math.Min(South, North),
+            Math.Max(South, North),
+            Math.Min(West, East),
+            Math.Max(West, East),
+            Math.Abs(LatitudeIncrement),
+            Math.Abs(LongitudeIncrement));
+    }
+
+    /// <summary>The shift block the extents describe: how many shifts, in how many rows and columns.</summary>
+    private readonly record struct NodeBlock(int Count, int Rows, int Columns);
+
+    /// <summary>Which way the file walks its node block: rows north-to-south, columns east-to-west, or neither.</summary>
+    private readonly record struct NodeWalk(bool NorthToSouth, bool EastToWest);
+
+    /// <summary>
+    /// The sub-grid header's known records, looked up by name: the header
+    /// reserves more records than it names, so counting into position would
+    /// only agree with the writer that happened to agree with it.
+    /// </summary>
+    private static bool CollectSubGridHeader(
+        byte[] bytes, ref int offset, int headerEnd, Dictionary<string, string> header, out string? error)
+    {
         while (offset < headerEnd)
         {
             if (!TryReadRecord(bytes, ref offset, out var key, out var value))
@@ -202,66 +312,43 @@ internal static class Ntv2GridReader
             }
         }
 
-        if (!TryGetName(header, out var name))
-        {
-            error = $"A sub-grid header in '{fileName}' does not name itself (SUB_NAME).";
-            return false;
-        }
+        error = null;
+        return true;
+    }
 
-        if (!TryExtents(header, name, out var south, out var north, out var west, out var east,
-                out var latitudeIncrement, out var longitudeIncrement, out error))
-        {
-            return false;
-        }
-
-        // A bundle may store its block from the north down or from the west
-        // back, and the extents are normalised to south-first, west-first so
-        // the rest of the reader has one order to think in. The walk direction
-        // is remembered before normalising, because the node block has to be
-        // reversed by exactly the amount the edges were.
-        var northToSouth = north < south;
-        var eastToWest = east < west;
-        (south, north) = (Math.Min(south, north), Math.Max(south, north));
-        (west, east) = (Math.Min(west, east), Math.Max(west, east));
-        latitudeIncrement = Math.Abs(latitudeIncrement);
-        longitudeIncrement = Math.Abs(longitudeIncrement);
-
+    /// <summary>Whether the declared shift count matches the block the extents describe.</summary>
+    private static bool RequireNodeBlock(
+        Dictionary<string, string> header, string name, SubGridExtents extents, out NodeBlock block, out string? error)
+    {
+        block = default;
         if (!TryCount(header, "GS_COUNT", out var nodeCount))
         {
             error = $"The sub-grid '{name}' does not state how many shifts it holds (GS_COUNT).";
             return false;
         }
 
-        var (rows, columns) = NodeShape(south, north, west, east, latitudeIncrement, longitudeIncrement);
+        var (rows, columns) = NodeShape(
+            extents.South, extents.North, extents.West, extents.East, extents.LatitudeIncrement, extents.LongitudeIncrement);
         if (rows * columns != nodeCount)
         {
             error = $"The sub-grid '{name}' declares {nodeCount} shifts but its block and increments describe {rows * columns}.";
             return false;
         }
 
-        var dataEnd = offset + (nodeCount * BytesPerNode);
-        if (dataEnd > bytes.Length)
+        block = new NodeBlock(nodeCount, rows, columns);
+        error = null;
+        return true;
+    }
+
+    /// <summary>Whether the file holds the shift block the header declares.</summary>
+    private static bool CheckDataLength(byte[] bytes, int offset, int nodeCount, string name, out string? error)
+    {
+        if (offset + (nodeCount * BytesPerNode) > bytes.Length)
         {
             error = $"The sub-grid '{name}' declares {nodeCount} shifts but the file holds fewer than that.";
             return false;
         }
 
-        var nodes = ReadNodes(bytes, ref offset, rows, columns, northToSouth, eastToWest, name, out error);
-        if (nodes is null)
-        {
-            return false;
-        }
-
-        var (latitudeShifts, longitudeShifts, accuracy) = nodes.Value;
-        grid = new DatumShiftGrid(
-            name,
-            Path.GetFileName(fileName),
-            GridFormat.Ntv2,
-            south, north, west, east,
-            latitudeIncrement, longitudeIncrement,
-            accuracy,
-            latitudeShifts,
-            longitudeShifts);
         error = null;
         return true;
     }
@@ -276,13 +363,13 @@ internal static class Ntv2GridReader
     private static (double[] Latitude, double[] Longitude, double Accuracy)? ReadNodes(
         byte[] bytes,
         ref int offset,
-        int rows,
-        int columns,
-        bool northToSouth,
-        bool eastToWest,
+        NodeBlock block,
+        NodeWalk walk,
         string name,
         out string? error)
     {
+        var rows = block.Rows;
+        var columns = block.Columns;
         var latitude = new double[rows * columns];
         var longitude = new double[rows * columns];
         var accuracy = 0.0;
@@ -302,7 +389,7 @@ internal static class Ntv2GridReader
                 accuracy = Math.Max(accuracy, BinaryPrimitives.ReadSingleLittleEndian(bytes.AsSpan(offset + 12, 4)));
                 offset += BytesPerNode;
 
-                var target = Index(northToSouth ? rows - 1 - row : row, eastToWest ? columns - 1 - column : column, columns);
+                var target = Index(walk.NorthToSouth ? rows - 1 - row : row, walk.EastToWest ? columns - 1 - column : column, columns);
                 latitude[target] = latitudeSeconds;
                 longitude[target] = longitudeSeconds;
             }
@@ -313,31 +400,53 @@ internal static class Ntv2GridReader
     }
 
     private static bool TryExtents(
-        Dictionary<string, string> header,
-        string name,
-        out double south,
-        out double north,
-        out double west,
-        out double east,
-        out double latitudeIncrement,
-        out double longitudeIncrement,
-        out string? error)
+        Dictionary<string, string> header, string name, out SubGridExtents extents, out string? error)
     {
-        south = north = west = east = latitudeIncrement = longitudeIncrement = 0.0;
-        if (!TryNumber(header, name, "S_LAT", out south)
-            || !TryNumber(header, name, "N_LAT", out north)
-            || !TryNumber(header, name, "W_LONG", out west)
-            || !TryNumber(header, name, "E_LONG", out east)
-            || !TryNumber(header, name, "LAT_INC", out latitudeIncrement)
-            || !TryNumber(header, name, "LONG_INC", out longitudeIncrement))
+        extents = default;
+        if (!TryLatitudes(header, name, out var south, out var north, out var latitudeIncrement, out error)
+            || !TryLongitudes(header, name, out var west, out var east, out var longitudeIncrement, out error))
         {
-            error = $"The sub-grid '{name}' does not state a complete, readable block.";
             return false;
         }
 
         if (latitudeIncrement == 0.0 || longitudeIncrement == 0.0)
         {
             error = $"The sub-grid '{name}' declares a zero increment, so its block has no nodes.";
+            return false;
+        }
+
+        extents = new SubGridExtents(south, north, west, east, latitudeIncrement, longitudeIncrement);
+        error = null;
+        return true;
+    }
+
+    /// <summary>The latitudinal half of the block: its south and north edges and the increment between them.</summary>
+    private static bool TryLatitudes(
+        Dictionary<string, string> header, string name, out double south, out double north, out double increment, out string? error)
+    {
+        south = north = increment = 0.0;
+        if (!TryNumber(header, name, "S_LAT", out south)
+            || !TryNumber(header, name, "N_LAT", out north)
+            || !TryNumber(header, name, "LAT_INC", out increment))
+        {
+            error = $"The sub-grid '{name}' does not state a complete, readable block.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+
+    /// <summary>The longitudinal half of the block: its west and east edges and the increment between them.</summary>
+    private static bool TryLongitudes(
+        Dictionary<string, string> header, string name, out double west, out double east, out double increment, out string? error)
+    {
+        west = east = increment = 0.0;
+        if (!TryNumber(header, name, "W_LONG", out west)
+            || !TryNumber(header, name, "E_LONG", out east)
+            || !TryNumber(header, name, "LONG_INC", out increment))
+        {
+            error = $"The sub-grid '{name}' does not state a complete, readable block.";
             return false;
         }
 
