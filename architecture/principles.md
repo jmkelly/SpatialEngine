@@ -3,35 +3,22 @@
 This is the project's philosophy. The code is the documentation;
 this file states the standing shape so a change can be judged against it.
 
-## The twenty principles
+## Principles
 
-1. Geometry is core. Spatial algorithms are not.
-2. The engine is headless. Every UI is a client.
-3. The browser workbench is the frontend.
-4. Packaging is not architecture: the host ships standalone.
-5. The .NET host runs independently of every client.
-6. Contracts outlive implementations.
-7. Plugins depend on contracts, never on other plugin implementations.
-8. No plugin-specific geometry object crosses a capability boundary.
-9. Core geometry values are immutable.
-10. Data stores are providers, not the domain model.
-11. Long-running operations are jobs and are always cancellable.
-12. Plugin code is disposable. Persistent state is external.
-13. Open formats and language-neutral protocols are preferred at boundaries.
-14. Agents and human clients use the same public capabilities.
-15. Optimised provider pushdown is optional and preserves contract semantics.
-16. Every derived result records provenance.
-17. The kernel remains small, stable and independently testable.
-18. Add another language only where profiling or platform integration justifies it.
-19. Do not introduce Native AOT until compatibility is demonstrated.
-20. The host and every client are covered by the same conformance tests.
+Only what the code does not say. Everything else — project layout,
+immutability, cancellable `Task`s, contract-only boundaries, the
+conformance suite — is read off the code and the architecture tests.
+
+- Contracts outlive implementations.
+- Packaging is not architecture.
+- Open formats and language-neutral protocols are preferred at boundaries.
+- Keep the kernel small and stable.
+- Add another language only where profiling or platform integration justifies it.
+- Do not introduce Native AOT until compatibility is demonstrated.
 
 ## How to change the architecture
 
 - Add a capability → versioned contract, conformance fixtures, SDK updates.
-- Keep the change small, tested, and consistent with the principles above.
-
-Enforcement lives in tests/architecture/Spatial.Architecture.Tests.
 
 <!-- orientation:begin -->
 
@@ -61,8 +48,8 @@ agent would have followed anyway.
 - Start the SQL Server suite's container once for the assembly (a collection fixture, a database per class) and read the skip reasons: a run that reports itself mostly skipped is twelve container starts losing a 60-second wait strategy, not a missing daemon. (SpatialEngine-qhz)
 - Declare the order on the sidecar columns the store itself owns; a case-folding key cannot hold both codes at all, so restating the collation per statement cannot fix it. (SpatialEngine-u2x.57)
 - Name a pushed row by the identity columns' positions in what was read, not by the columns appended for the mapper: the appended set named every pushed row of a keyed table by its ordinal. (SpatialEngine-u2x.55)
-- Ask what a declined pushdown is protecting before making every face decline it: ADR-0097's rule is about the ordinal a feature is named by, and a count, a distinct set and a grouped reduction return values, so they push on a keyless layer where the feature read cannot. (SpatialEngine-xg5)
-- Measure a store reduction through the store's reduction face (`IFeatureAggregateStore`, probed as `FeatureReductionFallback` does), not a `QueryAsync` plan read: the spike's `B`/`Bp` cells reduced a read in the adapter and so measured the read, not the face ADR-0184 pushes. (SpatialEngine-8dm)
+- Ask what a declined pushdown is protecting before making every face decline it: pushdown identity is about the ordinal a feature is named by, and a count, a distinct set and a grouped reduction return values, so they push on a keyless layer where the feature read cannot. (SpatialEngine-xg5)
+- Measure a store reduction through the store's reduction face (`IFeatureAggregateStore`, probed as `FeatureReductionFallback` does), not a `QueryAsync` plan read: the spike's `B`/`Bp` cells reduced a read in the adapter and so measured the read, not the pushed face. (SpatialEngine-8dm)
 - Read an absent `orderByFields` on a grouped `outStatistics` request as the plan asking for no order, not as an order the store cannot return: the `keys is null` branch of `StoreQueryPath.TryGroupOrder` is the route from the served statistics face to `IFeatureAggregateStore`. (SpatialEngine-d0q)
 - Measure where an allocation is before naming the class that owns the feature: the 15 MB was two SQL stores' row mapping building a second feature per row, not `FeaturePlanExecutor` — decide the projection once per read, and order a page's window rather than the read. (SpatialEngine-yup)
 - Apply each sort key as a then-key in `FeaturePlanExecutor.Order`; a fresh `OrderBy` per key made a composite order its last key's, and the SQL pushdowns were narrowed to the orders both sides agreed on. (SpatialEngine-u2x.54)
