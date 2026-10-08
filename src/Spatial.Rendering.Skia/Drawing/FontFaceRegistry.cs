@@ -175,29 +175,48 @@ internal sealed class FontFaceRegistry
         style = FontStyle.Normal;
         foreach (var token in rest.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         {
-            if (WeightNames.TryGetValue(token, out var named))
+            if (!ApplyStyleToken(token, ref weight, ref style))
             {
-                weight = named;
-                continue;
+                weight = 0;
+                return false;
             }
+        }
 
-            if (token is "italic" or "oblique")
-            {
-                style = FontStyle.Italic;
-                continue;
-            }
+        return true;
+    }
 
-            if (int.TryParse(token, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var numeric)
-                && numeric is >= 1 and <= 1000)
-            {
-                weight = (int)Math.Round(numeric / 100.0) * 100;
-                continue;
-            }
+    /// <summary>Applies one weight or style token; false when the token names neither.</summary>
+    private static bool ApplyStyleToken(string token, ref int weight, ref FontStyle style)
+    {
+        if (WeightNames.TryGetValue(token, out var named))
+        {
+            weight = named;
+            return true;
+        }
 
-            weight = 0;
+        if (token is "italic" or "oblique")
+        {
+            style = FontStyle.Italic;
+            return true;
+        }
+
+        return ApplyNumericWeight(token, ref weight);
+    }
+
+    /// <summary>Applies a numeric weight token (1-1000, rounded to the CSS hundreds); false when not one.</summary>
+    private static bool ApplyNumericWeight(string token, ref int weight)
+    {
+        if (!int.TryParse(
+                token,
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var numeric)
+            || numeric is < 1 or > 1000)
+        {
             return false;
         }
 
+        weight = (int)Math.Round(numeric / 100.0) * 100;
         return true;
     }
 
@@ -232,13 +251,19 @@ internal sealed class FontFaceRegistry
                 return;
             }
 
-            foreach (var typeface in _typefaces.Values)
-            {
-                typeface.Dispose();
-            }
-
-            _typefaces.Clear();
+            ClearTypefaces();
             _disposed = true;
         }
+    }
+
+    /// <summary>Releases the cached typefaces; the caller holds the gate and marks disposal.</summary>
+    private void ClearTypefaces()
+    {
+        foreach (var typeface in _typefaces.Values)
+        {
+            typeface.Dispose();
+        }
+
+        _typefaces.Clear();
     }
 }

@@ -136,6 +136,31 @@ public sealed class SymbolPlacementTests
     }
 
     [Fact]
+    public void AFeatureWithNeitherTextNorIconIsNotPlaced()
+    {
+        var placed = Place([SymbolLayer(0, [new SymbolFeature(GeometryFactory.CreatePoint(5, 5), null, null)])]);
+        var layer = Assert.Single(placed);
+
+        Assert.NotNull(layer);
+        Assert.Null(Assert.Single(layer));
+    }
+
+    [Fact]
+    public void AGeometryCollectionPlacesTheLinesItCarries()
+    {
+        var candidates = SymbolCandidates.Generate(
+            GeometryFactory.CreateGeometryCollection(
+                GeometryFactory.CreateLineString([new Coordinate(1, 5), new Coordinate(9, 5)])),
+            new SymbolOptions { Placement = SymbolPlacement.Line, Spacing = 250 },
+            Projection);
+
+        var candidate = Assert.Single(candidates);
+        Assert.Equal(50f, candidate.X, 1);
+        Assert.Equal(50f, candidate.Y, 1);
+        Assert.Equal(0, candidate.Degrees);
+    }
+
+    [Fact]
     public void ACandidateRotatesItsOwnFrameAboutTheAnchor()
     {
         var candidate = new SymbolCandidate(50, 50, 90);

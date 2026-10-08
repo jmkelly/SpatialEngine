@@ -117,6 +117,36 @@ internal static class SymbolPlacementEngine
         SpriteRegistry sprites,
         List<PixelBox> collision)
     {
+        if (Prepare(request, fonts, sprites) is not { } prepared)
+        {
+            return null;
+        }
+
+        foreach (var candidate in SymbolCandidates.Generate(request.Feature.Geometry, request.Options, projection))
+        {
+            if (TryCandidate(candidate, prepared, collision) is { } placed)
+            {
+                return placed;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// A symbol's shaped parts in the candidate's frame, ready to be tried at
+    /// each candidate position. Null boxes are parts the feature does not have.
+    /// </summary>
+    private sealed record PreparedSymbol(SymbolBox? Icon, SymbolBox? Text, SymbolOptions Options);
+
+    /// <summary>
+    /// Shapes the feature's label and measures its icon, or null when the
+    /// feature draws nothing: neither a label (no text, or no text field to
+    /// read it through) nor an icon.
+    /// </summary>
+    private static PreparedSymbol? Prepare(
+        SymbolCandidateRequest request, FontSession fonts, SpriteRegistry sprites)
+    {
         var (options, feature) = (request.Options, request.Feature);
         var hasText = !string.IsNullOrEmpty(feature.Text) && !string.IsNullOrEmpty(options.TextField);
         var hasIcon = !string.IsNullOrEmpty(feature.Icon);
@@ -132,32 +162,33 @@ internal static class SymbolPlacementEngine
             : null;
         SymbolBox? iconBox = hasIcon ? IconBox(sprites.Get(feature.Icon!), options) : null;
         SymbolBox? textBox = label is null ? null : LabelBox(label, options);
+        return new PreparedSymbol(iconBox, textBox, options);
+    }
 
-        foreach (var candidate in SymbolCandidates.Generate(feature.Geometry, options, projection))
+    /// <summary>
+    /// Tries one candidate position: the icon and the text are accepted
+    /// independently against the collision list, and the candidate is taken
+    /// when either part places. Null when both parts are dropped.
+    /// </summary>
+    private static PlacedSymbol? TryCandidate(
+        SymbolCandidate candidate, PreparedSymbol prepared, List<PixelBox> collision)
+    {
+        var options = prepared.Options;
+        SymbolBox? icon = null;
+        if (prepared.Icon is { } box
+            && Accept(collision, box.Extent(candidate), options.Padding, options.AllowIconOverlap, options))
         {
-            SymbolBox? icon = null;
-            if (iconBox is { } box
-                && Accept(collision, box.Extent(candidate), options.Padding, options.AllowIconOverlap, options))
-            {
-                icon = box;
-            }
-
-            SymbolBox? text = null;
-            if (textBox is { } shape
-                && Accept(collision, shape.Extent(candidate), options.Padding, options.AllowTextOverlap, options))
-            {
-                text = shape;
-            }
-
-            if (icon is null && text is null)
-            {
-                continue;
-            }
-
-            return new PlacedSymbol(candidate, icon, text);
+            icon = box;
         }
 
-        return null;
+        SymbolBox? text = null;
+        if (prepared.Text is { } shape
+            && Accept(collision, shape.Extent(candidate), options.Padding, options.AllowTextOverlap, options))
+        {
+            text = shape;
+        }
+
+        return icon is null && text is null ? null : new PlacedSymbol(candidate, icon, text);
     }
 
     /// <summary>The label's box in the candidate's frame, from the anchor and offset.</summary>

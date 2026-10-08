@@ -382,29 +382,47 @@ internal readonly record struct CubicBezier(double X1, double Y1, double X2, dou
     /// <summary>The eased progress: the curve's ordinate where its abscissa is <paramref name="progress"/>.</summary>
     public double Ease(double progress)
     {
+        if (ClampEnds(progress) is { } clamped)
+        {
+            return clamped;
+        }
+
+        if (IsLinear)
+        {
+            return progress;
+        }
+
+        return Ordinate(Solve(progress));
+    }
+
+    /// <summary>
+    /// Whether the two control points agree, making the curve the straight
+    /// line through them: composing the ordinate with the abscissa is the
+    /// identity and the ramp is linear, so the <c>["cubic-bezier"]</c> default
+    /// is not solved at all.
+    /// </summary>
+    private bool IsLinear => X1 == Y1 && X2 == Y2;
+
+    /// <summary>The clamped end of the ramp, or null while the progress is strictly inside it.</summary>
+    private static double? ClampEnds(double progress)
+    {
         if (progress <= 0)
         {
             return 0;
         }
 
-        if (progress >= 1)
-        {
-            return 1;
-        }
+        return progress >= 1 ? 1 : null;
+    }
 
-        // A curve whose two control points agree is the straight line through
-        // them, so composing the ordinate with the abscissa is the identity
-        // and the ramp is linear: the `["cubic-bezier"]` default is not solved
-        // at all.
-        if (X1 == Y1 && X2 == Y2)
-        {
-            return progress;
-        }
-
-        // Newton's method on the abscissa, guarded by bisection: the abscissa is
-        // monotonically increasing over [0, 1] (x1 and x2 are clamped to it), so
-        // a step that would leave the bracketing interval falls back to the
-        // midpoint rather than diverging.
+    /// <summary>
+    /// The curve parameter at which the abscissa is <paramref name="progress"/>:
+    /// Newton's method on the abscissa, guarded by bisection. The abscissa is
+    /// monotonically increasing over [0, 1] (x1 and x2 are clamped to it), so
+    /// a step that would leave the bracketing interval falls back to the
+    /// midpoint rather than diverging.
+    /// </summary>
+    private double Solve(double progress)
+    {
         var low = 0d;
         var high = 1d;
         var u = progress;
@@ -416,15 +434,10 @@ internal readonly record struct CubicBezier(double X1, double Y1, double X2, dou
                 break;
             }
 
-            var slope = Slope(u);
-            if (slope > 1e-9)
+            if (TryNewtonStep(u, progress, low, high, out var next))
             {
-                var next = u - ((x - progress) / slope);
-                if (next > low && next < high)
-                {
-                    u = next;
-                    continue;
-                }
+                u = next;
+                continue;
             }
 
             if (x < progress)
@@ -439,7 +452,31 @@ internal readonly record struct CubicBezier(double X1, double Y1, double X2, dou
             u = (low + high) / 2;
         }
 
-        return Ordinate(u);
+        return u;
+    }
+
+    /// <summary>
+    /// One Newton step from <paramref name="u"/> towards <paramref name="progress"/>.
+    /// Reports false where the slope is too flat or the step would leave the
+    /// bracketing interval, in which case the caller bisects instead.
+    /// </summary>
+    private bool TryNewtonStep(double u, double progress, double low, double high, out double next)
+    {
+        next = u;
+        var slope = Slope(u);
+        if (slope <= 1e-9)
+        {
+            return false;
+        }
+
+        var candidate = u - ((Abscissa(u) - progress) / slope);
+        if (candidate <= low || candidate >= high)
+        {
+            return false;
+        }
+
+        next = candidate;
+        return true;
     }
 
     private double Abscissa(double u) => Ordinate(u, X1, X2);

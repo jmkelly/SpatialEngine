@@ -302,6 +302,65 @@ public sealed class MapLibreExpressionTests
     public void Evaluate_SolvesTheBezierWithinATolerance(string expression, double expected) =>
         Assert.Equal(expected, Number(expression), 9);
 
+    [Theory]
+    [InlineData(-1d, 0d)]
+    [InlineData(0d, 0d)]
+    [InlineData(1d, 1d)]
+    [InlineData(2d, 1d)]
+    public void Ease_ClampsOutsideTheUnitRamp(double progress, double expected) =>
+        Assert.Equal(expected, new CubicBezier(0, 1, 1, 1).Ease(progress));
+
+    [Fact]
+    public void Ease_TheDefaultCurveIsTheIdentityRamp() =>
+        Assert.Equal(0.3, new CubicBezier(0, 0, 0, 0).Ease(0.3), 12);
+
+    [Theory]
+    // The expected values are bisected from the Bezier polynomial itself
+    // (200 halvings, unrelated to the Newton solver under test).
+    [InlineData(0.5, 0.7184349252)]
+    [InlineData(0.25, 0.3235495960)]
+    public void Ease_SolvesAnAsymmetricCurve(double progress, double expected) =>
+        Assert.Equal(expected, new CubicBezier(0.2, 0, 0.4, 1).Ease(progress), 6);
+
+    [Theory]
+    // A near-zero slope (a flat end) and a Newton step that leaves the
+    // bracket both fall back to bisection: the ramp still converges.
+    [InlineData(0.0001, 0.0664921805)]
+    [InlineData(0.000001, 0.014851)]
+    public void Ease_FallsBackToBisectionWhereNewtonCannotStep(double progress, double expected) =>
+        Assert.Equal(expected, new CubicBezier(0, 0.5, 0, 0.5).Ease(progress), 5);
+
+    [Fact]
+    public void Ease_FallsBackToBisectionWhereNewtonOvershoots() =>
+        Assert.Equal(0.9335078195, new CubicBezier(1, 0.5, 1, 0.5).Ease(1 - 0.0001), 6);
+
+    [Fact]
+    public void Evaluate_SamplingAtAStopEasesAZeroProgress()
+    {
+        // The input sits exactly on the first stop, so the progress is zero
+        // and the eased value is the stop itself, through the clamp rather
+        // than the solver.
+        Assert.Equal("2", Evaluate("""["interpolate", ["cubic-bezier", 0, 1, 1, 1], ["zoom"], 5, 2, 10, 8]""", Feature, 5));
+    }
+
+    [Fact]
+    public void FromAttribute_MapsEveryAttributeKind()
+    {
+        Assert.Equal(ExpressionValue.OfFlag(true), ExpressionScope.FromAttribute(AttributeValue.FromBoolean(true)));
+        Assert.Equal(ExpressionValue.OfNumber(7), ExpressionScope.FromAttribute(AttributeValue.FromInt64(7)));
+        Assert.Equal(ExpressionValue.OfNumber(2.5), ExpressionScope.FromAttribute(AttributeValue.FromDouble(2.5)));
+        Assert.Equal(ExpressionValue.OfText("Alpha"), ExpressionScope.FromAttribute(AttributeValue.FromString("Alpha")));
+        Assert.Equal(ExpressionValue.Missing, ExpressionScope.FromAttribute(AttributeValue.Null));
+    }
+
+    [Fact]
+    public void Attribute_OutsideAFeatureReadsTheFallback()
+    {
+        var fallback = ExpressionValue.OfNumber(3);
+
+        Assert.Equal(fallback, new ExpressionScope(null, null, 5).Attribute("population", fallback));
+    }
+
     private static double Number(string expression) =>
         double.Parse(Evaluate(expression, Feature, 5), CultureInfo.InvariantCulture);
 

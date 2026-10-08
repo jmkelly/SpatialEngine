@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using SkiaSharp;
 
 namespace Spatial.Rendering.Skia.Drawing;
@@ -21,25 +22,37 @@ internal sealed record FontFace(string Family, int Weight, FontStyle Style, stri
     public const int BoldWeight = 700;
 
     /// <summary>The name a style would write for this face, e.g. <c>Noto Sans Bold Italic</c>.</summary>
-    public string Name => Style == FontStyle.Normal && Weight == RegularWeight
-        ? $"{Family} Regular"
-        : Style == FontStyle.Normal
-            ? $"{Family} {WeightName}"
-            : Weight == RegularWeight ? $"{Family} Italic" : $"{Family} {WeightName} Italic";
+    public string Name => NameFor(Family, Weight, Style, WeightName);
 
-    private string WeightName => Weight switch
-    {
-        100 => "Thin",
-        200 => "Extra Light",
-        300 => "Light",
-        400 => "Regular",
-        500 => "Medium",
-        600 => "SemiBold",
-        700 => "Bold",
-        800 => "Extra Bold",
-        900 => "Black",
-        _ => Weight.ToString(System.Globalization.CultureInfo.InvariantCulture),
-    };
+    /// <summary>The documented style name of one face: the family, the weight name and the slant.</summary>
+    internal static string NameFor(string family, int weight, FontStyle style, string weightName) =>
+        style == FontStyle.Normal && weight == RegularWeight
+            ? $"{family} Regular"
+            : style == FontStyle.Normal
+                ? $"{family} {weightName}"
+                : weight == RegularWeight ? $"{family} Italic" : $"{family} {weightName} Italic";
+
+    private string WeightName => WeightNameFor(Weight);
+
+    private static readonly System.Collections.Frozen.FrozenDictionary<int, string> KnownWeights =
+        new Dictionary<int, string>
+        {
+            [100] = "Thin",
+            [200] = "Extra Light",
+            [300] = "Light",
+            [400] = "Regular",
+            [500] = "Medium",
+            [600] = "SemiBold",
+            [700] = "Bold",
+            [800] = "Extra Bold",
+            [900] = "Black",
+        }.ToFrozenDictionary();
+
+    /// <summary>The CSS weight name of a numeric weight, or the number itself outside the named scale.</summary>
+    internal static string WeightNameFor(int weight) =>
+        KnownWeights.TryGetValue(weight, out var name)
+            ? name
+            : weight.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>The Skia slant for this face's style.</summary>
     public SKFontStyleSlant Slant => Style == FontStyle.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;

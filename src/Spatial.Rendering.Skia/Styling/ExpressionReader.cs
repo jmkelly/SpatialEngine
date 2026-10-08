@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Text.Json;
 using Spatial.Contracts;
@@ -103,6 +104,44 @@ internal static class Literals
 /// <summary>The operator forms: dispatch on the leading operator name.</summary>
 internal static class Operators
 {
+    private delegate StyleExpression OperatorReader(JsonElement element, JsonElement[] operands);
+
+    private static readonly FrozenDictionary<string, OperatorReader> Dispatch =
+        new Dictionary<string, OperatorReader>(StringComparer.Ordinal)
+        {
+            ["literal"] = Literal,
+            ["get"] = Attribute,
+            ["has"] = Presence,
+            ["var"] = Variable,
+            ["let"] = Let,
+            ["zoom"] = Zoom,
+            ["id"] = Identity,
+            ["geometry-type"] = GeometryType,
+            ["=="] = Equal,
+            ["!="] = NotEqual,
+            ["<"] = LessThan,
+            ["<="] = LessThanOrEqual,
+            [">"] = GreaterThan,
+            [">="] = GreaterThanOrEqual,
+            ["all"] = All,
+            ["any"] = Any,
+            ["!"] = Negation,
+            ["in"] = Membership,
+            ["+"] = Add,
+            ["-"] = Subtract,
+            ["*"] = Multiply,
+            ["/"] = Divide,
+            ["%"] = Modulo,
+            ["concat"] = Concat,
+            ["case"] = Case,
+            ["match"] = Match,
+            ["coalesce"] = Coalesce,
+            ["step"] = Step,
+            ["interpolate"] = Interpolate,
+            ["at-interpolate"] = AtInterpolate,
+            ["to-color"] = ToColor,
+        }.ToFrozenDictionary(StringComparer.Ordinal);
+
     public static StyleExpression Read(JsonElement element)
     {
         if (element.GetArrayLength() == 0 || element[0].ValueKind != JsonValueKind.String)
@@ -113,33 +152,68 @@ internal static class Operators
 
         var name = element[0].GetString()!;
         var operands = element.EnumerateArray().Skip(1).ToArray();
-        return name switch
-        {
-            "literal" => Literal(element, operands),
-            "get" => Attribute(element, operands),
-            "has" => Presence(element, operands),
-            "var" => Variable(element, operands),
-            "let" => Let(element, operands),
-            "zoom" => Nullary(element, "zoom", operands, new ZoomExpression()),
-            "id" => Nullary(element, "id", operands, new IdentityExpression()),
-            "geometry-type" => Nullary(element, "geometry-type", operands, new GeometryTypeExpression()),
-            "==" or "!=" or "<" or "<=" or ">" or ">=" => Comparison(name, element, operands),
-            "all" or "any" => Logical(name, operands),
-            "!" => new NegationExpression(Unary(element, operands)),
-            "in" => Membership(element, operands),
-            "+" or "-" or "*" or "/" or "%" => Arithmetic(name, element, operands),
-            "concat" => new ConcatExpression(Operands(element, operands, "concat")),
-            "case" => Case(element, operands),
-            "match" => Match(element, operands),
-            "coalesce" => new CoalesceExpression(Operands(element, operands, "coalesce")),
-            "step" => Step(element, operands),
-            "interpolate" => Interpolate(element, operands),
-            "at-interpolate" => AtInterpolate(element, operands),
-            "to-color" => ToColor(element, operands),
-            _ => throw SpatialException.BadArguments(
-                $"Unsupported expression operator '{name}' in {element.GetRawText()}."),
-        };
+        return Dispatch.TryGetValue(name, out var reader)
+            ? reader(element, operands)
+            : throw SpatialException.BadArguments(
+                $"Unsupported expression operator '{name}' in {element.GetRawText()}.");
     }
+
+    private static ZoomExpression Zoom(JsonElement element, JsonElement[] operands) =>
+        Nullary(element, "zoom", operands, new ZoomExpression());
+
+    private static IdentityExpression Identity(JsonElement element, JsonElement[] operands) =>
+        Nullary(element, "id", operands, new IdentityExpression());
+
+    private static GeometryTypeExpression GeometryType(JsonElement element, JsonElement[] operands) =>
+        Nullary(element, "geometry-type", operands, new GeometryTypeExpression());
+
+    private static ComparisonExpression Equal(JsonElement element, JsonElement[] operands) =>
+        Comparison("==", element, operands);
+
+    private static ComparisonExpression NotEqual(JsonElement element, JsonElement[] operands) =>
+        Comparison("!=", element, operands);
+
+    private static ComparisonExpression LessThan(JsonElement element, JsonElement[] operands) =>
+        Comparison("<", element, operands);
+
+    private static ComparisonExpression LessThanOrEqual(JsonElement element, JsonElement[] operands) =>
+        Comparison("<=", element, operands);
+
+    private static ComparisonExpression GreaterThan(JsonElement element, JsonElement[] operands) =>
+        Comparison(">", element, operands);
+
+    private static ComparisonExpression GreaterThanOrEqual(JsonElement element, JsonElement[] operands) =>
+        Comparison(">=", element, operands);
+
+    private static LogicalExpression All(JsonElement element, JsonElement[] operands) =>
+        Logical("all", operands);
+
+    private static LogicalExpression Any(JsonElement element, JsonElement[] operands) =>
+        Logical("any", operands);
+
+    private static NegationExpression Negation(JsonElement element, JsonElement[] operands) =>
+        new NegationExpression(Unary(element, operands));
+
+    private static ArithmeticExpression Add(JsonElement element, JsonElement[] operands) =>
+        Arithmetic("+", element, operands);
+
+    private static ArithmeticExpression Subtract(JsonElement element, JsonElement[] operands) =>
+        Arithmetic("-", element, operands);
+
+    private static ArithmeticExpression Multiply(JsonElement element, JsonElement[] operands) =>
+        Arithmetic("*", element, operands);
+
+    private static ArithmeticExpression Divide(JsonElement element, JsonElement[] operands) =>
+        Arithmetic("/", element, operands);
+
+    private static ArithmeticExpression Modulo(JsonElement element, JsonElement[] operands) =>
+        Arithmetic("%", element, operands);
+
+    private static ConcatExpression Concat(JsonElement element, JsonElement[] operands) =>
+        new ConcatExpression(Operands(element, operands, "concat"));
+
+    private static CoalesceExpression Coalesce(JsonElement element, JsonElement[] operands) =>
+        new CoalesceExpression(Operands(element, operands, "coalesce"));
 
     private static LiteralExpression Literal(JsonElement element, JsonElement[] operands)
     {
@@ -187,7 +261,8 @@ internal static class Operators
         return new LetExpression(bindings, ExpressionReader.Compile(operands[^1]));
     }
 
-    private static StyleExpression Nullary(JsonElement element, string name, JsonElement[] operands, StyleExpression expression)
+    private static T Nullary<T>(JsonElement element, string name, JsonElement[] operands, T expression)
+        where T : StyleExpression
     {
         RequireExactly(element, name, operands, 0);
         return expression;

@@ -36,15 +36,66 @@ internal static class SymbolReader
         var layoutBag = new StylePropertyBag(layout, "layout", interner);
         var paintBag = new StylePropertyBag(paint, "paint", interner);
 
-        var (opacity, opacityExpression) = paintBag.Number("text-opacity", 1.0);
-        var (color, colorExpression) = paintBag.Color("text-color", new StyleColor(0, 0, 0));
-        var (haloColor, haloColorExpression) = paintBag.Color("text-halo-color", StyleColor.Transparent);
-        var (haloWidth, haloWidthExpression) = paintBag.Number("text-halo-width", 0.0);
+        var paintValues = ReadPaint(paintBag);
         paintBag.RejectUnsupported();
 
         // 'visibility' is consumed and applied by the compiler; accept it here
         // so the layout bag does not report it as unsupported.
         layoutBag.String("visibility", "visible");
+        var layoutValues = ReadLayout(layoutBag);
+        layoutBag.RejectUnsupported();
+
+        ValidateLayout(layoutValues, paintValues.HaloWidth);
+        return Build(paintValues, layoutValues);
+    }
+
+    /// <summary>The paint values a symbol layer carries: constants plus their data-driven expressions.</summary>
+    private sealed record PaintValues(
+        double Opacity,
+        StyleExpression? OpacityExpression,
+        StyleColor Color,
+        StyleExpression? ColorExpression,
+        StyleColor HaloColor,
+        StyleExpression? HaloColorExpression,
+        double HaloWidth,
+        StyleExpression? HaloWidthExpression);
+
+    /// <summary>The layout values a symbol layer carries, as read before validation.</summary>
+    private sealed record LayoutValues(
+        string? TextField,
+        List<string> Fonts,
+        double Size,
+        SymbolAnchor Anchor,
+        double OffsetX,
+        double OffsetY,
+        double Padding,
+        bool AllowTextOverlap,
+        string? IconImage,
+        double IconSize,
+        bool AllowIconOverlap,
+        SymbolPlacement Placement,
+        double Spacing,
+        double SortKey,
+        bool? AllowOverlap,
+        bool IgnorePlacement,
+        SymbolTextTransform TextTransform,
+        double LetterSpacing,
+        double LineHeight,
+        double Rotate);
+
+    private static PaintValues ReadPaint(StylePropertyBag paintBag)
+    {
+        var (opacity, opacityExpression) = paintBag.Number("text-opacity", 1.0);
+        var (color, colorExpression) = paintBag.Color("text-color", new StyleColor(0, 0, 0));
+        var (haloColor, haloColorExpression) = paintBag.Color("text-halo-color", StyleColor.Transparent);
+        var (haloWidth, haloWidthExpression) = paintBag.Number("text-halo-width", 0.0);
+        return new PaintValues(
+            opacity, opacityExpression, color, colorExpression,
+            haloColor, haloColorExpression, haloWidth, haloWidthExpression);
+    }
+
+    private static LayoutValues ReadLayout(StylePropertyBag layoutBag)
+    {
         var textField = layoutBag.String("text-field", null);
         var fonts = layoutBag.StringList("text-font");
         var size = layoutBag.ConstantNumber("text-size", 16.0);
@@ -64,60 +115,82 @@ internal static class SymbolReader
         var letterSpacing = layoutBag.ConstantNumber("text-letter-spacing", 0.0);
         var lineHeight = layoutBag.ConstantNumber("text-line-height", 1.2);
         var rotate = layoutBag.ConstantNumber("text-rotate", 0.0);
-        layoutBag.RejectUnsupported();
+        return new LayoutValues(
+            textField, [.. fonts], size, anchor, offsetX, offsetY, padding,
+            allowTextOverlap, iconImage, iconSize, allowIconOverlap, placement,
+            spacing, sortKey, symbolAllowOverlap, ignorePlacement, textTransform,
+            letterSpacing, lineHeight, rotate);
+    }
 
-        if (string.IsNullOrEmpty(textField) && string.IsNullOrEmpty(iconImage))
+    /// <summary>The range checks a symbol layer must pass: non-negative sizes and positive spacing and line height.</summary>
+    private static void ValidateLayout(LayoutValues layout, double haloWidth)
+    {
+        if (string.IsNullOrEmpty(layout.TextField) && string.IsNullOrEmpty(layout.IconImage))
         {
             throw SpatialException.BadArguments("A 'symbol' layer requires 'text-field' or 'icon-image'.");
         }
 
-        PaintReader.AssertNonNegative(size, "text-size");
-        PaintReader.AssertNonNegative(padding, "text-padding");
+        PaintReader.AssertNonNegative(layout.Size, "text-size");
+        PaintReader.AssertNonNegative(layout.Padding, "text-padding");
         PaintReader.AssertNonNegative(haloWidth, "text-halo-width");
-        PaintReader.AssertNonNegative(iconSize, "icon-size");
-        PaintReader.AssertNonNegative(spacing, "symbol-spacing");
-        PaintReader.AssertNonNegative(letterSpacing, "text-letter-spacing");
+        PaintReader.AssertNonNegative(layout.IconSize, "icon-size");
+        PaintReader.AssertNonNegative(layout.Spacing, "symbol-spacing");
+        PaintReader.AssertNonNegative(layout.LetterSpacing, "text-letter-spacing");
+        AssertPositiveSpacing(layout.Spacing);
+        AssertPositiveLineHeight(layout.LineHeight);
+    }
+
+    private static void AssertPositiveSpacing(double spacing)
+    {
         if (spacing == 0)
         {
             throw SpatialException.BadArguments("Unsupported value for 'symbol-spacing': expected a positive number.");
         }
+    }
 
+    private static void AssertPositiveLineHeight(double lineHeight)
+    {
         if (lineHeight <= 0)
         {
             throw SpatialException.BadArguments("Unsupported value for 'text-line-height': expected a positive number.");
         }
+    }
 
-        var dataDriven = colorExpression is not null || opacityExpression is not null
-            || haloColorExpression is not null || haloWidthExpression is not null;
-        var alpha = dataDriven ? 1.0 : opacity;
+    private static SymbolPaint Build(PaintValues paint, LayoutValues layout)
+    {
+        var dataDriven = paint.ColorExpression is not null || paint.OpacityExpression is not null
+            || paint.HaloColorExpression is not null || paint.HaloWidthExpression is not null;
+        var alpha = dataDriven ? 1.0 : paint.Opacity;
         return new SymbolPaint(new SymbolOptions
         {
-            TextField = textField ?? string.Empty,
-            Fonts = fonts,
-            Size = size,
-            Color = color.ScaleAlpha(alpha),
-            HaloColor = haloColor.ScaleAlpha(alpha),
-            HaloWidth = haloWidth,
-            Anchor = anchor,
-            OffsetX = offsetX,
-            OffsetY = offsetY,
-            Padding = padding,
-            AllowTextOverlap = allowTextOverlap,
-            IconImage = iconImage,
-            IconSize = iconSize,
-            AllowIconOverlap = allowIconOverlap,
-            Placement = placement,
-            Spacing = spacing,
-            SortKey = sortKey,
-            AllowOverlap = symbolAllowOverlap,
-            IgnorePlacement = ignorePlacement,
-            TextTransform = textTransform,
-            LetterSpacing = letterSpacing,
-            LineHeight = lineHeight,
-            Rotate = rotate,
+            TextField = layout.TextField ?? string.Empty,
+            Fonts = layout.Fonts,
+            Size = layout.Size,
+            Color = paint.Color.ScaleAlpha(alpha),
+            HaloColor = paint.HaloColor.ScaleAlpha(alpha),
+            HaloWidth = paint.HaloWidth,
+            Anchor = layout.Anchor,
+            OffsetX = layout.OffsetX,
+            OffsetY = layout.OffsetY,
+            Padding = layout.Padding,
+            AllowTextOverlap = layout.AllowTextOverlap,
+            IconImage = layout.IconImage,
+            IconSize = layout.IconSize,
+            AllowIconOverlap = layout.AllowIconOverlap,
+            Placement = layout.Placement,
+            Spacing = layout.Spacing,
+            SortKey = layout.SortKey,
+            AllowOverlap = layout.AllowOverlap,
+            IgnorePlacement = layout.IgnorePlacement,
+            TextTransform = layout.TextTransform,
+            LetterSpacing = layout.LetterSpacing,
+            LineHeight = layout.LineHeight,
+            Rotate = layout.Rotate,
         },
             dataDriven
-                ? new SymbolExpressions(colorExpression, opacityExpression, haloColorExpression, haloWidthExpression, opacity)
+                ? new SymbolExpressions(
+                    paint.ColorExpression, paint.OpacityExpression,
+                    paint.HaloColorExpression, paint.HaloWidthExpression, paint.Opacity)
                 : null);
     }
 

@@ -203,23 +203,46 @@ internal static class SymbolCandidates
                 yield return Project(line, projection);
                 break;
             case IMultiLineString multi:
-                foreach (var child in multi.LineStrings)
+                foreach (var path in MultiPaths(multi, projection))
                 {
-                    yield return Project(child, projection);
+                    yield return path;
                 }
 
                 break;
             case IGeometryParts parts:
-                foreach (var child in parts.Geometries)
+                foreach (var path in PartsPaths(parts, projection))
                 {
-                    foreach (var path in Paths(child, projection))
-                    {
-                        yield return path;
-                    }
+                    yield return path;
                 }
 
                 break;
         }
+    }
+
+    /// <summary>One projected path per child of a multi-line.</summary>
+    private static List<IReadOnlyList<(float X, float Y)>> MultiPaths(
+        IMultiLineString multi, ViewportProjection projection)
+    {
+        var paths = new List<IReadOnlyList<(float X, float Y)>>(multi.LineStrings.Count);
+        foreach (var child in multi.LineStrings)
+        {
+            paths.Add(Project(child, projection));
+        }
+
+        return paths;
+    }
+
+    /// <summary>The paths of every geometry a part collection carries, depth-first.</summary>
+    private static List<IReadOnlyList<(float X, float Y)>> PartsPaths(
+        IGeometryParts parts, ViewportProjection projection)
+    {
+        var paths = new List<IReadOnlyList<(float X, float Y)>>();
+        foreach (var child in parts.Geometries)
+        {
+            paths.AddRange(Paths(child, projection));
+        }
+
+        return paths;
     }
 
     private static List<(float X, float Y)> Project(ILineString line, ViewportProjection projection)

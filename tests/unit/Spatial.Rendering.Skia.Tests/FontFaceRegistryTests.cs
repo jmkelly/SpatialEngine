@@ -122,6 +122,52 @@ public sealed class FontFaceRegistryTests
         Assert.Throws<InvalidOperationException>(() => FontFaceRegistry.Default.Typeface(face));
     }
 
+    [Theory]
+    [InlineData("Noto Sans 700", 700, 0)]
+    [InlineData("Noto Sans Bold 700 Italic", 700, 1)]
+    [InlineData("Noto Sans Oblique", 400, 1)]
+    public void Resolve_ReadsNumericWeightsAndTheObliqueStyle(string name, int weight, int style)
+    {
+        var face = FontFaceRegistry.Default.Resolve([name]);
+
+        Assert.Equal(weight, face.Weight);
+        Assert.Equal((FontStyle)style, face.Style);
+    }
+
+    [Theory]
+    [InlineData("Noto Sans Frobnicate")]
+    [InlineData("Noto Sans 5000")]
+    [InlineData("")]
+    public void Resolve_AnUnknownStyleTokenFallsBackToTheDefaultFace(string name)
+    {
+        Assert.Equal(FontFaceRegistry.Default.DefaultFace, FontFaceRegistry.Default.Resolve([name]));
+    }
+
+    [Fact]
+    public void Resolve_FallsBackToTheUprightFaceWhenNoSlantedFaceIsBundled()
+    {
+        var registry = new FontFaceRegistry([new FontFace("Solo", 400, FontStyle.Normal, "solo.ttf", "0")]);
+
+        var face = registry.Resolve(["Solo Italic"]);
+
+        Assert.Equal(FontStyle.Normal, face.Style);
+        Assert.Equal("Solo", face.Family);
+    }
+
+    [Fact]
+    public void ADisposedRegistryRefusesToHandOutTypefaces()
+    {
+        var registry = new FontFaceRegistry(FontFaceRegistry.Default.Faces);
+        var face = registry.DefaultFace;
+
+        Assert.Same(registry.Typeface(face), registry.Typeface(face));
+
+        registry.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => registry.Typeface(face));
+        registry.Dispose();
+    }
+
     [Fact]
     public void ASessionReusesOneShaperPerFaceAndOnePerDistinctFace()
     {
