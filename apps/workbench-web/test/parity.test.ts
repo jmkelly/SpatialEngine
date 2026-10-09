@@ -20,9 +20,11 @@ import {
   localGeometryRoot,
   localServiceRoots,
   parseBbox,
+  parseMissingService,
   parseSize,
   prettyJson,
   probeExportUrl,
+  seedHintFor,
   summarizeExportProbe,
 } from "../src/parity.ts";
 
@@ -247,6 +249,42 @@ test("probeExportUrl captures the status, content type and Esri reason", async (
   assert.ok(probe.snippet?.includes("Missing"));
   assert.ok(summarizeExportProbe(probe).includes("404"));
   assert.ok(summarizeExportProbe(probe).includes("Missing"));
+});
+
+test("parseMissingService reads the service name from a not-found envelope reason", () => {
+  assert.equal(parseMissingService("Service 'Census' was not found."), "Census");
+  assert.equal(parseMissingService("Service 'WorldReference' does not exist."), "WorldReference");
+  assert.equal(parseMissingService(null), null);
+  assert.equal(parseMissingService("the service answered 500"), null);
+  assert.equal(parseMissingService("{\"error\":{\"code\":400}}"), null);
+});
+
+test("seedHintFor names the exact seed selection that publishes the missing service", () => {
+  const census = seedHintFor("Census", "MapServer");
+  assert.ok(census !== null && census.includes("./eng/seed.sh"), "Census hint names the seed script");
+  assert.ok(census!.includes("public.us_states,Census"), "Census hint selects its dataset and map");
+
+  const countries = seedHintFor("WorldCountries", "FeatureServer");
+  assert.ok(countries !== null && countries.includes("public.world_countries,WorldCountries"));
+
+  const reference = seedHintFor("WorldReference", "MapServer");
+  assert.ok(reference !== null && reference.includes("WorldReference"));
+  for (const dataset of ["public.world_countries", "public.world_lakes", "public.world_rivers", "public.world_places"]) {
+    assert.ok(reference!.includes(dataset), `WorldReference hint selects ${dataset}`);
+  }
+});
+
+test("seedHintFor admits the seed publishes no ImageServer instead of naming a useless command", () => {
+  const hint = seedHintFor("WorldReference", "ImageServer");
+  assert.ok(hint !== null && hint.includes("Map tab"), "the Image hint redirects to the Map tab");
+  assert.ok(!hint!.includes("--only"), "the Image hint names no seed selection (none would help)");
+});
+
+test("seedHintFor stays silent for always-available services and generic otherwise", () => {
+  assert.equal(seedHintFor("demo", "FeatureServer"), null);
+  assert.equal(seedHintFor("Geometry", "GeometryServer"), null);
+  const unknown = seedHintFor("SomethingElse", "MapServer");
+  assert.ok(unknown !== null && unknown.includes("./eng/seed.sh"), "unknown services get the full-seed fallback");
 });
 
 test("probeExportUrl truncates long bodies and keeps fetch failures a value", async () => {

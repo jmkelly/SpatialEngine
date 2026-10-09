@@ -416,6 +416,50 @@ export function extractEsriErrorMessage(bodyText: string): string | null {
 }
 
 /**
+ * Reads the service name from an Esri not-found reason
+ * ("Service 'Census' was not found." / "Service 'X' does not exist.");
+ * null when the reason names no missing service. The Parity panels use it
+ * to tell a never-published localhost service apart from a transient
+ * failure, so the panel can name the seed step that publishes it.
+ */
+export function parseMissingService(reason: string | null): string | null {
+  if (reason === null) return null;
+  const match = /Service '([^']+)' (?:was not found|does not exist)/.exec(reason);
+  return match?.[1] ?? null;
+}
+
+/**
+ * The actionable hint for a localhost panel whose service is not published:
+ * the exact `eng/seed.sh` selection (datasets plus map) that publishes it,
+ * or null when the service needs no seed (`demo`, the always-on Geometry
+ * Service). The seed publishes no ImageServer at all, so an image hint
+ * redirects to the Map tab instead of naming a selection that would not
+ * help. Unknown names fall back to the full seed.
+ */
+export function seedHintFor(service: string, server: string): string | null {
+  if (service === "demo" || service === "Geometry") return null;
+  if (server === "ImageServer") {
+    return (
+      `the seed publishes '${service}' as a MapServer only — there is no ImageServer to compare. ` +
+      `Switch to the Map tab to compare it, or publish a raster service first.`
+    );
+  }
+  const selections: Record<string, string> = {
+    Census: "public.us_states,Census",
+    WorldCountries: "public.world_countries,WorldCountries",
+    WorldReference: "public.world_countries,public.world_lakes,public.world_rivers,public.world_places,WorldReference",
+  };
+  const only = selections[service] ?? null;
+  const what = only === null ? "the seed services" : `the '${service}' service`;
+  const command = only === null ? "./eng/seed.sh" : `./eng/seed.sh --only=${only}`;
+  return (
+    `the localhost service '${service}' is not published on this host — ` +
+    `run \`${command}\` against this host to publish ${what}, then apply again. ` +
+    `(The Aspire DevHost re-seeds Census on boot; a plain host starts with the demo store only.)`
+  );
+}
+
+/**
  * One-line human summary of a probe for the panel and the console: the HTTP
  * status, the Esri reason when the body carried one, and the probe failure
  * when the fetch itself never answered.

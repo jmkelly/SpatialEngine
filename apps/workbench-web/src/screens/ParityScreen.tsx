@@ -13,12 +13,15 @@ import {
   buildMapExportUrl,
   diffIsClean,
   diffJsonLines,
+  extractEsriErrorMessage,
   localGeometryRoot,
   localServiceRoots,
   parseBbox,
+  parseMissingService,
   parseSize,
   prettyJson,
   probeExportUrl,
+  seedHintFor,
   summarizeExportProbe,
   type ExportProbe,
   type GeometryOperation,
@@ -356,6 +359,9 @@ function ExportPanel({ title, testId, url, serviceKind }: { title: string; testI
       console.error(`[parity] ${serviceKind} diagnostics (${testId}): ${summarizeExportProbe(result)} :: ${url}`);
     });
   };
+  const server = serviceKind.startsWith("ImageServer") ? "ImageServer" : "MapServer";
+  const missing = testId === "local" && probe?.httpStatus === 404 ? parseMissingService(probe.errorMessage) : null;
+  const seedHint = missing === null ? null : seedHintFor(missing, server);
   return (
     <figure className="parity-panel" data-testid={`parity-${testId}-panel`}>
       <figcaption>
@@ -378,6 +384,11 @@ function ExportPanel({ title, testId, url, serviceKind }: { title: string; testI
         {state === "error" && (
           <span className="parity-error" data-testid={`parity-${testId}-error`}>
             {" "}the export did not load — the service may be unreachable or the bbox outside its extent.
+          </span>
+        )}
+        {state === "error" && seedHint !== null && (
+          <span className="muted small" data-testid={`parity-${testId}-seed-hint`}>
+            {" "}{seedHint}
           </span>
         )}
         {state === "error" && probing && probe === null && (
@@ -641,8 +652,8 @@ function GeometryAnswer({ title, testId, state }: { title: string; testId: strin
 async function loadSide(countUrl: string, sampleUrl: string, signal: AbortSignal): Promise<FeaturePanelState> {
   try {
     const [countResponse, sampleResponse] = await Promise.all([fetch(countUrl, { signal }), fetch(sampleUrl, { signal })]);
-    if (!countResponse.ok) throw new Error(`count query answered ${countResponse.status}`);
-    if (!sampleResponse.ok) throw new Error(`sample query answered ${sampleResponse.status}`);
+    if (!countResponse.ok) throw new Error(await queryFailureReason(countResponse, "count query"));
+    if (!sampleResponse.ok) throw new Error(await queryFailureReason(sampleResponse, "sample query"));
     const countBody = (await countResponse.json()) as { count?: number; error?: { message?: string } };
     if (typeof countBody.count !== "number") {
       throw new Error(typeof countBody.error?.message === "string" ? countBody.error.message : "the count query answered without a count");
@@ -673,6 +684,22 @@ async function loadSide(countUrl: string, sampleUrl: string, signal: AbortSignal
   }
 }
 
+/**
+ * The failure value for a non-OK FeatureServer query: the HTTP status plus
+ * the Esri envelope reason when the body carried one, so the panel can tell
+ * a never-published service apart from a transient failure. A body that
+ * cannot be read keeps the status-only form — never a throw.
+ */
+async function queryFailureReason(response: Response, label: string): Promise<string> {
+  const status = `${label} answered ${response.status}`;
+  try {
+    const reason = extractEsriErrorMessage(await response.text());
+    return reason === null ? status : `${status}: ${reason}`;
+  } catch {
+    return status;
+  }
+}
+
 function FeaturePanel(props: {
   title: string;
   testId: string;
@@ -681,6 +708,8 @@ function FeaturePanel(props: {
   sampleUrl: string;
 }) {
   const { state } = props;
+  const missing = props.testId === "local" && state.status === "error" ? parseMissingService(state.error) : null;
+  const seedHint = missing === null ? null : seedHintFor(missing, "FeatureServer");
   return (
     <figure className="parity-panel" data-testid={`parity-${props.testId}-panel`}>
       <figcaption>
@@ -695,6 +724,9 @@ function FeaturePanel(props: {
       </figcaption>
       {state.status === "error" && (
         <p className="parity-error" data-testid={`parity-${props.testId}-error`} role="alert">{state.error}</p>
+      )}
+      {state.status === "error" && seedHint !== null && (
+        <p className="muted small" data-testid={`parity-${props.testId}-seed-hint`}>{seedHint}</p>
       )}
       {state.status === "ready" && state.rows.length === 0 && (
         <p className="muted" data-testid={`parity-${props.testId}-empty`}>No features in this bbox — widen it or relax the where clause.</p>
