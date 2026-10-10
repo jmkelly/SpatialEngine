@@ -1,0 +1,10 @@
+[general]
+name=Spatial Engine Uploader
+description=Upload layers or link PostGIS/SqlServer tables to Spatial Engine, with style upload.
+version=0.1.0
+qgisMinimumVersion=3.34
+author=Spatial Engine
+email=admin@example.com
+about=Neutral REST client: staged upload + ingest, catalogue link, connection push, QML to MapLibre style fragments.
+tracker=https://example.com/spatial-engine/issues
+repository=https://example.com/spatial-engine
