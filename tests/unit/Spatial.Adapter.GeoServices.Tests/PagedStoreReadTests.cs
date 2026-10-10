@@ -29,7 +29,13 @@ namespace Spatial.Adapter.GeoServices.Tests;
 /// surface that paged a materialised match set itself, would show up as a
 /// quarter of a million rows allocated on the way to a thousand-row response.
 /// </para>
+/// <para>
+/// The memory claim below runs in a collection of its own: allocation is
+/// counted for the whole process, so a figure is this test's only when nothing
+/// else in the assembly is allocating beside it.
+/// </para>
 /// </summary>
+[Collection(PagedStoreReadTests.Alone.Name)]
 public sealed class PagedStoreReadTests
 {
     private const int Rows = 200_000;
@@ -82,12 +88,10 @@ public sealed class PagedStoreReadTests
     }
 
     /// <summary>
-    /// The memory claim, measured: a 200k-row layer answers a 1000-row page
-    /// without the other 199k rows ever being allocated. The bound is a
-    /// sixteenth of what materialising the layer costs by construction (a
-    /// quarter of a million feature records, each with an attribute array and a
-    /// geometry), so a read that quietly paged a materialised set fails here by
-    /// two orders of magnitude rather than by a few bytes.
+    /// The memory claim, measured warm: the first query pays the JIT and the
+    /// static caches (NTS, ProjNet, JSON), so a throwaway store answers it once
+    /// before the measured page. What is counted is one page's rows, not the
+    /// runtime's first use of the path.
     /// </summary>
     [Fact]
     public async Task A_large_layer_query_holds_one_page_and_not_the_layer()
@@ -99,6 +103,8 @@ public sealed class PagedStoreReadTests
             ("returnExceededLimitFeatures", "true"),
             ("resultRecordCount", PageSize.ToString(CultureInfo.InvariantCulture)),
             ("f", "json"));
+
+        await BodyAsync(Layer(), new LargeLayerStore(), query);
 
         var before = GC.GetTotalAllocatedBytes(precise: true);
         var body = await BodyAsync(Layer(), store, query);
@@ -412,5 +418,17 @@ public sealed class PagedStoreReadTests
             Materialised += features.Count;
             return features;
         }
+    }
+
+    /// <summary>
+    /// A collection of its own, so an allocation figure is not another test's:
+    /// <see cref="GC.GetTotalAllocatedBytes"/> counts the process, and the
+    /// other classes in this assembly run in parallel with any test that is not
+    /// in a collection that forbids it.
+    /// </summary>
+    [CollectionDefinition(Name, DisableParallelization = true)]
+    public sealed class Alone
+    {
+        public const string Name = "paged-read-allocation";
     }
 }

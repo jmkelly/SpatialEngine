@@ -234,10 +234,9 @@ class FakeRepo:
         # and exits 128 ("Committer identity unknown") on a CI runner that has
         # none. `--author` sets the author, not the committer, so it does not
         # save the commit. Name the committer in the repo instead, once, so
-        # every commit here is the same commit everywhere. The sibling fixtures
-        # (test_adr_next_number, test_migrate_tasks_to_beads) pass -c per call;
-        # this one commits from two places, so the repo-local config is the
-        # single place that covers both.
+        # every commit here is the same commit everywhere: this fixture
+        # commits from two places, so the repo-local config is the single
+        # place that covers both.
         self.git("config", "user.email", "t@e")
         self.git("config", "user.name", "t")
         self.git("add", "-A")

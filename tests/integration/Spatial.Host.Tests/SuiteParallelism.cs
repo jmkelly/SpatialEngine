@@ -18,9 +18,11 @@ namespace Spatial.Host.Tests;
 ///
 /// The cap is generated, not fixed: a static number cannot sit below nproc on
 /// every box — a shipped 4 passes the ceiling on twelve cores and fails it on
-/// four — so the build writes <c>xunit.runner.json</c> beside the test
-/// assembly with the building machine's own ceiling, and the suite reads back
-/// what the build wrote (ADR-0196).
+/// four — so GenerateXunitRunnerConfig writes <c>xunit.runner.json</c> beside
+/// the test assembly with the testing machine's own ceiling (it runs before
+/// the VSTest target as well as the build, so a build box and a test box with
+/// different core counts still agree), and the suite reads back what the test
+/// run wrote (ADR-0196).
 /// </remarks>
 public static class SuiteParallelism
 {

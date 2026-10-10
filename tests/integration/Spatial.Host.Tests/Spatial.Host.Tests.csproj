@@ -17,18 +17,23 @@
     </Content>
   </ItemGroup>
 
-  <!-- The suite's collection parallelism, generated at build time (ADR-0196):
-       the first host boot in a process is 13s of CPU-bound work and xunit
-       paying a dozen of them at once is what starves the box. A fixed number
-       cannot sit below nproc on every box — a shipped 4 fails the ceiling on
-       anything under twelve cores — so no static file is carried: the build
-       writes xunit.runner.json beside the test assembly with this machine's
-       ceiling, max(2, nproc/3), and TestParallelismTests pins the agreement. -->
+  <!-- The suite's collection parallelism, generated for the machine that
+       runs the tests (ADR-0196): the first host boot in a process is 13s of
+       CPU-bound work and xunit paying a dozen of them at once is what starves
+       the box. A fixed number cannot sit below nproc on every box — a shipped
+       4 fails the ceiling on anything under twelve cores — so no static file
+       is carried: the GenerateXunitRunnerConfig target writes
+       xunit.runner.json beside the test assembly with the ceiling
+       max(2, nproc/3). It runs before the build for build-only flows, and
+       again before the VSTest target so a test run always reads the testing
+       machine's own ceiling: a build on a twelve-core box whose tests run on
+       a four-core box must not carry the twelve-core cap, and
+       TestParallelismTests pins the agreement. -->
   <PropertyGroup>
     <_HostTestCores Condition="'$(_HostTestCores)' == ''">$([System.Environment]::ProcessorCount)</_HostTestCores>
     <_HostTestCap>$([System.Math]::Max(2, $([System.Math]::Floor($([MSBuild]::Divide($(_HostTestCores), 3))))))</_HostTestCap>
   </PropertyGroup>
-  <Target Name="GenerateXunitRunnerConfig" BeforeTargets="BeforeBuild">
+  <Target Name="GenerateXunitRunnerConfig" BeforeTargets="BeforeBuild;VSTest">
     <MakeDir Directories="$(TargetDir)" Condition="!Exists('$(TargetDir)')" />
     <WriteLinesToFile File="$(TargetDir)xunit.runner.json" Overwrite="true"
                       Lines='{&quot;$schema&quot;: &quot;https://xunit.net/schema/current/xunit.runner.schema.json&quot;, &quot;maxParallelThreads&quot;: $(_HostTestCap), &quot;parallelizeAssembly&quot;: false, &quot;parallelizeTestCollections&quot;: true}' />
