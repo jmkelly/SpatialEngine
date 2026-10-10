@@ -215,16 +215,22 @@ def apply_categorized(layer, FillSymbol, RendererCategory,
                       CategorizedRenderer, QColor):
     from qgis.core import QgsVectorLayer as VL
     field = "STUSPS"
-    # Layer may be invalid offline (no PostGIS); fall back to the frozen
-    # source so the categorized style is still fully defined in the .qgz.
-    if not layer.isValid():
-        probe = VL(os.path.join(SOURCES, "us_states.geojson"), "probe", "ogr")
-        assert probe.isValid(), "us_states source invalid"
-        idx = probe.fields().indexOf(field)
-        values = sorted({f[idx] for f in probe.getFeatures()})
-    else:
-        idx = layer.fields().indexOf(field)
-        values = sorted(layer.dataProvider().uniqueValues(idx))
+    # Frozen source is authoritative (56 codes). The live PostGIS table
+    # lowercases columns to `stusps`, so a case-sensitive indexOf misses
+    # and uniqueValues comes back empty when the DB is up (the rebuild
+    # that fixed the CRS hit exactly this: 0 categories, colours gone).
+    probe = VL(os.path.join(SOURCES, "us_states.geojson"), "probe", "ogr")
+    assert probe.isValid(), "us_states source invalid"
+    pidx = probe.fields().indexOf(field)
+    values = sorted({f[pidx] for f in probe.getFeatures()})
+    if layer.isValid():
+        names = [f.name() for f in layer.fields()]
+        match = next((n for n in names if n.lower() == field.lower()), None)
+        if match is not None:
+            live = sorted(layer.dataProvider().uniqueValues(
+                layer.fields().indexOf(match)))
+            if live:
+                values = live
     cats = []
     for i, value in enumerate(values):
         hue = (i * 360 // len(values)) % 360
