@@ -161,11 +161,19 @@ def build_qgz():
         lakes = QgsVectorLayer(
             pg_uri("world_lakes", "wkb_geometry", 4269, "POLYGON"),
             "world_lakes", "postgres")
+        # The PostGIS layers are invalid at build time (no database), so
+        # QGIS cannot resolve their CRS from the server and would write an
+        # empty <srs> (srid 0). With no CRS the project CRS (EPSG:3857) is
+        # assumed on open: 5070 metres land near Null Island, which is the
+        # us_states-over-West-Africa misprojection. Pin the CRS explicitly
+        # so the .qgs carries it offline.
+        lakes.setCrs(QgsCoordinateReferenceSystem("EPSG:4269"))
         lakes.setRenderer(single_fill(
             "158,202,225,255", "40,80,120,255", "0.26"))
         states = QgsVectorLayer(
             pg_uri("us_states", "wkb_geometry", 5070, "MULTIPOLYGON"),
             "us_states", "postgres")
+        states.setCrs(QgsCoordinateReferenceSystem("EPSG:5070"))
         apply_categorized(states, QgsFillSymbol, QgsRendererCategory,
                           QgsCategorizedSymbolRenderer, QColor)
 
