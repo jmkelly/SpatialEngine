@@ -142,3 +142,22 @@ public sealed record SeedResponse(
     int Reused,
     int Published,
     IReadOnlyList<SeedFailure> Failures);
+
+// ---- store connections ----
+
+/// <summary>
+/// Sets the runtime connection string for one store
+/// (<c>PUT /api/connections/{store}</c>). Stored blind: the host persists
+/// the value without connecting, so a bad string fails on the store's next
+/// use as <c>store.unavailable</c>.
+/// </summary>
+public sealed record StoreConnectionRequest(string ConnectionString);
+
+/// <summary>
+/// The status of one store connection (never the secret): whether a
+/// connection string is in effect and when it was last set.
+/// </summary>
+public sealed record StoreConnectionResponse(string Store, bool Configured, DateTimeOffset? UpdatedAt);
+
+/// <summary>The answer to <c>POST /api/connections/reload</c>: the statuses after re-reading.</summary>
+public sealed record ReloadConnectionsResponse(IReadOnlyList<StoreConnectionResponse> Connections);

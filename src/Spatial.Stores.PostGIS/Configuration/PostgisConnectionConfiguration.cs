@@ -5,8 +5,8 @@ namespace Spatial.Stores.PostGIS.Configuration;
 /// <summary>
 /// The provider's connection configuration (ADR-0028,
 /// architecture/distilled/host-and-clients.md): a host-managed connection string that reaches the
-/// host configuration (<c>SPATIAL_POSTGIS_CONNECTION</c>),
-/// never through invocations or the web client. The configuration is the
+/// host configuration (<c>SPATIAL_POSTGIS_CONNECTION</c>) or the admin-gated
+/// runtime registry, never through a data route. The configuration is the
 /// only place the secret exists; everything else talks about it through
 /// <see cref="RedactedKey"/> and <see cref="Redact"/> so diagnostics never
 /// leak credentials.
@@ -16,20 +16,17 @@ internal sealed class PostgisConnectionConfiguration
     /// <summary>The environment variable the host reads at startup.</summary>
     public const string EnvironmentVariable = "SPATIAL_POSTGIS_CONNECTION";
 
-    private readonly string _connectionString;
-    private readonly string _database;
-    private readonly string? _password;
+    private readonly string _snapshot;
+    private readonly Func<string?>? _resolve;
 
-    private PostgisConnectionConfiguration(string connectionString)
+    private PostgisConnectionConfiguration(string snapshot, Func<string?>? resolve)
     {
-        _connectionString = connectionString;
-        var builder = new NpgsqlConnectionStringBuilder(connectionString);
-        _database = string.IsNullOrWhiteSpace(builder.Database) ? "(unset)" : builder.Database;
-        _password = builder.Password;
+        _snapshot = snapshot;
+        _resolve = resolve;
     }
 
-    /// <summary>Whether a connection string is configured at all.</summary>
-    public bool IsConfigured { get; private init; }
+    /// <summary>Whether a connection string is currently in effect.</summary>
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(Secret);
 
     /// <summary>Reads the configuration from the process environment.</summary>
     public static PostgisConnectionConfiguration FromEnvironment() =>
@@ -39,12 +36,25 @@ internal sealed class PostgisConnectionConfiguration
     public static PostgisConnectionConfiguration FromConnectionString(string connectionString)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
-        return new PostgisConnectionConfiguration(connectionString) { IsConfigured = true };
+        Validate(connectionString);
+        return new PostgisConnectionConfiguration(connectionString, null);
+    }
+
+    /// <summary>
+    /// Builds the configuration over a resolver the caller owns (the runtime
+    /// connection registry): every read reflects the resolver's current
+    /// answer, so a connection set after construction takes effect without a
+    /// rebuild. A null, missing or whitespace answer reads as unconfigured.
+    /// </summary>
+    public static PostgisConnectionConfiguration FromResolver(Func<string?> resolve)
+    {
+        ArgumentNullException.ThrowIfNull(resolve);
+        return new PostgisConnectionConfiguration(string.Empty, resolve);
     }
 
     internal static PostgisConnectionConfiguration FromEnvironmentValue(string? value) =>
         string.IsNullOrWhiteSpace(value)
-            ? new PostgisConnectionConfiguration(string.Empty) { IsConfigured = false }
+            ? new PostgisConnectionConfiguration(string.Empty, null)
             : FromConnectionString(value);
 
     /// <summary>
@@ -52,14 +62,14 @@ internal sealed class PostgisConnectionConfiguration
     /// is never logged, never put in a diagnostic and never placed on the
     /// wire.
     /// </summary>
-    internal string Secret => _connectionString;
+    internal string Secret => _resolve?.Invoke() ?? _snapshot;
 
     /// <summary>
     /// The redacted form of this configuration for diagnostics: the database
     /// name only (the secret is never in the message).
     /// </summary>
     public string RedactedKey => IsConfigured
-        ? $"the configured PostGIS database '{_database}'"
+        ? $"the configured PostGIS database '{Database()}'"
         : $"no connection configuration (set {EnvironmentVariable} in the host environment)";
 
     /// <summary>
@@ -69,14 +79,54 @@ internal sealed class PostgisConnectionConfiguration
     /// </summary>
     public string Redact(string message)
     {
-        if (!IsConfigured || string.IsNullOrEmpty(message))
+        var secret = Secret;
+        if (string.IsNullOrWhiteSpace(secret) || string.IsNullOrEmpty(message))
         {
             return message;
         }
 
-        var scrubbed = message.Replace(_connectionString, "[redacted]", StringComparison.Ordinal);
-        return _password is { Length: > 0 }
-            ? scrubbed.Replace(_password, "[redacted]", StringComparison.Ordinal)
+        var scrubbed = message.Replace(secret, "[redacted]", StringComparison.Ordinal);
+        return Password() is { Length: > 0 } password
+            ? scrubbed.Replace(password, "[redacted]", StringComparison.Ordinal)
             : scrubbed;
+    }
+
+    private static void Validate(string connectionString)
+    {
+        try
+        {
+            _ = new NpgsqlConnectionStringBuilder(connectionString);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new ArgumentException($"The connection string is not valid: {exception.Message}", exception);
+        }
+    }
+
+    private string Database()
+    {
+        try
+        {
+            var database = new NpgsqlConnectionStringBuilder(Secret).Database;
+            return string.IsNullOrWhiteSpace(database) ? "(unset)" : database;
+        }
+        catch (ArgumentException)
+        {
+            // A resolver-backed string is stored blind and may not parse;
+            // diagnostics must still answer without throwing.
+            return "(unset)";
+        }
+    }
+
+    private string? Password()
+    {
+        try
+        {
+            return new NpgsqlConnectionStringBuilder(Secret).Password;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
     }
 }

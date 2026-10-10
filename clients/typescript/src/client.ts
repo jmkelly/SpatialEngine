@@ -55,6 +55,21 @@ export interface IngestResult {
 }
 
 /**
+ * The status of one runtime store connection (never the secret): whether a
+ * connection string is in effect and when it was last set.
+ */
+export interface StoreConnectionStatus {
+  store: string;
+  configured: boolean;
+  updatedAt?: null | string;
+}
+
+/** The answer to reloading the persisted store connections. */
+export interface ReloadConnectionsResult {
+  connections: StoreConnectionStatus[];
+}
+
+/**
  * How much of a staged upload has landed (ADR-0090). `complete` is true only
  * when every declared byte has arrived, so a partial upload is never presented
  * as a loadable one.
@@ -427,6 +442,41 @@ export class SpatialClient {
       body: form,
       headers: authorization(adminToken ?? this.token),
       signal,
+    });
+  }
+
+  // ---- store connections ----
+
+  /** Lists every runtime store-connection status (requires the admin token). */
+  async listStoreConnections(adminToken?: string, signal?: AbortSignal): Promise<StoreConnectionStatus[]> {
+    return this.send<StoreConnectionStatus[]>("GET", "/api/connections", {
+      headers: authorization(adminToken ?? this.token),
+      signal,
+    });
+  }
+
+  /**
+   * Persists the connection string for a store without connecting (requires
+   * the admin token). A bad string fails on the store's next use, not here.
+   */
+  async setStoreConnection(store: string, connectionString: string, adminToken?: string): Promise<StoreConnectionStatus> {
+    return this.send<StoreConnectionStatus>("PUT", `/api/connections/${encodeURIComponent(store.toLowerCase())}`, {
+      body: JSON.stringify({ connectionString }),
+      headers: { "content-type": "application/json", ...authorization(adminToken ?? this.token) },
+    });
+  }
+
+  /** Removes a store's runtime connection override (requires the admin token). */
+  async removeStoreConnection(store: string, adminToken?: string): Promise<boolean> {
+    return this.send<boolean>("DELETE", `/api/connections/${encodeURIComponent(store.toLowerCase())}`, {
+      headers: authorization(adminToken ?? this.token),
+    });
+  }
+
+  /** Re-reads the persisted connections and reports the statuses (requires the admin token). */
+  async reloadStoreConnections(adminToken?: string): Promise<ReloadConnectionsResult> {
+    return this.send<ReloadConnectionsResult>("POST", "/api/connections/reload", {
+      headers: authorization(adminToken ?? this.token),
     });
   }
 

@@ -15,12 +15,12 @@ namespace Spatial.Stores.SqlServer.Data;
 /// </summary>
 internal sealed class SqlServerDataStore : IDisposable
 {
-    private readonly string _connectionString;
+    private readonly SqlServerConnectionConfiguration _configuration;
     private int _disposed;
 
     private SqlServerDataStore(SqlServerConnectionConfiguration configuration)
     {
-        _connectionString = configuration.Secret;
+        _configuration = configuration;
     }
 
     /// <summary>Creates a store over the configured connection string (validates it locally, no connection yet).</summary>
@@ -29,12 +29,14 @@ internal sealed class SqlServerDataStore : IDisposable
 
     /// <summary>
     /// Opens a pooled connection, honouring cancellation (database-command
-    /// cancellation). Connections are pooled by the connection string, so the
-    /// per-operation open costs a pool hit rather than a new session.
+    /// cancellation). Connections open from the configuration's current
+    /// secret and are pooled by the connection string, so the per-operation
+    /// open costs a pool hit rather than a new session — and a runtime
+    /// connection update takes effect on the next open.
     /// </summary>
     public async Task<SqlConnection> OpenConnectionAsync(CancellationToken cancellationToken)
     {
-        var connection = new SqlConnection(_connectionString);
+        var connection = new SqlConnection(_configuration.Secret);
         try
         {
             await connection.OpenAsync(cancellationToken);

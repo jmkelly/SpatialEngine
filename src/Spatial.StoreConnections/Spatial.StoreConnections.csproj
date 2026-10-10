@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The runtime store-connection registry (singleton connection string per
+    store key, persisted to a protected JSON file): the admin surface's
+    backing store for connection updates without a restart. References Core
+    and Contracts only — persistence is System.Text.Json over framework
+    assemblies, no packages.
+  -->
+
+  <PropertyGroup>
+    <AssemblyName>Spatial.StoreConnections</AssemblyName>
+    <RootNamespace>Spatial.StoreConnections</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Spatial.Core\Spatial.Core.csproj" />
+    <ProjectReference Include="..\Spatial.Contracts\Spatial.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spatial.StoreConnections.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -40,17 +40,50 @@ public sealed class SqlServerStore : IDataCatalogue, IFeatureStore, IFeatureAggr
     }
 
     /// <summary>
+    /// The same store over the runtime connection registry: the registry's
+    /// <c>sqlserver</c> entry wins while it exists, otherwise the store runs on
+    /// the <paramref name="options"/> connection string (or the environment),
+    /// so a connection set after construction takes effect without a rebuild.
+    /// </summary>
+    public SqlServerStore(SqlServerOptions options, IStoreConnectionRegistry? connections)
+        : this(options, TimeProvider.System, connections)
+    {
+    }
+
+    /// <summary>
     /// The same store over a clock the caller moves, so what expires by time
     /// (the description cache, ADR-0151) is testable without sleeping.
     /// </summary>
-    internal SqlServerStore(SqlServerOptions options, TimeProvider clock)
+    internal SqlServerStore(SqlServerOptions options, TimeProvider clock, IStoreConnectionRegistry? connections = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(clock);
-        _configuration = string.IsNullOrWhiteSpace(options.ConnectionString)
-            ? SqlServerConnectionConfiguration.FromEnvironment()
-            : SqlServerConnectionConfiguration.FromConnectionString(options.ConnectionString);
+        _configuration = ResolveConfiguration(options, connections);
         _storage = new SqlServerStorage(_configuration, options.CreateIndexes, options.DescriptionCacheTtl, clock);
+    }
+
+    private static SqlServerConnectionConfiguration ResolveConfiguration(
+        SqlServerOptions options, IStoreConnectionRegistry? connections)
+    {
+        if (connections is null)
+        {
+            return string.IsNullOrWhiteSpace(options.ConnectionString)
+                ? SqlServerConnectionConfiguration.FromEnvironment()
+                : SqlServerConnectionConfiguration.FromConnectionString(options.ConnectionString);
+        }
+
+        return SqlServerConnectionConfiguration.FromResolver(() =>
+        {
+            if (connections.TryGetConnectionString("sqlserver", out var live)
+                && !string.IsNullOrWhiteSpace(live))
+            {
+                return live;
+            }
+
+            return string.IsNullOrWhiteSpace(options.ConnectionString)
+                ? Environment.GetEnvironmentVariable(SqlServerOptions.EnvironmentVariable)
+                : options.ConnectionString;
+        });
     }
 
     public async ValueTask DisposeAsync()

@@ -18,7 +18,10 @@ namespace Spatial.Stores.PostGIS;
 /// </summary>
 internal sealed class PostgisStorage : IAsyncDisposable
 {
-    private readonly Lazy<PostgisDataStore> _data;
+    private readonly PostgisConnectionConfiguration _configuration;
+    private readonly object _swapMutex = new();
+    private PostgisDataStore? _data;
+    private string? _openedSecret;
     private readonly PostgisTransactions _transactions;
     private readonly SemaphoreSlim _collationGate = new(1, 1);
     private readonly bool _createIndexes;
@@ -39,7 +42,7 @@ internal sealed class PostgisStorage : IAsyncDisposable
         TimeSpan? descriptionCacheTtl = null,
         TimeProvider? clock = null)
     {
-        _data = new Lazy<PostgisDataStore>(() => PostgisDataStore.Open(configuration));
+        _configuration = configuration;
         _transactions = new PostgisTransactions(this);
         _createIndexes = createIndexes;
         Descriptions = new PostgisDescriptionCache(
@@ -62,8 +65,44 @@ internal sealed class PostgisStorage : IAsyncDisposable
     public PostgisTransactions Transactions => _transactions;
 
     /// <summary>Opens a pooled connection; the caller owns the transaction and the lifecycle.</summary>
-    public Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken) =>
-        _data.Value.OpenConnectionAsync(cancellationToken);
+    public async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken)
+    {
+        var (current, previous) = CurrentDataStore();
+        if (previous is not null)
+        {
+            await previous.DisposeAsync().ConfigureAwait(false);
+        }
+
+        return await current.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The data store for the configuration's current secret, swapping the
+    /// pooled data source when the connection string changed underneath the
+    /// store (a runtime connection update). A swap drops the description
+    /// cache and the cached database collation with it — both are properties
+    /// of the previous database, and answering the new one from them would be
+    /// wrong, not merely stale. In-flight work keeps the previous data
+    /// source's connections and finishes against the previous database.
+    /// </summary>
+    private (PostgisDataStore Current, PostgisDataStore? Previous) CurrentDataStore()
+    {
+        lock (_swapMutex)
+        {
+            var secret = _configuration.Secret;
+            if (_data is not null && string.Equals(_openedSecret, secret, StringComparison.Ordinal))
+            {
+                return (_data, null);
+            }
+
+            var previous = _data;
+            _data = PostgisDataStore.Open(_configuration);
+            _openedSecret = secret;
+            Descriptions.InvalidateAll();
+            _databaseCollation = null;
+            return (_data, previous);
+        }
+    }
 
     /// <summary>
     /// The collation this database compares text under, or <c>null</c> when the
@@ -119,9 +158,17 @@ internal sealed class PostgisStorage : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _transactions.DisposeAsync();
-        if (_data.IsValueCreated)
+        PostgisDataStore? data;
+        lock (_swapMutex)
         {
-            await _data.Value.DisposeAsync();
+            data = _data;
+            _data = null;
+            _openedSecret = null;
+        }
+
+        if (data is not null)
+        {
+            await data.DisposeAsync();
         }
 
         _collationGate.Dispose();

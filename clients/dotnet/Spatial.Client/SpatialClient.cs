@@ -47,6 +47,9 @@ public sealed class SpatialClient
     /// <summary>The map and ingest surface (ADR-0053), split so this type's fan-out stays deliberate (ADR-0040).</summary>
     public SpatialMapClient Maps { get; }
 
+    /// <summary>The runtime store-connection surface, split so this type's fan-out stays deliberate (ADR-0040).</summary>
+    public SpatialConnectionClient Connections { get; }
+
     /// <summary>Creates a client over an existing <see cref="HttpClient"/> whose base address is the host.</summary>
     public SpatialClient(HttpClient http)
     {
@@ -58,6 +61,7 @@ public sealed class SpatialClient
         Data = new SpatialDataClient(_transport);
         Render = new SpatialRenderClient(_transport);
         Maps = new SpatialMapClient(_transport, _session);
+        Connections = new SpatialConnectionClient(_transport, _session);
     }
 
     /// <summary>Creates a client talking to the host at <paramref name="baseAddress"/>.</summary>
@@ -290,4 +294,26 @@ public sealed class SpatialClient
     public Task<SeedResponse> SeedAsync(
         SeedRequest request, string? adminToken = null, CancellationToken cancellationToken = default) =>
         Maps.SeedAsync(request, adminToken, cancellationToken);
+
+    // ---- store connections ----
+
+    /// <summary>Lists every runtime store-connection status (requires the admin token).</summary>
+    public Task<IReadOnlyList<StoreConnectionResponse>> ListStoreConnectionsAsync(
+        string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Connections.ListAsync(adminToken, cancellationToken);
+
+    /// <summary>Persists the connection string for a store without connecting (requires the admin token).</summary>
+    public Task<StoreConnectionResponse> SetStoreConnectionAsync(
+        string store, string connectionString, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Connections.SetAsync(store, connectionString, adminToken, cancellationToken);
+
+    /// <summary>Removes a store's runtime connection override (requires the admin token).</summary>
+    public Task<bool> RemoveStoreConnectionAsync(
+        string store, string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Connections.RemoveAsync(store, adminToken, cancellationToken);
+
+    /// <summary>Re-reads the persisted connections and reports the statuses (requires the admin token).</summary>
+    public Task<ReloadConnectionsResponse> ReloadStoreConnectionsAsync(
+        string? adminToken = null, CancellationToken cancellationToken = default) =>
+        Connections.ReloadAsync(adminToken, cancellationToken);
 }
