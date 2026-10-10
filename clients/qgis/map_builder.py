@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 
-VECTOR_SERVICES = ["FeatureServer", "MapServer", "Tiles", "Wms", "Wfs"]
+VECTOR_SERVICES = ["feature", "map", "tiles", "wms", "wfs"]
 
 
 def next_layer_id(layers: list[dict]) -> int:
@@ -39,7 +39,8 @@ def append_layer(existing: dict | None, name: str, dataset: str, style: str | No
         base["name"] = name
     layers = base.get("layers", [])
     for layer in layers:
-        if layer.get("dataset") == dataset and layer.get("store", store) == store:
+        effective = layer.get("store") or base.get("store")
+        if layer.get("dataset") == dataset and effective == store:
             return base
     layers.append({
         "dataset": dataset,
@@ -47,7 +48,7 @@ def append_layer(existing: dict | None, name: str, dataset: str, style: str | No
         "name": layer_name,
         "style": style,
         "kind": kind,
-        "store": None,
+        "store": store if store != base.get("store") else None,
     })
     base["layers"] = layers
     services = base.get("services", [])

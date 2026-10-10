@@ -11,8 +11,9 @@ Thin QGIS 3.34+ dock client over the neutral REST surface (no Esri projection):
   pre-filled from the QGIS layer URI (blind overwrite, secret never read back).
 - **Styles**: QML subset → MapLibre fragments (`style_convert.py`); complex
   renderers fall back to engine default with a warning.
-- **Services**: appends union `FeatureServer, MapServer, Tiles, Wms, Wfs`
-  (`ImageServer` needs an image layer — out of v1 vector scope).
+- **Services**: appends union `feature, map, tiles, wms, wfs`
+  (the host's wire keys for Feature/Map/Tiles/Wms/Wfs;
+  `image` needs an image layer — out of v1 vector scope).
 - **Picker**: only servable vector layers are listed (`layer_filter.py`).
 
 Pure modules (`engine_client`, `map_builder`, `layer_filter`,
