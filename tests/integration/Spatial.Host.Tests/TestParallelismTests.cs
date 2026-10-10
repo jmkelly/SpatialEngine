@@ -18,13 +18,13 @@ namespace Spatial.Host.Tests;
 /// box running three or four swarm lanes the tail runs into minutes and comes
 /// back as the <c>TaskCanceledException</c> ADR-0155 measures away.
 ///
-/// So the runner configuration is capped below <c>nproc</c> — generated at
-/// build time from the building machine's core count, because a static file
-/// cannot be computed from the box it runs on — and these tests are what stop
-/// it drifting back to the default: a missing file, a file that never reached
-/// the output directory (so the runner quietly used its own default), a cap
-/// wider than this box's ceiling, or a cap the build wrote that the policy
-/// would not accept.
+/// So the runner configuration is capped below <c>nproc</c> — generated for
+/// the machine that runs the tests, because a static file cannot be computed
+/// from the box it runs on — and these tests are what stop it drifting back
+/// to the default: a missing file, a file that never reached the output
+/// directory (so the runner quietly used its own default), a cap wider than
+/// this box's ceiling, or a cap the build wrote that the policy would not
+/// accept.
 /// </remarks>
 public sealed class TestParallelismTests
 {
@@ -38,7 +38,7 @@ public sealed class TestParallelismTests
             File.Exists(ConfigPath),
             $"no {nameof(SuiteParallelism)} configuration at {ConfigPath}: the runner falls back to "
             + $"maxParallelThreads = nproc, which is the shape ADR-0154 measured. Check the "
-            + "None Update item in Spatial.Host.Tests.csproj.");
+            + "GenerateXunitRunnerConfig target in Spatial.Host.Tests.csproj.");
 
         using var document = JsonDocument.Parse(File.ReadAllText(ConfigPath));
         var threads = document.RootElement.GetProperty(SuiteParallelism.ThreadsKey).GetInt32();
@@ -85,10 +85,10 @@ public sealed class TestParallelismTests
     [Fact]
     public void The_generated_cap_is_this_box_s_ceiling()
     {
-        // The build writes xunit.runner.json beside the assembly with this
-        // machine's ceiling (ADR-0196), so the shipped number is never wider
-        // than what IsBounded accepts here: a static file passed on the box
-        // it was measured on and failed on anything smaller.
+        // GenerateXunitRunnerConfig runs before the VSTest target as well as
+        // the build, so the shipped number is the testing machine's own
+        // ceiling (ADR-0196): a static file passed on the box it was measured
+        // on and failed on anything smaller.
         using var document = JsonDocument.Parse(File.ReadAllText(ConfigPath));
         var threads = document.RootElement.GetProperty(SuiteParallelism.ThreadsKey).GetInt32();
 
