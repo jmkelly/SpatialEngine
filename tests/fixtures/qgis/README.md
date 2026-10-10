@@ -1,4 +1,29 @@
-# QGIS WMS interop traces (T-013)
+# QGIS fixtures
+
+Two independent fixtures share this directory (and a QGIS 4.2.2
+install) but nothing else: different maps, layers, stores and
+purposes. Don't mix them.
+
+- `demo-upload/` — **current**: offline demo project for the QGIS
+  plugin upload/link flows (see below).
+- WMS interop traces — earlier T-013 harness: real QGIS WMS traffic
+  replayed verbatim by `QgisReplayTests` (see below).
+
+## demo-upload: QGIS upload/link demo project (current)
+
+Five realistic layers exercising both QGIS plugin flows
+(`clients/qgis/README.md`): 3 GPKG file layers upload as copies, 2
+PostGIS layers link in place with zero bytes moved. Project CRS is
+EPSG:3857; everything builds offline from frozen snapshots in
+`demo-upload/sources/`.
+
+Full rebuild/run/teardown steps live in `demo-upload/README.md` —
+start there. In brief: `python3 demo-upload/scripts/build.py`
+regenerates `demo-upload.gpkg`, `demo-upload/postgis/init.sql` and
+`demo-upload.qgz`; `demo-upload/postgis/docker-compose.yml` seeds the
+PostGIS side (24 lakes + 56 states).
+
+## QGIS WMS interop traces (T-013)
 
 Real QGIS traffic captured against a live host and replayed verbatim by
 `QgisReplayTests` in `tests/integration/Spatial.Host.Tests`. The next QGIS
@@ -25,7 +50,7 @@ fails the replay suite first.
   (`INFO_FORMAT=application/vnd.ogc.gml`, then `text/html`) with WMS 1.3.0
   `I`/`J` pixel addressing.
 
-## Legend: no request to replay
+### Legend: no request to replay
 
 QGIS issues **no** legend request against this server: the capabilities
 advertise no `LegendURL` and the server has no `GetLegendGraphic`
@@ -33,7 +58,7 @@ operation (that gap is T-033). There is deliberately no legend replay;
 when T-033 lands, extend `qgis-4.2.2-wms.json` with the captured
 `GetLegendGraphic` trace and the replay suite covers it.
 
-## Manual smoke step (GUI QGIS, ~5 minutes)
+### Manual smoke step (GUI QGIS, ~5 minutes)
 
 Headless QGIS drives every request above except the layer-tree legend
 thumbnail, so after any OGC change:
@@ -48,7 +73,7 @@ thumbnail, so after any OGC change:
    polygon; confirm each returns its feature.
 5. Confirm the layer-tree legend (blank until T-033 lands).
 
-## Headless QGIS in CI: assessed, not wired (T-013)
+### Headless QGIS in CI: assessed, not wired (T-013)
 
 `qgis_process` cannot do this job: it runs processing algorithms, not WMS
 data-provider traffic (no GetCapabilities/GetMap/GetFeatureInfo path).
