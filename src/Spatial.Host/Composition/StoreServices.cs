@@ -1,11 +1,11 @@
 using Spatial.Contracts;
 using Spatial.Contracts.Providers;
 using Spatial.Host.Api;
+using Spatial.StoreConnections;
 using Spatial.Stores.Demo;
 using Spatial.Stores.Memory;
 using Spatial.Stores.PostGIS;
 using Spatial.Stores.SqlServer;
-using Spatial.StoreConnections;
 
 namespace Spatial.Host;
 
