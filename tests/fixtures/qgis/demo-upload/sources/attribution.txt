@@ -1,0 +1,25 @@
+demo-upload frozen sources (T-t3x.1)
+=====================================
+
+All files are reprojected snapshots in EPSG:4326 (GeoJSON / RFC 7946).
+Frozen 2026-10-11 so the demo build and the .qgz open with no network.
+
+Natural Earth 110m cultural + physical, version 5.1.1 (public domain):
+  https://www.naturalearthdata.com/downloads/110m-cultural-vectors/
+  https://www.naturalearthdata.com/downloads/110m-physical-vectors/
+  - ne_countries.geojson : ne_110m_admin_0_countries.shp (177 features)
+  - ne_rivers.geojson    : ne_110m_rivers_lake_centerlines.shp (13 features)
+  - ne_places.geojson    : ne_110m_populated_places.shp (243 features,
+                           graduated by POP_MAX in the demo project)
+  - ne_lakes.geojson     : ne_110m_lakes.shp (24 features)
+  Terms of use: Natural Earth data is in the public domain; attribution
+  ("Made with Natural Earth") is appreciated but not required.
+
+U.S. Census Bureau cartographic boundary states, 2018, 1:5,000,000 (5m):
+  https://www2.census.gov/geo/tiger/GENZ2018/shp/cb_2018_us_state_5m.zip
+  - us_states.geojson    : cb_2018_us_state_5m.shp (56 features, source
+                           datum NAD83 / EPSG:4269, reprojected to 4326)
+  Public domain as a work of the U.S. federal government.
+
+To refresh: download the archives above, then
+  ogr2ogr -f GeoJSON -t_srs EPSG:4326 -lco RFC7946=YES <name>.geojson <src>.shp
