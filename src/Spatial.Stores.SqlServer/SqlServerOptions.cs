@@ -2,10 +2,11 @@ namespace Spatial.Stores.SqlServer;
 
 /// <summary>
 /// Options for the SQL Server store (ADR-0033): the connection string comes
-/// from host configuration (<c>Spatial:SqlServer:ConnectionString</c>) or the
-/// <c>SPATIAL_SQLSERVER_CONNECTION</c> environment variable — never from a
-/// request body. Empty means unconfigured: every operation throws
-/// <c>store.unavailable</c> naming the setting.
+/// from host configuration (<c>Spatial:SqlServer:ConnectionString</c>), the
+/// <c>SPATIAL_SQLSERVER_CONNECTION</c> environment variable, or the runtime
+/// connection registry an admin sets through <c>/api/connections</c> — never
+/// from a data-route request body. Empty means unconfigured: every operation
+/// throws <c>store.unavailable</c> naming the setting.
 /// </summary>
 public sealed class SqlServerOptions
 {

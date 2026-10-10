@@ -349,6 +349,40 @@ test("maps and ingest hit the admin routes", async (t) => {
   ]);
 });
 
+test("store connections hit the admin routes without ever carrying a secret back", async (t) => {
+  const status = { store: "postgis", configured: true, updatedAt: "2026-10-10T12:00:00Z" };
+  const host = await fakeHost({
+    "/api/connections": () => ({
+      status: 200,
+      body: JSON.stringify([status]),
+      contentType: "application/json",
+    }),
+    "/api/connections/postgis": (req) =>
+      req.method === "DELETE"
+        ? { status: 200, body: JSON.stringify(true), contentType: "application/json" }
+        : { status: 200, body: JSON.stringify(status), contentType: "application/json" },
+    "/api/connections/reload": () => ({
+      status: 200,
+      body: JSON.stringify({ connections: [status] }),
+      contentType: "application/json",
+    }),
+  });
+  t.after(() => host.server.close());
+  const client = new SpatialClient(host.url);
+
+  assert.equal((await client.listStoreConnections("secret")).length, 1);
+  assert.equal((await client.setStoreConnection("postgis", "Host=db", "secret")).configured, true);
+  assert.equal(await client.removeStoreConnection("postgis", "secret"), true);
+  assert.equal((await client.reloadStoreConnections("secret")).connections.length, 1);
+
+  assert.deepEqual(host.requests, [
+    "GET /api/connections",
+    "PUT /api/connections/postgis",
+    "DELETE /api/connections/postgis",
+    "POST /api/connections/reload",
+  ]);
+});
+
 test("a resumable upload is staged in chunks and ingested once", async (t) => {
   // The staging protocol the host serves: an offset to append at, and how many
   // bytes it now holds. The first chunk is refused in transit, so the driver

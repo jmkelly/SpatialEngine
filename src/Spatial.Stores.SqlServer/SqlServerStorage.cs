@@ -17,7 +17,10 @@ namespace Spatial.Stores.SqlServer;
 /// </summary>
 internal sealed class SqlServerStorage : IAsyncDisposable
 {
-    private readonly Lazy<SqlServerDataStore> _data;
+    private readonly SqlServerConnectionConfiguration _configuration;
+    private readonly object _swapMutex = new();
+    private SqlServerDataStore? _data;
+    private string? _openedSecret;
     private readonly SqlServerTransactions _transactions;
     private readonly SemaphoreSlim _collationGate = new(1, 1);
     private readonly bool _createIndexes;
@@ -38,7 +41,7 @@ internal sealed class SqlServerStorage : IAsyncDisposable
         TimeSpan? descriptionCacheTtl = null,
         TimeProvider? clock = null)
     {
-        _data = new Lazy<SqlServerDataStore>(() => SqlServerDataStore.Open(configuration));
+        _configuration = configuration;
         _transactions = new SqlServerTransactions(this);
         _createIndexes = createIndexes;
         Descriptions = new SqlServerDescriptionCache(
@@ -62,7 +65,32 @@ internal sealed class SqlServerStorage : IAsyncDisposable
 
     /// <summary>Opens a pooled connection; the caller owns the transaction and the lifecycle.</summary>
     public Task<SqlConnection> OpenConnectionAsync(CancellationToken cancellationToken) =>
-        _data.Value.OpenConnectionAsync(cancellationToken);
+        CurrentDataStore().OpenConnectionAsync(cancellationToken);
+
+    /// <summary>
+    /// The data store for the configuration's current secret. Connections open
+    /// from the live secret (SqlClient pools by connection string), so a swap
+    /// here only drops what is a property of the previous database — the
+    /// description cache and the cached collation — and in-flight work keeps
+    /// its already-open connections against the previous database.
+    /// </summary>
+    private SqlServerDataStore CurrentDataStore()
+    {
+        lock (_swapMutex)
+        {
+            var secret = _configuration.Secret;
+            if (_data is not null && string.Equals(_openedSecret, secret, StringComparison.Ordinal))
+            {
+                return _data;
+            }
+
+            _data = SqlServerDataStore.Open(_configuration);
+            _openedSecret = secret;
+            Descriptions.InvalidateAll();
+            _databaseCollation = null;
+            return _data;
+        }
+    }
 
     /// <summary>
     /// The collation this database compares text under, or <c>null</c> when it
@@ -119,10 +147,15 @@ internal sealed class SqlServerStorage : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _transactions.DisposeAsync();
-        if (_data.IsValueCreated)
+        SqlServerDataStore? data;
+        lock (_swapMutex)
         {
-            _data.Value.Dispose();
+            data = _data;
+            _data = null;
+            _openedSecret = null;
         }
+
+        data?.Dispose();
 
         _collationGate.Dispose();
     }

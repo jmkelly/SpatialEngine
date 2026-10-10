@@ -2,10 +2,11 @@ namespace Spatial.Stores.PostGIS;
 
 /// <summary>
 /// Options for the PostGIS store (ADR-0033): the connection string comes
-/// from host configuration (<c>Spatial:Postgis:ConnectionString</c>) or the
-/// <c>SPATIAL_POSTGIS_CONNECTION</c> environment variable — never from a
-/// request body. Empty means unconfigured: every operation throws
-/// <c>store.unavailable</c> naming the setting.
+/// from host configuration (<c>Spatial:Postgis:ConnectionString</c>), the
+/// <c>SPATIAL_POSTGIS_CONNECTION</c> environment variable, or the runtime
+/// connection registry an admin sets through <c>/api/connections</c> — never
+/// from a data-route request body. Empty means unconfigured: every operation
+/// throws <c>store.unavailable</c> naming the setting.
 /// </summary>
 public sealed class PostgisOptions
 {

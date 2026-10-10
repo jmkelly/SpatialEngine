@@ -232,6 +232,11 @@ public static class SharedHostPolicy
             HostVerdict.Leave,
             "four different factory configurations (environment, a configuration dictionary, an auth "
             + "token), so the host's settings are per test across the class."),
+        ["StoreConnectionEndpointTests"] = new(
+            HostVerdict.Leave,
+            "every test writes the same postgis key while three tests assert on listings (empty, "
+            + "single), so a shared host would read other tests' entries; the restart test disposes "
+            + "and reboots the host over the same connection file by construction."),
         ["StoreTransactionTests"] = new(
             HostVerdict.Convert,
             "every dataset is public.txn_<guid> already, and the transaction lifecycle is id-keyed, "

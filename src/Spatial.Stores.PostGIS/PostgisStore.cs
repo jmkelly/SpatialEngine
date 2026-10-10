@@ -39,17 +39,50 @@ public sealed class PostgisStore : IDataCatalogue, IFeatureStore, IFeatureAggreg
     }
 
     /// <summary>
+    /// The same store over the runtime connection registry: the registry's
+    /// <c>postgis</c> entry wins while it exists, otherwise the store runs on
+    /// the <paramref name="options"/> connection string (or the environment),
+    /// so a connection set after construction takes effect without a rebuild.
+    /// </summary>
+    public PostgisStore(PostgisOptions options, IStoreConnectionRegistry? connections)
+        : this(options, TimeProvider.System, connections)
+    {
+    }
+
+    /// <summary>
     /// The same store over a clock the caller moves, so what expires by time
     /// (the description cache, ADR-0122) is testable without sleeping.
     /// </summary>
-    internal PostgisStore(PostgisOptions options, TimeProvider clock)
+    internal PostgisStore(PostgisOptions options, TimeProvider clock, IStoreConnectionRegistry? connections = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(clock);
-        _configuration = string.IsNullOrWhiteSpace(options.ConnectionString)
-            ? PostgisConnectionConfiguration.FromEnvironment()
-            : PostgisConnectionConfiguration.FromConnectionString(options.ConnectionString);
+        _configuration = ResolveConfiguration(options, connections);
         _storage = new PostgisStorage(_configuration, options.CreateIndexes, options.DescriptionCacheTtl, clock);
+    }
+
+    private static PostgisConnectionConfiguration ResolveConfiguration(
+        PostgisOptions options, IStoreConnectionRegistry? connections)
+    {
+        if (connections is null)
+        {
+            return string.IsNullOrWhiteSpace(options.ConnectionString)
+                ? PostgisConnectionConfiguration.FromEnvironment()
+                : PostgisConnectionConfiguration.FromConnectionString(options.ConnectionString);
+        }
+
+        return PostgisConnectionConfiguration.FromResolver(() =>
+        {
+            if (connections.TryGetConnectionString("postgis", out var live)
+                && !string.IsNullOrWhiteSpace(live))
+            {
+                return live;
+            }
+
+            return string.IsNullOrWhiteSpace(options.ConnectionString)
+                ? Environment.GetEnvironmentVariable(PostgisOptions.EnvironmentVariable)
+                : options.ConnectionString;
+        });
     }
 
     internal PostgisStore(PostgisConnectionConfiguration configuration)

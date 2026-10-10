@@ -13,6 +13,7 @@
     <Project Path="src/Spatial.Stores.Demo/Spatial.Stores.Demo.csproj" />
     <Project Path="src/Spatial.Stores.Memory/Spatial.Stores.Memory.csproj" />
     <Project Path="src/Spatial.Stores.PostGIS/Spatial.Stores.PostGIS.csproj" />
+    <Project Path="src/Spatial.StoreConnections/Spatial.StoreConnections.csproj" />
     <Project Path="src/Spatial.Stores.SqlServer/Spatial.Stores.SqlServer.csproj" />
     <Project Path="src/Spatial.Maps/Spatial.Maps.csproj" />
     <Project Path="src/Spatial.Stores.ArcGisRest/Spatial.Stores.ArcGisRest.csproj" />
@@ -40,6 +41,7 @@
     <Project Path="tests/unit/Spatial.Stores.Demo.Tests/Spatial.Stores.Demo.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Stores.Memory.Tests/Spatial.Stores.Memory.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Stores.PostGIS.Tests/Spatial.Stores.PostGIS.Tests.csproj" />
+    <Project Path="tests/unit/Spatial.StoreConnections.Tests/Spatial.StoreConnections.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Stores.SqlServer.Tests/Spatial.Stores.SqlServer.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Maps.Tests/Spatial.Maps.Tests.csproj" />
     <Project Path="tests/unit/Spatial.Stores.ArcGisRest.Tests/Spatial.Stores.ArcGisRest.Tests.csproj" />

@@ -5,6 +5,7 @@ using Spatial.Stores.Demo;
 using Spatial.Stores.Memory;
 using Spatial.Stores.PostGIS;
 using Spatial.Stores.SqlServer;
+using Spatial.StoreConnections;
 
 namespace Spatial.Host;
 
@@ -23,11 +24,26 @@ internal static class StoreServices
         // the host API resolve store faces through it, never through
         // the container.
         builder.Services.AddSingleton<IStoreRegistry, KeyedStoreRegistry>();
+        ConfigureConnections(builder);
         ConfigureUploads(builder);
         ConfigureDemo(builder);
         ConfigureMemory(builder);
         ConfigurePostgis(builder);
         ConfigureSqlServer(builder);
+    }
+
+    /// <summary>
+    /// The runtime store-connection registry: the file-backed singleton the
+    /// admin surface writes and the database stores resolve per operation, so
+    /// a connection set after startup takes effect without a rebuild or a
+    /// restart. Registered before the stores that resolve it.
+    /// </summary>
+    private static void ConfigureConnections(WebApplicationBuilder builder)
+    {
+        var options = builder.Configuration.GetSection("Spatial:StoreConnections").Get<StoreConnectionOptions>()
+            ?? new StoreConnectionOptions();
+        builder.Services.AddSingleton(options);
+        builder.Services.AddSingleton<IStoreConnectionRegistry>(new FileStoreConnectionRegistry(options));
     }
 
     /// <summary>
@@ -83,7 +99,8 @@ internal static class StoreServices
         }
 
         builder.Services.AddSingleton(sqlServerOptions);
-        builder.Services.AddSingleton<SqlServerStore>();
+        builder.Services.AddSingleton<SqlServerStore>(services =>
+            new SqlServerStore(sqlServerOptions, services.GetRequiredService<IStoreConnectionRegistry>()));
         builder.Services.AddSingleton<SqlServerAttachmentStore>();
         builder.Services.AddSingleton<SqlServerEditStore>();
         builder.Services.AddSingleton<SqlServerIngestStore>();
@@ -106,7 +123,8 @@ internal static class StoreServices
         }
 
         builder.Services.AddSingleton(postgisOptions);
-        builder.Services.AddSingleton<PostgisStore>();
+        builder.Services.AddSingleton<PostgisStore>(services =>
+            new PostgisStore(postgisOptions, services.GetRequiredService<IStoreConnectionRegistry>()));
         builder.Services.AddSingleton<PostgisAttachmentStore>();
         builder.Services.AddSingleton<PostgisEditStore>();
         builder.Services.AddSingleton<PostgisIngestStore>();
