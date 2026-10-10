@@ -80,7 +80,7 @@ internal static class AppComposition
     // leave this resource failed while the host and workbench run fine.
     private static void ConfigureParitySeed(IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> host)
     {
-        builder.AddExecutable("parity-seed", "node", "../../tools/seed", "seed.mjs", "--only=public.us_states,Census")
+        builder.AddExecutable("parity-seed", "node", "../../tools/seed", "seed.mjs", "--only=public.us_states,public.us_counties,Census")
             .WithEnvironment("SPATIAL_SEED_HOST", host.GetEndpoint("http"))
             .WaitFor(host);
     }

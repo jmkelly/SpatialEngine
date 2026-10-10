@@ -262,7 +262,7 @@ test("parseMissingService reads the service name from a not-found envelope reaso
 test("seedHintFor names the exact seed selection that publishes the missing service", () => {
   const census = seedHintFor("Census", "MapServer");
   assert.ok(census !== null && census.includes("./eng/seed.sh"), "Census hint names the seed script");
-  assert.ok(census!.includes("public.us_states,Census"), "Census hint selects its dataset and map");
+  assert.ok(census!.includes("public.us_states,public.us_counties,Census"), "Census hint selects its datasets and map");
 
   const countries = seedHintFor("WorldCountries", "FeatureServer");
   assert.ok(countries !== null && countries.includes("public.world_countries,WorldCountries"));

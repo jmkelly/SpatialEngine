@@ -20,7 +20,7 @@ import { sources, services } from "./manifest.mjs";
 
 // Defaults for a manifest layer's compact draw recipe, merged before it is
 // lowered to the persisted MapLibre fragment (ADR-0047).
-const styleDefaults = { color: "#4fc3f7", opacity: 1, lineWidth: 2, radius: 5, visible: true };
+const styleDefaults = { color: "#4fc3f7", opacity: 1, lineWidth: 2, radius: 5, visible: true, outlineColor: null, outlineOpacity: null };
 
 const options = parseArgs(process.argv.slice(2));
 const host = (options.host ?? process.env.SPATIAL_SEED_HOST ?? "http://127.0.0.1:5201").replace(/\/$/, "");
@@ -258,18 +258,24 @@ async function getMap(name) {
  * MapLibre style fragment (ADR-0047): a JSON array of style-layer objects
  * carrying only type/layout/paint (the host injects id/source-layer). This
  * mirrors the workbench composer's `persistedStyle` so seeded and
- * composer-authored services draw identically.
+ * composer-authored services draw identically, plus the host-side outline
+ * extension the MapLibre-typed composer specs cannot express:
+ * `fill-outline-width` (from `lineWidth`) and the `outlineColor` /
+ * `outlineOpacity` stroke override, which the Skia renderer and the
+ * drawingInfo projection honor.
  */
 function persistedStyle(layer) {
   const style = { ...styleDefaults, ...layer.style };
   const visibility = style.visible === false ? "none" : "visible";
+  const stroke = style.outlineColor ?? style.color;
+  const strokeOpacity = style.outlineOpacity ?? style.opacity;
   const specs = [];
 
   if (layer.geometry === "polygon" || layer.geometry === "mixed") {
     specs.push({
       type: "fill",
       layout: { visibility },
-      paint: { "fill-color": style.color, "fill-opacity": style.opacity, "fill-outline-color": style.color },
+      paint: { "fill-color": style.color, "fill-opacity": style.opacity, "fill-outline-color": stroke, "fill-outline-width": style.lineWidth },
     });
   }
 
@@ -277,7 +283,7 @@ function persistedStyle(layer) {
     specs.push({
       type: "line",
       layout: { visibility },
-      paint: { "line-color": style.color, "line-width": style.lineWidth, "line-opacity": style.opacity },
+      paint: { "line-color": stroke, "line-width": style.lineWidth, "line-opacity": strokeOpacity },
     });
   }
 

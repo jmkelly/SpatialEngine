@@ -13,8 +13,11 @@
 // MapServer (ADR-0048); one exposing `feature` is a queryable/editable
 // FeatureServer. Each layer's `style` is a compact draw recipe
 // ({ color, opacity, lineWidth, radius, visible }) and `geometry` is its
-// family; `seed.mjs` lowers them to the persisted MapLibre style fragment
-// (ADR-0047) that the host stores and the MapServer projects to drawingInfo.
+// family; an optional `outlineColor`/`outlineOpacity` separates the stroke
+// from the fill (hollow linework: transparent fill, opaque dark outline),
+// defaulting to the fill color/opacity. `seed.mjs` lowers them to the
+// persisted MapLibre style fragment (ADR-0047) that the host stores and the
+// MapServer projects to drawingInfo.
 
 const naturalEarth = (file) =>
   `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/${file}`;
@@ -55,11 +58,19 @@ export const sources = [
   },
   {
     id: "public.us_states",
-    url: naturalEarth("ne_50m_admin_1_states_provinces.geojson"),
+    url: "https://eric.clst.org/assets/wiki/uploads/Stuff/gz_2010_us_040_00_500k.json",
     format: "geojson",
     srid: 4326,
     identity: "auto",
-    note: "Natural Earth 1:50m admin-1 states and provinces",
+    note: "US states (Census 2010 cartographic 500k): 52 state-level polygons with FIPS ids, so the Parity-page Census map shows the United States only",
+  },
+  {
+    id: "public.us_counties",
+    url: "https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json",
+    format: "geojson",
+    srid: 4326,
+    identity: "auto",
+    note: "US counties (Census TIGER via the plotly datasets mirror) for the Parity-page Census map",
   },
   {
     id: "public.earthquakes",
@@ -82,6 +93,11 @@ export const sources = [
 
 const palette = {
   country: { color: "#3d7ea6", opacity: 0.35, lineWidth: 1 },
+  // Hollow dark linework mirroring the Esri Census simple renderers: the
+  // fill color itself is transparent (the fill-opacity stays 1 so the
+  // outline keeps full alpha — the renderer scales the stroke by the fill
+  // opacity) while the stroke carries the dark color at full opacity.
+  hollow: { color: "#00000000", opacity: 1, lineWidth: 1, outlineColor: "#000000", outlineOpacity: 1 },
   state: { color: "#8d6e63", opacity: 0.25, lineWidth: 1 },
   lake: { color: "#4fc3f7", opacity: 0.7, lineWidth: 1 },
   river: { color: "#1e88e5", opacity: 0.9, lineWidth: 1.5 },
@@ -130,9 +146,12 @@ export const services = [
   {
     name: "Census",
     services: ["map", "feature"],
-    description: "Census-2000-shaped states for Parity-page comparison with the Esri Census MapServer states layer (same US bbox).",
-    copyright: "Natural Earth",
-    layers: [{ dataset: "public.us_states", name: "States", geometry: "polygon", style: palette.state }],
+    description: "Census-2000-shaped states and counties for Parity-page comparison with the Esri Census MapServer layers (same US bbox). Both layers draw hollow with dark outlines, mirroring the Esri simple renderers.",
+    copyright: "U.S. Census Bureau",
+    layers: [
+      { dataset: "public.us_states", name: "States", geometry: "polygon", style: { ...palette.hollow, lineWidth: 2 } },
+      { dataset: "public.us_counties", name: "Counties", geometry: "polygon", style: { ...palette.hollow, lineWidth: 1 } },
+    ],
   },
   {
     name: "WorldReference",

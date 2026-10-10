@@ -107,7 +107,9 @@ internal static class SeedStyle
             style?.LineWidth ?? 2,
             style?.Radius ?? 5,
             style?.Visible == false ? "none" : "visible",
-            RequireGeometry(layer));
+            RequireGeometry(layer),
+            string.IsNullOrWhiteSpace(style?.OutlineColor) ? null : style!.OutlineColor,
+            style?.OutlineOpacity ?? style?.Opacity ?? 1);
         var specs = new JsonArray();
         AddFillSpec(specs, recipe);
         AddLineSpec(specs, recipe);
@@ -116,7 +118,10 @@ internal static class SeedStyle
     }
 
     /// <summary>The layer's draw values with the style defaults applied.</summary>
-    private sealed record LayerRecipe(string Color, double Opacity, double LineWidth, double Radius, string Visibility, string Geometry);
+    private sealed record LayerRecipe(string Color, double Opacity, double LineWidth, double Radius, string Visibility, string Geometry, string? OutlineColor, double OutlineOpacity);
+
+    /// <summary>The stroke color: the explicit outline when authored, else the fill color.</summary>
+    private static string Stroke(LayerRecipe recipe) => recipe.OutlineColor ?? recipe.Color;
 
     /// <summary>The layer's geometry as the lowering reads it: trimmed, lowered, and refused by name when unknown.</summary>
     private static string RequireGeometry(SeedMapLayer layer)
@@ -145,7 +150,8 @@ internal static class SeedStyle
             {
                 ["fill-color"] = recipe.Color,
                 ["fill-opacity"] = recipe.Opacity,
-                ["fill-outline-color"] = recipe.Color,
+                ["fill-outline-color"] = Stroke(recipe),
+                ["fill-outline-width"] = recipe.LineWidth,
             },
         });
     }
@@ -163,9 +169,9 @@ internal static class SeedStyle
             ["layout"] = new JsonObject { ["visibility"] = recipe.Visibility },
             ["paint"] = new JsonObject
             {
-                ["line-color"] = recipe.Color,
+                ["line-color"] = Stroke(recipe),
                 ["line-width"] = recipe.LineWidth,
-                ["line-opacity"] = recipe.Opacity,
+                ["line-opacity"] = recipe.OutlineOpacity,
             },
         });
     }

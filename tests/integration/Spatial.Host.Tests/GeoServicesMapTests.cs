@@ -445,6 +445,77 @@ public sealed class GeoServicesMapTests : IDisposable
     }
 
     [Fact]
+    public async Task Export_without_transparent_defaults_to_an_opaque_background()
+    {
+        // The reference (spec §export, `transparent`: "The default is
+        // false"): an export that names no transparency renders onto the
+        // map background, so the workbench <img> matches the Esri panel
+        // instead of showing a transparent canvas as black.
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/export?f=image&bbox=" + Uri.EscapeDataString("-20,20,40,70") +
+            "&bboxSR=4326&imageSR=4326&size=200,150&format=png");
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);
+        using var bitmap = SkiaSharp.SKBitmap.Decode(bytes);
+        Assert.NotNull(bitmap);
+        Assert.True(AllOpaque(bitmap),
+            "The default export decoded with transparent pixels: `transparent` must default to false.");
+    }
+
+    [Fact]
+    public async Task Export_with_transparent_true_keeps_a_transparent_background()
+    {
+        var client = await MapServiceAsync();
+
+        var response = await client.GetAsync(
+            $"{Root}/world/MapServer/export?f=image&bbox=" + Uri.EscapeDataString("-20,20,40,70") +
+            "&bboxSR=4326&imageSR=4326&size=200,150&format=png&transparent=true");
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var bitmap = SkiaSharp.SKBitmap.Decode(bytes);
+        Assert.NotNull(bitmap);
+        Assert.True(HasTransparentPixel(bitmap),
+            "transparent=true decoded fully opaque: the explicit transparency was lost.");
+    }
+
+    private static bool AllOpaque(SkiaSharp.SKBitmap bitmap)
+    {
+        for (var y = 0; y < bitmap.Height; y++)
+        {
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                if (bitmap.GetPixel(x, y).Alpha != 255)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static bool HasTransparentPixel(SkiaSharp.SKBitmap bitmap)
+    {
+        for (var y = 0; y < bitmap.Height; y++)
+        {
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                if (bitmap.GetPixel(x, y).Alpha != 255)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    [Fact]
     public async Task Export_streams_an_image_for_f_image()
     {
         var client = await MapServiceAsync();

@@ -445,7 +445,7 @@ export function seedHintFor(service: string, server: string): string | null {
     );
   }
   const selections: Record<string, string> = {
-    Census: "public.us_states,Census",
+    Census: "public.us_states,public.us_counties,Census",
     WorldCountries: "public.world_countries,WorldCountries",
     WorldReference: "public.world_countries,public.world_lakes,public.world_rivers,public.world_places,WorldReference",
   };

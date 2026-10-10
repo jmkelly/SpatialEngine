@@ -117,6 +117,34 @@ internal static class MapRenderParameters
     public static Envelope ParseBbox(string? value) =>
         Envelope(EsriValueParser.ParseDoubles(value ?? throw GeoServicesErrors.Invalid("The 'bbox' parameter is required."), "bbox"));
 
+    /// <summary>
+    /// Resizes an export extent to the image aspect (spec §export: "the
+    /// extent should be resized to prevent map images from appearing
+    /// stretched"). The shorter side grows, centered on the requested
+    /// bounds, so the answer covers the whole bbox at a uniform scale; a
+    /// matching frame returns unchanged. Render framing, not a spatial
+    /// algorithm, so it lives beside the bbox/size grammar rather than in
+    /// <c>Spatial.Core</c>.
+    /// </summary>
+    public static Envelope FitExtent(Envelope bounds, int width, int height)
+    {
+        var aspect = (double)width / height;
+        if (bounds.Width <= 0 || bounds.Height <= 0
+            || Math.Abs(bounds.Width / bounds.Height - aspect) <= 1e-9 * aspect)
+        {
+            return bounds;
+        }
+
+        if (bounds.Width / bounds.Height > aspect)
+        {
+            var half = bounds.Width / aspect / 2;
+            return new Envelope(bounds.MinX, bounds.CenterY - half, bounds.MaxX, bounds.CenterY + half);
+        }
+
+        var side = bounds.Height * aspect / 2;
+        return new Envelope(bounds.CenterX - side, bounds.MinY, bounds.CenterX + side, bounds.MaxY);
+    }
+
     /// <summary>Parses the <c>size</c> parameter (<c>width,height</c>).</summary>
     public static (int Width, int Height) ParseSize(string? value)
     {

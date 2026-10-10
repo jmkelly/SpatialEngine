@@ -25,6 +25,8 @@ public sealed class SeedStyleTests
         Assert.Equal(["fill", "line"], specs.Select(spec => spec!["type"]!.GetValue<string>()));
         Assert.Equal("#ff0000", specs[0]!["paint"]!["fill-color"]!.GetValue<string>());
         Assert.Equal(0.5, specs[0]!["paint"]!["fill-opacity"]!.GetValue<double>());
+        Assert.Equal("#ff0000", specs[0]!["paint"]!["fill-outline-color"]!.GetValue<string>());
+        Assert.Equal(3.0, specs[0]!["paint"]!["fill-outline-width"]!.GetValue<double>());
         Assert.Equal("#ff0000", specs[1]!["paint"]!["line-color"]!.GetValue<string>());
         Assert.Equal(3.0, specs[1]!["paint"]!["line-width"]!.GetValue<double>());
     }
@@ -55,6 +57,32 @@ public sealed class SeedStyleTests
         var spec = Assert.Single(specs);
         Assert.Equal("line", spec!["type"]!.GetValue<string>());
         Assert.Equal("none", spec["layout"]!["visibility"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void An_outline_color_separates_the_stroke_from_the_fill()
+    {
+        // Hollow linework (the Esri Census states/counties look): a
+        // transparent fill color with an explicit opaque dark outline. The
+        // fill opacity stays 1 — the renderer scales the stroke by it.
+        var specs = Specs(SeedStyle.Lower(Layer("polygon", new SeedLayerStyle("#00000000", 1, 2, 7, true, "#000000", 1))));
+
+        Assert.Equal("#00000000", specs[0]!["paint"]!["fill-color"]!.GetValue<string>());
+        Assert.Equal(1.0, specs[0]!["paint"]!["fill-opacity"]!.GetValue<double>());
+        Assert.Equal("#000000", specs[0]!["paint"]!["fill-outline-color"]!.GetValue<string>());
+        Assert.Equal(2.0, specs[0]!["paint"]!["fill-outline-width"]!.GetValue<double>());
+        Assert.Equal("#000000", specs[1]!["paint"]!["line-color"]!.GetValue<string>());
+        Assert.Equal(2.0, specs[1]!["paint"]!["line-width"]!.GetValue<double>());
+        Assert.Equal(1.0, specs[1]!["paint"]!["line-opacity"]!.GetValue<double>());
+    }
+
+    [Fact]
+    public void Without_an_outline_color_the_stroke_follows_the_fill()
+    {
+        var specs = Specs(SeedStyle.Lower(Layer("polygon", new SeedLayerStyle("#ff0000", 0.5, 3, 7, true))));
+
+        Assert.Equal("#ff0000", specs[0]!["paint"]!["fill-outline-color"]!.GetValue<string>());
+        Assert.Equal("#ff0000", specs[1]!["paint"]!["line-color"]!.GetValue<string>());
     }
 
     [Fact]

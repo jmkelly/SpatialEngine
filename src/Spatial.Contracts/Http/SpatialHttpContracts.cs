@@ -109,7 +109,9 @@ public sealed record SeedLayerStyle(
     double? Opacity = null,
     double? LineWidth = null,
     double? Radius = null,
-    bool? Visible = null);
+    bool? Visible = null,
+    string? OutlineColor = null,
+    double? OutlineOpacity = null);
 
 public sealed record SeedMapLayer(
     string Dataset,

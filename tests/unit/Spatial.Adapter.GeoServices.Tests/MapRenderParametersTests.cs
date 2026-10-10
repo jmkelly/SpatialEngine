@@ -96,6 +96,44 @@ public sealed class MapRenderParametersTests
     }
 
     [Fact]
+    public void FitExtent_expands_the_shorter_side_to_the_image_aspect()
+    {
+        // The parity frame (spec §export: "the extent should be resized to
+        // prevent map images from appearing stretched"): a 59x25 degree
+        // bbox at 800x600 grows vertically, centered, instead of stretching.
+        var fitted = MapRenderParameters.FitExtent(new Envelope(-125, 25, -66, 50), 800, 600);
+
+        Assert.Equal(-125, fitted.MinX);
+        Assert.Equal(-66, fitted.MaxX);
+        var height = 59.0 * 600 / 800;
+        Assert.Equal(37.5 - height / 2, fitted.MinY, 9);
+        Assert.Equal(37.5 + height / 2, fitted.MaxY, 9);
+    }
+
+    [Fact]
+    public void FitExtent_expands_horizontally_for_tall_frames()
+    {
+        var fitted = MapRenderParameters.FitExtent(new Envelope(0, 0, 10, 40), 200, 400);
+
+        Assert.Equal(0, fitted.MinY);
+        Assert.Equal(40, fitted.MaxY);
+        Assert.Equal(5 - 10, fitted.MinX, 9);
+        Assert.Equal(5 + 10, fitted.MaxX, 9);
+    }
+
+    [Fact]
+    public void FitExtent_keeps_a_matching_frame_unchanged()
+    {
+        var bounds = new Envelope(-20, 20, 40, 70);
+        var fitted = MapRenderParameters.FitExtent(bounds, 600, 500);
+
+        Assert.Equal(bounds.MinX, fitted.MinX);
+        Assert.Equal(bounds.MinY, fitted.MinY);
+        Assert.Equal(bounds.MaxX, fitted.MaxX);
+        Assert.Equal(bounds.MaxY, fitted.MaxY);
+    }
+
+    [Fact]
     public void ParseSize_reads_positive_dimensions()
     {
         Assert.Equal((10, 20), MapRenderParameters.ParseSize("10,20"));

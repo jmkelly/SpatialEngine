@@ -52,7 +52,7 @@ internal static partial class MapExportEndpoints
             {
                 var request = new MapRenderRequest(
                     plan.Viewport, plan.Style, plan.Sources, null, plan.Format, 90, null,
-                    parameters.GetBool("transparent", true), 1.0);
+                    parameters.GetBool("transparent", false), 1.0);
                 var image = await renderer.RenderAsync(request, cancellationToken);
                 if (logger.IsEnabled(LogLevel.Information))
                 {

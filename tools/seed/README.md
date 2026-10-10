@@ -46,7 +46,8 @@ source or a service.
 | `public.world_places` | Natural Earth 1:110m | points |
 | `public.world_rivers` | Natural Earth 1:110m | lines |
 | `public.world_lakes` | Natural Earth 1:110m | polygons |
-| `public.us_states` | Natural Earth 1:50m | ~1.4k admin-1 polygons |
+| `public.us_states` | Census 2010 cartographic 500k via the clst mirror | 52 US state-level polygons with FIPS ids |
+| `public.us_counties` | Census TIGER counties via the plotly datasets mirror | 3,221 county polygons with FIPS ids |
 | `public.earthquakes` | USGS feed | magnitude 2.5+, past 7 days |
 | `public.world_places_mercator` | Natural Earth 1:110m | **reprojected 4326 → 3857 on ingest** |
 
@@ -57,13 +58,15 @@ source or a service.
 - Map services (MapServer, ADR-0048): `WorldReference`, `WorldAtlas`,
   `SeismicMap` — each layer's persisted style (ADR-0047) is lowered to
   `drawingInfo`.
-- `Census` (MapServer + FeatureServer): the `public.us_states` states as a
-  Census-2000-shaped `States` layer, so the workbench Parity page's Map tab
-  compares like for like (Esri `Census` vs localhost `Census` over the same
-  US bbox) instead of a world reference map against US census data. The
-  Aspire DevHost re-seeds just this map on every boot (`parity-seed` step),
-  because restarts wipe the `memory` store; anything beyond it is an
-  explicit `./eng/seed.sh`.
+- `Census` (MapServer + FeatureServer): the `public.us_states` states and
+  `public.us_counties` counties as Census-2000-shaped layers, so the
+  workbench Parity page's Map tab compares like for like (Esri `Census` vs
+  localhost `Census` over the same US bbox) instead of a world reference map
+  against US census data. Both layers draw hollow with dark outlines,
+  mirroring the Esri simple renderers; the states layer keeps layer id 0 so
+  the FeatureServer shape is unchanged. The Aspire DevHost re-seeds just
+  this map on every boot (`parity-seed` step), because restarts wipe the
+  `memory` store; anything beyond it is an explicit `./eng/seed.sh`.
 
 ## Conformance host and the qgis map
 

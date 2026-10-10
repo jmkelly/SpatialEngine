@@ -31,8 +31,12 @@ internal static class MapExportPlanner
         var bboxCrs = EsriValueParser.ParseSpatialReference(parameters.Get("bboxSR"))
             ?? await MapLayerCrs.ResolveAsync(stores, layers.Resolved, layers.Selected, cancellationToken);
         var imageCrs = EsriValueParser.ParseSpatialReference(parameters.Get("imageSR")) ?? bboxCrs;
-        var viewport = new RasterViewport(
+        var framed = MapRenderParameters.FitExtent(
             MapRenderEngine.Project(bbox, bboxCrs, imageCrs ?? bboxCrs, transforms, cancellationToken),
+            width,
+            height);
+        var viewport = new RasterViewport(
+            framed,
             width,
             height,
             (imageCrs ?? bboxCrs)?.ToString() ?? "EPSG:4326");
