@@ -17,7 +17,12 @@ class SpatialEnginePlugin:
 
         self.dock = QDockWidget("Spatial Engine", self.iface.mainWindow())
         self.dock.setWidget(QLabel("Configure host + token, pick a layer, Upload."))
-        self.iface.addDockWidget(Qt.LeftDockWidgetArea, self.dock)
+        # Qt5 (QGIS 3) exposes Qt.LeftDockWidgetArea; Qt6 (QGIS 4) moved it to
+        # Qt.DockWidgetArea.LeftDockWidgetArea and rejects raw ints.
+        area = getattr(Qt, "LeftDockWidgetArea", None)
+        if area is None:
+            area = Qt.DockWidgetArea.LeftDockWidgetArea
+        self.iface.addDockWidget(area, self.dock)
         self.logic = SpatialEngineDock(EngineClient("http://localhost:5000"))
 
     def unload(self):
