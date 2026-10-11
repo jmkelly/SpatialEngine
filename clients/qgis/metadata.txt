@@ -1,7 +1,7 @@
 [general]
 name=Spatial Engine Uploader
 description=Upload layers or link PostGIS/SqlServer tables to Spatial Engine, with style upload.
-version=0.1.0
+version=0.2.0
 qgisMinimumVersion=3.34
 author=Spatial Engine
 email=admin@example.com

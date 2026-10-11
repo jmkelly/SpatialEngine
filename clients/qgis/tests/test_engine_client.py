@@ -105,6 +105,62 @@ class EngineClientTests(unittest.TestCase):
         self.assertEqual(len(posts), 1)
         self.assertIn("/api/ingest?", posts[0][1])
 
+    def test_list_catalogue_unwraps_datasets_envelope(self):
+        summaries = [{"id": "public.a", "schema": "public", "table": "a",
+                      "geometryColumn": "geom", "srid": 4326,
+                      "estimatedRowCount": 10}]
+
+        def transport(*a):
+            return _resp(200, {"datasets": summaries})
+
+        got = EngineClient("http://h", "t", transport).list_catalogue("postgis")
+        self.assertEqual(got, summaries)
+
+    def test_list_catalogue_accepts_bare_list(self):
+        summaries = [{"id": "public.a"}]
+
+        def transport(*a):
+            return 200, json.dumps(summaries).encode()
+
+        got = EngineClient("http://h", "t", transport).list_catalogue("postgis")
+        self.assertEqual(got, summaries)
+
+    def test_ingest_resumable_reports_progress_single_shot(self):
+        seen = []
+
+        def transport(method, url, body, headers, timeout):
+            return _resp(200, {"dataset": "d", "features": 1, "srid": 4326})
+
+        data = b'{"type":"FeatureCollection","features":[]}'
+        EngineClient("http://h", "t", transport).ingest_resumable(
+            data, "f.geojson", "d", 4326,
+            on_progress=lambda sent, total: seen.append((sent, total)))
+        self.assertEqual(seen, [(len(data), len(data))])
+
+    def test_ingest_resumable_reports_progress_per_chunk(self):
+        seen = []
+
+        def transport(method, url, body, headers, timeout):
+            if method == "POST" and "/api/uploads?" in url:
+                return _resp(200, {"uploadId": "u", "received": 0, "complete": False})
+            if method == "GET":
+                return _resp(200, {"uploadId": "u", "received": 0, "complete": False})
+            if method == "PUT":
+                received = int(url.split("offset=")[1].split("&")[0]) + len(body)
+                return _resp(200, {"uploadId": "u", "received": received, "complete": False})
+            if method == "POST":
+                return _resp(200, {"dataset": "d", "features": 1, "srid": 4326})
+            self.fail(f"unexpected {method} {url}")
+
+        big = b"y" * (11 * 1024 * 1024)
+        EngineClient("http://h", "t", transport).ingest_resumable(
+            big, "f.geojson", "d", 4326,
+            on_progress=lambda sent, total: seen.append((sent, total)))
+        self.assertTrue(len(seen) >= 2)
+        self.assertEqual(seen[-1], (len(big), len(big)))
+        self.assertTrue(all(a <= b for a, b in zip(
+            [s for s, _ in seen], [s for s, _ in seen][1:])))
+
     def test_set_connection_puts_secret_in_body_not_url(self):
         seen = {}
 

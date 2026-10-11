@@ -114,7 +114,12 @@ class EngineClient:
         status, raw = self._call("GET", f"/api/catalogue?store={parse.quote(store)}")
         if status < 200 or status >= 300:
             _raise_for_http(status, raw)
-        return json.loads(raw.decode())
+        payload = json.loads(raw.decode())
+        # The host wraps summaries as {"datasets": [...]}; tolerate a bare
+        # list so older/direct catalogue faces keep working.
+        if isinstance(payload, dict):
+            return payload.get("datasets", [])
+        return payload
 
     def set_connection(self, store: str, connection_string: str) -> dict:
         return self._json("PUT", f"/api/connections/{parse.quote(store.lower())}",
@@ -203,24 +208,38 @@ class EngineClient:
                          file_format: str = "geojson", store: str = "memory",
                          publish: str | None = None, source_srid: int | None = None,
                          chunk_size: int = CHUNK_SIZE,
-                         is_cancelled: Callable[[], bool] | None = None) -> dict:
-        """Upload in chunks when large, else single-shot; cleans staging on cancel."""
+                         is_cancelled: Callable[[], bool] | None = None,
+                         on_progress: Callable[[int, int], None] | None = None) -> dict:
+        """Upload in chunks when large, else single-shot; cleans staging on cancel.
+
+        ``on_progress`` is called with ``(sent_bytes, total_bytes)`` after
+        each chunk (once with the full size for single-shot) so a dock
+        progress bar can stay determinate.
+        """
+        def report(sent: int) -> None:
+            if on_progress is not None:
+                on_progress(sent, len(data))
+
         use_staged = len(data) >= RESUMABLE_THRESHOLD_BYTES
         if not use_staged:
-            return self.ingest_bytes(data, file_name, dataset, srid, file_format,
-                                     store, publish, source_srid)
+            result = self.ingest_bytes(data, file_name, dataset, srid, file_format,
+                                       store, publish, source_srid)
+            report(len(data))
+            return result
         digest = hashlib.sha256(data).hexdigest()
         upload_id: str | None = None
         try:
             started = self.start_upload(total_bytes=len(data), sha256=digest)
             upload_id = started.upload_id
             offset = self.get_upload(upload_id).received
+            report(offset)
             while offset < len(data):
                 if is_cancelled and is_cancelled():
                     raise Cancelled("upload cancelled")
                 chunk = data[offset:offset + chunk_size]
                 state = self.append_upload(upload_id, chunk, offset, len(data), digest)
                 offset = state.received
+                report(offset)
             return self.ingest_upload(upload_id, dataset, srid, file_format,
                                       store, publish, source_srid)
         except Exception:

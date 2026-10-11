@@ -39,8 +39,8 @@ class SpatialEngineDock:
     def __init__(self, client: EngineClient):
         self.client = client
 
-    def visible_layers(self):
-        """Return only supported vector layers from the current QGIS project."""
+    def _all_layer_infos(self) -> list:
+        """Describe every project layer (visible or not) as filter inputs."""
         from qgis.core import QgsMapLayer, QgsProject
 
         infos = []
@@ -56,9 +56,19 @@ class SpatialEngineDock:
                 "crsValid": layer.crs().isValid(),
                 "uri": uri,
             })
+        return infos
+
+    def visible_layers(self):
+        """Return only supported vector layers from the current QGIS project."""
+        infos = self._all_layer_infos()
         visible, _ = filter_layers(infos)
         by_id = {i["id"]: i for i in infos}
         return [by_id[v["id"]] for v in visible]
+
+    def describe_hidden(self) -> list:
+        """Return ``[(name, reason)]`` for layers the picker hides (Q15)."""
+        _, hidden = filter_layers(self._all_layer_infos())
+        return [(info["name"], reason) for info, reason in hidden]
 
     def export_active_layer_geojson(self, layer) -> tuple[bytes, int]:
         """Export a vector layer to GeoJSON bytes plus its EPSG SRID."""
@@ -99,21 +109,59 @@ class SpatialEngineDock:
             return None, "could not read layer symbology; falling back to engine default style"
         return qml_to_fragments(doc.toString(), geometry)
 
+    def prepare_upload(self, layer) -> dict:
+        """Collect everything the upload flow needs while on the GUI thread.
+
+        Export, style conversion and geometry naming all touch QGIS objects,
+        so the dock calls this before handing the returned plain-data dict to
+        a worker thread running :meth:`run_upload_flow`.
+        """
+        data, srid = self.export_active_layer_geojson(layer)
+        geometry = _geometry_name(layer.geometryType())
+        style, warning = self.convert_layer_style(layer, geometry)
+        return {"data": data, "srid": srid, "style": style,
+                "style_warning": warning, "geometry": geometry,
+                "layer_name": layer.name()}
+
+    def run_upload_flow(self, prep: dict, *, map_name: str, dataset: str,
+                        store: str = "memory",
+                        source_srid: int | None = None,
+                        is_cancelled=None, on_progress=None) -> dict:
+        """Worker-safe upload flow: ingest bytes, append to map, save.
+
+        Takes only the plain-data dict from :meth:`prepare_upload` — no QGIS
+        objects — so it may run off the GUI thread.
+        """
+        result = self.client.ingest_resumable(
+            prep["data"], f"{dataset}.geojson", dataset, prep["srid"],
+            store=store, publish=None,
+            source_srid=(source_srid if source_srid not in (None, prep["srid"])
+                         else None),
+            is_cancelled=is_cancelled, on_progress=on_progress)
+        existing = self.client.get_map(map_name)
+        merged = append_layer(existing, map_name, result["dataset"],
+                              prep["style"], store,
+                              layer_name=prep["layer_name"])
+        return self.client.put_map(merged)
+
+    def run_link_flow(self, *, map_name: str, dataset: str, style: str | None,
+                      store: str, layer_name: str | None = None) -> dict:
+        """Worker-safe link flow: catalogue-validated map append, no bytes."""
+        existing = self.client.get_map(map_name)
+        merged = append_layer(existing, map_name, dataset, style, store,
+                              layer_name)
+        return self.client.put_map(merged)
+
+    def load_catalogue(self, store: str) -> list:
+        """Return dataset summaries for *store* (worker-safe, plain data)."""
+        return self.client.list_catalogue(store)
+
     def upload_layer(self, layer, map_name: str, dataset: str, store: str = "memory",
                      source_srid: int | None = None, is_cancelled=None) -> dict:
         """Upload-copy path: export, convert style, ingest, append to map."""
-        data, srid = self.export_active_layer_geojson(layer)
-        geometry = _geometry_name(layer.geometryType())
-        style, _ = self.convert_layer_style(layer, geometry)
-        result = self.client.ingest_resumable(
-            data, f"{dataset}.geojson", dataset, srid,
-            store=store, publish=None,
-            source_srid=source_srid if source_srid != srid else None,
-            is_cancelled=is_cancelled)
-        existing = self.client.get_map(map_name)
-        merged = append_layer(existing, map_name, result["dataset"], style, store,
-                              layer_name=layer.name())
-        return self.client.put_map(merged)
+        return self.run_upload_flow(
+            self.prepare_upload(layer), map_name=map_name, dataset=dataset,
+            store=store, source_srid=source_srid, is_cancelled=is_cancelled)
 
     def link_table(self, map_name: str, dataset: str, style: str | None,
                    store: str, layer_name: str | None = None) -> dict:
