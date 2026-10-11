@@ -12,6 +12,27 @@ from .map_builder import append_layer
 from .style_convert import qml_to_fragments
 
 
+def _geometry_name(geometry_type) -> str:
+    """Map a ``QgsWkbTypes.GeometryType`` to the filter/style geometry name.
+
+    ``str(geometryType())`` yields ``'0'``/``'1'``/``'2'`` on both QGIS 3 and
+    4 (SIP enums stringify as ints), which the layer filter rejects — so the
+    mapping must be explicit. ``line`` is normalised to ``linestring`` to
+    match ``SUPPORTED_GEOMETRIES``.
+    """
+    from qgis.core import QgsWkbTypes
+
+    if geometry_type == QgsWkbTypes.PointGeometry:
+        return "point"
+    if geometry_type == QgsWkbTypes.LineGeometry:
+        return "linestring"
+    if geometry_type == QgsWkbTypes.PolygonGeometry:
+        return "polygon"
+    if geometry_type == QgsWkbTypes.UnknownGeometry:
+        return "unknown"
+    return "null"
+
+
 class SpatialEngineDock:
     """Wires QGIS widgets to :class:`EngineClient`; constructed by the plugin."""
 
@@ -20,7 +41,7 @@ class SpatialEngineDock:
 
     def visible_layers(self):
         """Return only supported vector layers from the current QGIS project."""
-        from qgis.core import QgsProject
+        from qgis.core import QgsMapLayer, QgsProject
 
         infos = []
         for layer in QgsProject.instance().mapLayers().values():
@@ -29,9 +50,9 @@ class SpatialEngineDock:
                 "id": layer.id(),
                 "name": layer.name(),
                 "provider": layer.providerType(),
-                "geometry": str(layer.geometryType()),
+                "geometry": _geometry_name(layer.geometryType()),
                 "hasSpatial": layer.isSpatial(),
-                "isRaster": layer.type() != 0,  # 0 == VectorLayer
+                "isRaster": layer.type() != QgsMapLayer.VectorLayer,
                 "crsValid": layer.crs().isValid(),
                 "uri": uri,
             })
@@ -47,26 +68,43 @@ class SpatialEngineDock:
 
         authid = layer.crs().authid()  # e.g. "EPSG:4326"
         srid = int(authid.split(":")[1]) if ":" in authid else 4326
-        path = os.path.join(tempfile.mkdtemp(), "layer.geojson")
-        QgsVectorFileWriter.writeAsVectorFormatV2(layer, path, layer.transformContext(), {
-            "driverName": "GeoJSON", "fileEncoding": "UTF-8"})
-        with open(path, "rb") as handle:
-            return handle.read(), srid
+        # The writer takes a SaveVectorOptions object, never a dict (the
+        # binding raises TypeError otherwise on both QGIS 3 and 4). V3 exists
+        # since QGIS 3.20, so it is safe for the 3.34 floor and current on 4.x.
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.driverName = "GeoJSON"
+        options.fileEncoding = "UTF-8"
+        write = getattr(QgsVectorFileWriter, "writeAsVectorFormatV3",
+                        QgsVectorFileWriter.writeAsVectorFormatV2)
+        with tempfile.TemporaryDirectory(prefix="spatial-engine-") as tmp:
+            path = os.path.join(tmp, "layer.geojson")
+            result = write(layer, path, layer.transformContext(), options)
+            error, message = result[0], result[1]
+            if error != QgsVectorFileWriter.NoError:
+                raise RuntimeError(f"layer export failed: {message or error}")
+            with open(path, "rb") as handle:
+                return handle.read(), srid
 
     def convert_layer_style(self, layer, geometry: str):
         """Read the layer QML and convert to a persisted style string (or None)."""
         from qgis.core import QgsReadWriteContext
         from qgis.PyQt.QtXml import QDomDocument
 
-        doc = QDomDocument()
-        layer.writeSymbology(doc, QgsReadWriteContext())
+        # writeSymbology takes (node, doc, errorMessage, context); fewer args
+        # raise TypeError on both QGIS 3 and 4.
+        doc = QDomDocument("qgis")
+        node = doc.createElement("qgis")
+        doc.appendChild(node)
+        if not layer.writeSymbology(node, doc, "", QgsReadWriteContext()):
+            return None, "could not read layer symbology; falling back to engine default style"
         return qml_to_fragments(doc.toString(), geometry)
 
     def upload_layer(self, layer, map_name: str, dataset: str, store: str = "memory",
                      source_srid: int | None = None, is_cancelled=None) -> dict:
         """Upload-copy path: export, convert style, ingest, append to map."""
         data, srid = self.export_active_layer_geojson(layer)
-        style, _ = self.convert_layer_style(layer, str(layer.geometryType()))
+        geometry = _geometry_name(layer.geometryType())
+        style, _ = self.convert_layer_style(layer, geometry)
         result = self.client.ingest_resumable(
             data, f"{dataset}.geojson", dataset, srid,
             store=store, publish=None,

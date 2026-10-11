@@ -7,6 +7,7 @@ class SpatialEnginePlugin:
     def __init__(self, iface):
         self.iface = iface
         self.dock = None
+        self.logic = None
 
     def initGui(self):
         from qgis.PyQt.QtCore import Qt
@@ -28,4 +29,6 @@ class SpatialEnginePlugin:
     def unload(self):
         if self.dock is not None:
             self.iface.removeDockWidget(self.dock)
+            self.dock.deleteLater()
             self.dock = None
+        self.logic = None
